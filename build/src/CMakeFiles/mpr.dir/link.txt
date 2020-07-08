@@ -1,0 +1,2 @@
+/Library/Developer/CommandLineTools/usr/bin/ar qc libmpr.a  CMakeFiles/mpr.dir/MPR_close.c.o CMakeFiles/mpr.dir/MPR_file_create.c.o
+/Library/Developer/CommandLineTools/usr/bin/ranlib libmpr.a

@@ -1,0 +1,2 @@
+/Library/Developer/CommandLineTools/usr/bin/ar qc libmpr_utils.a  CMakeFiles/mpr_utils.dir/MPR_error_code.c.o CMakeFiles/mpr_utils.dir/MPR_point.c.o
+/Library/Developer/CommandLineTools/usr/bin/ranlib libmpr_utils.a
