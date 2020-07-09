@@ -15,6 +15,7 @@
 #include "data_structs/MPR_file_structs.h"
 #include "io/MPR_io.h"
 #include "io/MPR_metadata_io.h"
+#include "core/MPR_restructure.h"
 
 #include <stdarg.h>
 #include <stdio.h>

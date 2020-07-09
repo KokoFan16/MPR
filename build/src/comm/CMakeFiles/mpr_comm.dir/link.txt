@@ -1,2 +1,0 @@
-/Library/Developer/CommandLineTools/usr/bin/ar qc libmpr_comm.a  CMakeFiles/mpr_comm.dir/MPR_comm.c.o
-/Library/Developer/CommandLineTools/usr/bin/ranlib libmpr_comm.a

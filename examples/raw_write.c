@@ -30,13 +30,16 @@ static void check_args();
 static void read_file_parallel();
 static void set_mpr_file(int ts);
 static void set_mpr_variable(int var);
+static void create_synthetic_simulation_data();
+static void destroy_data();
 
 char *usage = "Serial Usage: ./idx_write -g 32x32x32 -l 32x32x32 -r 40x40x40 -v 2 -t 4 -f output_idx_file_name\n"
                      "Parallel Usage: mpirun -n 8 ./idx_write -g 64x64x64 -l 32x32x32 -r 40x40x40 -v 2 -t 4 -f output_idx_file_name\n"
                      "  -g: global dimensions\n"
                      "  -l: local (per-process) dimensions\n"
                      "  -r: restructured box dimension\n"
-                     "  -f: file name template (without .idx)\n"
+					 "  -i: input file name\n"
+                     "  -f: file name template\n"
                      "  -t: number of timesteps\n"
                      "  -v: number of variables (or file containing a list of variables)\n"
                      "  -m: maximum file size\n";
@@ -56,8 +59,11 @@ int main(int argc, char **argv)
 	/* Initialize per-process local domain */
 	calculate_per_process_offsets();
 
-	/* Read file in parallel */
-	read_file_parallel();
+	/* If there is input file, read file in parallel, otherwise, create local simulation sdata */
+	if (strcmp(input_file, "") == 0)
+		create_synthetic_simulation_data();  /* Create local simulation data */
+	else
+		read_file_parallel();   /* Read file in parallel */
 
 	create_mpr_point_and_access();
 
@@ -80,6 +86,8 @@ int main(int argc, char **argv)
 
 	free(variable);
 	variable = 0;
+
+	destroy_data();
 
 	/* MPI close */
 	shutdown_mpi();
@@ -309,7 +317,7 @@ static void set_mpr_file(int ts)
 {
   MPR_return_code ret;
 
-  ret = MPR_file_create(output_file_name, MPR_MODE_CREATE, p_access, global_size, &file);
+  ret = MPR_file_create(output_file_name, MPR_MODE_CREATE, p_access, global_size, local_size, local_offset, &file);
   if (ret != MPR_success)
 	  terminate_with_error_msg("MPR_file_create\n");
 
@@ -333,9 +341,90 @@ static void set_mpr_variable(int var)
 
   ret = MPR_append_and_write_variable(file, variable[var]);
   if (ret != MPR_success)
-	  terminate_with_error_msg("PIDX_append_and_write_variable");
+	  terminate_with_error_msg("MPR_append_and_write_variable");
 
   return;
 }
 
+
+static void create_synthetic_simulation_data()
+{
+  int var = 0;
+  data = malloc(sizeof(*data) * variable_count);
+  memset(data, 0, sizeof(*data) * variable_count);
+
+  // Synthetic simulation data
+  for (var = 0; var < variable_count; var++)
+  {
+    uint64_t i, j, k, val_per_sample = 0;
+    data[var] = malloc(sizeof (*(data[var])) * local_box_size[X] * local_box_size[Y] * local_box_size[Z] * (bpv[var]/8) * vps[var]);
+
+    unsigned char cvalue = 0;
+    short svalue = 0;
+    float fvalue = 0;
+    double dvalue = 0;
+    int ivalue = 0;
+    uint64_t u64ivalue = 0;
+    int64_t i64value = 0;
+
+    for (k = 0; k < local_box_size[Z]; k++)
+      for (j = 0; j < local_box_size[Y]; j++)
+        for (i = 0; i < local_box_size[X]; i++)
+        {
+          uint64_t index = (uint64_t) (local_box_size[X] * local_box_size[Y] * k) + (local_box_size[X] * j) + i;
+
+          for (val_per_sample = 0; val_per_sample < vps[var]; val_per_sample++)
+          {
+            if (strcmp(type_name[var], MPR_DType.UINT8) == 0 || strcmp(type_name[var], MPR_DType.UINT8_GA) == 0 || strcmp(type_name[var], MPR_DType.UINT8_RGB) == 0)
+            {
+              cvalue = (int)(var + val_per_sample + ((global_box_size[X] * global_box_size[Y]*(local_box_offset[Z] + k))+(global_box_size[X]*(local_box_offset[Y] + j)) + (local_box_offset[X] + i)));
+              memcpy(data[var] + (index * vps[var] + val_per_sample) * sizeof(unsigned char), &cvalue, sizeof(unsigned char));
+            }
+            if (strcmp(type_name[var], MPR_DType.INT16) == 0 || strcmp(type_name[var], MPR_DType.INT16_GA) == 0 || strcmp(type_name[var], MPR_DType.INT16_RGB) == 0)
+            {
+              svalue = (int)(var + val_per_sample + ((global_box_size[X] * global_box_size[Y]*(local_box_offset[Z] + k))+(global_box_size[X]*(local_box_offset[Y] + j)) + (local_box_offset[X] + i)));
+              memcpy(data[var] + (index * vps[var] + val_per_sample) * sizeof(short), &svalue, sizeof(short));
+            }
+            if (strcmp(type_name[var], MPR_DType.INT32) == 0 || strcmp(type_name[var], MPR_DType.INT32_GA) == 0 || strcmp(type_name[var], MPR_DType.INT32_RGB) == 0)
+            {
+              ivalue = (int)( 100 + var + val_per_sample + ((global_box_size[X] * global_box_size[Y]*(local_box_offset[Z] + k))+(global_box_size[X]*(local_box_offset[Y] + j)) + (local_box_offset[X] + i)));
+              memcpy(data[var] + (index * vps[var] + val_per_sample) * sizeof(int), &ivalue, sizeof(int));
+            }
+            else if (strcmp(type_name[var], MPR_DType.FLOAT32) == 0 || strcmp(type_name[var], MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name[var], MPR_DType.FLOAT32_RGB) == 0)
+            {
+              fvalue = (float)( 100 + var + val_per_sample + ((global_box_size[X] * global_box_size[Y]*(local_box_offset[Z] + k))+(global_box_size[X]*(local_box_offset[Y] + j)) + (local_box_offset[X] + i)));
+              memcpy(data[var] + (index * vps[var] + val_per_sample) * sizeof(float), &fvalue, sizeof(float));
+            }
+            else if (strcmp(type_name[var], MPR_DType.FLOAT64) == 0 || strcmp(type_name[var], MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name[var], MPR_DType.FLOAT64_RGB) == 0)
+            {
+              dvalue = (double) 100 + var + val_per_sample + ((global_box_size[X] * global_box_size[Y]*(local_box_offset[Z] + k))+(global_box_size[X]*(local_box_offset[Y] + j)) + (local_box_offset[X] + i));
+              memcpy(data[var] + (index * vps[var] + val_per_sample) * sizeof(double), &dvalue, sizeof(double));
+            }
+            else if (strcmp(type_name[var], MPR_DType.INT64) == 0 || strcmp(type_name[var], MPR_DType.INT64_GA) == 0 || strcmp(type_name[var], MPR_DType.INT64_RGB) == 0)
+            {
+              i64value = (int64_t) 100 + var + val_per_sample + ((global_box_size[X] * global_box_size[Y]*(local_box_offset[Z] + k))+(global_box_size[X]*(local_box_offset[Y] + j)) + (local_box_offset[X] + i));
+              memcpy(data[var] + (index * vps[var] + val_per_sample) * sizeof(int64_t), &i64value, sizeof(int64_t));
+            }
+            else if (strcmp(type_name[var], MPR_DType.UINT64) == 0 || strcmp(type_name[var], MPR_DType.UINT64_GA) == 0 || strcmp(type_name[var], MPR_DType.UINT64_RGB) == 0)
+            {
+              u64ivalue = (uint64_t) 100 + var + val_per_sample + ((global_box_size[X] * global_box_size[Y]*(local_box_offset[Z] + k))+(global_box_size[X]*(local_box_offset[Y] + j)) + (local_box_offset[X] + i));
+              memcpy(data[var] + (index * vps[var] + val_per_sample) * sizeof(uint64_t), &u64ivalue, sizeof(uint64_t));
+            }
+          }
+        }
+  }
+}
+
+
+static void destroy_data()
+{
+  int var = 0;
+  for (var = 0; var < variable_count; var++)
+  {
+    free(data[var]);
+    data[var] = 0;
+  }
+  free(data);
+  data = 0;
+}
 

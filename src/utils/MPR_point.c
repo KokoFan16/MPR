@@ -7,7 +7,7 @@
 
 #include "../MPR_inc.h"
 
-MPR_return_code MPR_set_point(MPR_point point, uint64_t  x, uint64_t  y, uint64_t z)
+MPR_return_code MPR_set_point(MPR_point point, int x, int y, int z)
 {
   if (point == NULL)
     return MPR_err_point;
@@ -19,7 +19,7 @@ MPR_return_code MPR_set_point(MPR_point point, uint64_t  x, uint64_t  y, uint64_
   return MPR_success;
 }
 
-MPR_return_code MPR_get_point(uint64_t* x, uint64_t* y, uint64_t* z, MPR_point point)
+MPR_return_code MPR_get_point(int* x, int* y, int* z, MPR_point point)
 {
   if (point == NULL)
     return MPR_err_point;

@@ -10,7 +10,7 @@
 
 #include "../src/MPR_inc.h"
 
-MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access access_type, MPR_point dims, MPR_file* file);
+MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access access_type, MPR_point global, MPR_point local, MPR_point offset, MPR_file* file);
 
 MPR_return_code MPR_close(MPR_file file);
 

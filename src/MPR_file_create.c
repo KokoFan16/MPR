@@ -10,7 +10,7 @@
 
 #include "../MPR_inc.h"
 
-MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access access_type, MPR_point dims, MPR_file* file)
+MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access access_type, MPR_point global, MPR_point local, MPR_point offset, MPR_file* file)
 {
 
 	if (flags != MPR_MODE_CREATE && flags != MPR_MODE_EXCL)
@@ -53,10 +53,14 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	(*file)->restructured_patch = malloc(sizeof(*(*file)->restructured_patch ));
 	memset((*file)->restructured_patch , 0, sizeof(*(*file)->restructured_patch));
 
-	if (dims != NULL)
-	{
-		memcpy((*file)->mpr->global_box, dims, MPR_MAX_DIMENSIONS * sizeof(int));
-	}
+	if (global != NULL)
+		memcpy((*file)->mpr->global_box, global, MPR_MAX_DIMENSIONS * sizeof(int));
+
+	if (local != NULL)
+		memcpy((*file)->mpr->local_box, local, MPR_MAX_DIMENSIONS * sizeof(int));
+
+	if (local != NULL)
+			memcpy((*file)->mpr->local_offset, offset, MPR_MAX_DIMENSIONS * sizeof(int));
 
 	(*file)->comm->simulation_comm = access_type->comm;
 
