@@ -20,6 +20,9 @@ struct mpr_patch_struct
 	int offset[MPR_MAX_DIMENSIONS];                 /* offset of patch in the 3D global space */
 	int size[MPR_MAX_DIMENSIONS];                   /* size (extents) in each of the dimensions for patch */
 
+	int physical_offset[MPR_MAX_DIMENSIONS];        /* the physical offset of a patch in 3D local space */
+	int physical_size[MPR_MAX_DIMENSIONS];          /* the physical size in each dimensions for patch */
+
 	int wavelet_level;                              /* The WAVELET level of the patch */
 };
 typedef struct mpr_patch_struct* MPR_patch;

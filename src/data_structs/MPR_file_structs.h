@@ -13,6 +13,7 @@
 #include "MPR_time_structs.h"
 #include "MPR_variable_structs.h"
 #include "MPR_dataset_structs.h"
+#include "MPR_local_patch_structs.h"
 
 struct mpr_file_descriptor
 {
@@ -25,7 +26,9 @@ struct mpr_file_descriptor
 
 	MPR_dataset mpr;                      /* Basic information */
 
-	MPR_patch restructured_patch;                      /* Patch related information */
+	MPR_patch restructured_patch;         /* Patch related information */
+
+	MPR_local_patch local_patch;          /* Local patches related information */
 
 	MPR_variable variable[MPR_MAX_VARIABLE_COUNT];
 

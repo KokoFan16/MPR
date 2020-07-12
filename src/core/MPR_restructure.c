@@ -34,7 +34,10 @@ MPR_return_code MPR_restructure_setup(MPR_file file, int start_var_index, int en
       local_proc_patch->size[d] = file->mpr->local_box[d];   /* Local size */
     }
 
+    printf("%d: offset %dx%dx%d\n", file->comm->simulation_rank, file->mpr->local_offset[0], file->mpr->local_offset[1], file->mpr->local_offset[2]);
+
     int found_reg_patches_count = 0; /* The number of regular patches per process */
+    int count = 0;
 	for (int i = 0; i < global_box[0]; i += patch_size[0])
 	{
 		for (int j = 0; j < global_box[1]; j += patch_size[1])
@@ -60,20 +63,55 @@ MPR_return_code MPR_restructure_setup(MPR_file file, int start_var_index, int en
 				if ((k + patch_size[2]) > global_box[2])
 					reg_patch->size[2] = global_box[2] - k;
 
+				reg_patch->global_id = count;
+				memcpy(reg_patch->physical_offset, reg_patch->offset, MPR_MAX_DIMENSIONS * sizeof(int));
+				memcpy(reg_patch->physical_size, reg_patch->size, MPR_MAX_DIMENSIONS * sizeof(int));
+
 				/* Check if the current patch intersects with local patch (local dataset) */
 				if (intersect_patch(reg_patch, local_proc_patch))
 				{
-					int cross_rank[file->comm->simulation_nprocs];
+					int patch_end[MPR_MAX_DIMENSIONS] = {(reg_patch->offset[0] + reg_patch->size[0]), (reg_patch->offset[1] + reg_patch->size[1]), (reg_patch->offset[2] + reg_patch->size[2])};
+					int pro_end[MPR_MAX_DIMENSIONS] = {(local_proc_patch->offset[0] + local_proc_patch->size[0]), (local_proc_patch->offset[1] + local_proc_patch->size[1]), (local_proc_patch->offset[2] + local_proc_patch->size[2])};
+
+					if (patch_end[0] > pro_end[0] || patch_end[1] > pro_end[1] || patch_end[2] > pro_end[2])
+					{
+						if (patch_end[0] > pro_end[0])
+							reg_patch->physical_size[0] = pro_end[0] - reg_patch->offset[0];
+						if (patch_end[1] > pro_end[1])
+							reg_patch->physical_size[1] = pro_end[1] - reg_patch->offset[1];
+						if (patch_end[2] > pro_end[2])
+							reg_patch->physical_size[2] = pro_end[2] - reg_patch->offset[2];
+					}
+
+					if (reg_patch->offset[0] < local_proc_patch->offset[0] || reg_patch->offset[1] < local_proc_patch->offset[1] || reg_patch->offset[2] < local_proc_patch->offset[2])
+					{
+						if (reg_patch->offset[0] < local_proc_patch->offset[0])
+						{
+							reg_patch->physical_offset[0] = local_proc_patch->offset[0];
+							reg_patch->physical_size[0] = patch_end[0] - local_proc_patch->offset[0];
+						}
+						if (reg_patch->offset[1] < local_proc_patch->offset[1])
+						{
+							reg_patch->physical_offset[1] = local_proc_patch->offset[1];
+							reg_patch->physical_size[1] = patch_end[1] - local_proc_patch->offset[1];
+						}
+						if (reg_patch->offset[2] < local_proc_patch->offset[2])
+						{
+							reg_patch->physical_offset[2] = local_proc_patch->offset[2];
+							reg_patch->physical_size[2] = patch_end[2] - local_proc_patch->offset[2];
+						}
+					}
+
 					/* Check if the current patch has already been included */
 					if (!contains_patch(reg_patch, found_reg_patches, found_reg_patches_count))
 					{
-//						printf("%d, %d, %d, %d\n", file->comm->simulation_rank, i, j, k);
 						found_reg_patches[found_reg_patches_count] = (MPR_patch)malloc(sizeof (*reg_patch));
 						memcpy(found_reg_patches[found_reg_patches_count], reg_patch, sizeof (*reg_patch));
 						found_reg_patches_count++;
 					}
 				}
 				free(reg_patch);
+				count++;
 			}
 		}
 	}
@@ -82,9 +120,11 @@ MPR_return_code MPR_restructure_setup(MPR_file file, int start_var_index, int en
 
 //	for (int i = 0; i < found_reg_patches_count; i++)
 //	{
-//		printf("%d: %d: %dx%dx%d, %dx%dx%d\n", file->comm->simulation_rank, i,
+//		printf("%d: local %d: global: %d, %dx%dx%d, %dx%dx%d, physical: %dx%dx%d, %dx%dx%d\n", file->comm->simulation_rank, i, found_reg_patches[i]->global_id,
 //				found_reg_patches[i]->offset[0], found_reg_patches[i]->offset[1], found_reg_patches[i]->offset[2],
-//				found_reg_patches[i]->size[0], found_reg_patches[i]->size[1], found_reg_patches[i]->size[2]);
+//				found_reg_patches[i]->size[0], found_reg_patches[i]->size[1], found_reg_patches[i]->size[2],
+//				found_reg_patches[i]->physical_offset[0], found_reg_patches[i]->physical_offset[1], found_reg_patches[i]->physical_offset[2],
+//				found_reg_patches[i]->physical_size[0], found_reg_patches[i]->physical_size[1], found_reg_patches[i]->physical_size[2]);
 //	}
 
 	for (int i = 0; i < found_reg_patches_count; i++)
@@ -93,8 +133,6 @@ MPR_return_code MPR_restructure_setup(MPR_file file, int start_var_index, int en
 		found_reg_patches[i] = 0;
 	}
 	free(found_reg_patches);
-
-	printf("%d: %d\n", file->comm->simulation_rank, found_reg_patches_count);
 
 	return MPR_success;
 }
