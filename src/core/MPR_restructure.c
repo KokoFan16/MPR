@@ -12,6 +12,27 @@ static int intersect_patch(MPR_patch A, MPR_patch B);
 static int contains_patch(MPR_patch reg_patch, MPR_patch* patches, int count);
 
 
+MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int end_var_index)
+{
+	if (MPR_restructure_setup(file, start_var_index, end_var_index) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	if (MPR_restructure(file, start_var_index, end_var_index) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	if (MPR_restructure_cleanup(file) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	return MPR_success;
+}
+
+
 MPR_return_code MPR_restructure_setup(MPR_file file, int start_var_index, int end_var_index)
 {
 	int global_box[MPR_MAX_DIMENSIONS]; /* Global size */
@@ -23,8 +44,9 @@ MPR_return_code MPR_restructure_setup(MPR_file file, int start_var_index, int en
 	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 		max_found_reg_patches *= ceil((float)global_box[d]/(float)patch_size[d]);
 	/* The found regular patches per process */
-	MPR_patch* found_reg_patches = malloc(sizeof(MPR_patch*)*max_found_reg_patches);
-	memset(found_reg_patches, 0, sizeof(MPR_patch*)*max_found_reg_patches);
+	MPR_local_patch local_patch = file->variable[start_var_index]->local_patch;
+	local_patch->patch = malloc(sizeof(MPR_patch*)*max_found_reg_patches);
+	memset(local_patch->patch, 0, sizeof(MPR_patch*)*max_found_reg_patches);
 	/* Convert the local dataset to a patch */
 	MPR_patch local_proc_patch = (MPR_patch)malloc(sizeof (*local_proc_patch));
 	memset(local_proc_patch, 0, sizeof (*local_proc_patch));
@@ -33,8 +55,6 @@ MPR_return_code MPR_restructure_setup(MPR_file file, int start_var_index, int en
       local_proc_patch->offset[d] = file->mpr->local_offset[d];  /* Local offset */
       local_proc_patch->size[d] = file->mpr->local_box[d];   /* Local size */
     }
-
-    printf("%d: offset %dx%dx%d\n", file->comm->simulation_rank, file->mpr->local_offset[0], file->mpr->local_offset[1], file->mpr->local_offset[2]);
 
     int found_reg_patches_count = 0; /* The number of regular patches per process */
     int count = 0;
@@ -103,10 +123,10 @@ MPR_return_code MPR_restructure_setup(MPR_file file, int start_var_index, int en
 					}
 
 					/* Check if the current patch has already been included */
-					if (!contains_patch(reg_patch, found_reg_patches, found_reg_patches_count))
+					if (!contains_patch(reg_patch, local_patch->patch, found_reg_patches_count))
 					{
-						found_reg_patches[found_reg_patches_count] = (MPR_patch)malloc(sizeof (*reg_patch));
-						memcpy(found_reg_patches[found_reg_patches_count], reg_patch, sizeof (*reg_patch));
+						local_patch->patch[found_reg_patches_count] = (MPR_patch)malloc(sizeof (*reg_patch));
+						memcpy(local_patch->patch[found_reg_patches_count], reg_patch, sizeof (*reg_patch));
 						found_reg_patches_count++;
 					}
 				}
@@ -115,25 +135,35 @@ MPR_return_code MPR_restructure_setup(MPR_file file, int start_var_index, int en
 			}
 		}
 	}
-	file->mpr->local_patch_count = found_reg_patches_count;
+	local_patch->patch = realloc(local_patch->patch, sizeof(MPR_patch*)*found_reg_patches_count); /* Resize */
+	local_patch->patch_count = found_reg_patches_count;
 	free(local_proc_patch);
-
-//	for (int i = 0; i < found_reg_patches_count; i++)
-//	{
-//		printf("%d: local %d: global: %d, %dx%dx%d, %dx%dx%d, physical: %dx%dx%d, %dx%dx%d\n", file->comm->simulation_rank, i, found_reg_patches[i]->global_id,
-//				found_reg_patches[i]->offset[0], found_reg_patches[i]->offset[1], found_reg_patches[i]->offset[2],
-//				found_reg_patches[i]->size[0], found_reg_patches[i]->size[1], found_reg_patches[i]->size[2],
-//				found_reg_patches[i]->physical_offset[0], found_reg_patches[i]->physical_offset[1], found_reg_patches[i]->physical_offset[2],
-//				found_reg_patches[i]->physical_size[0], found_reg_patches[i]->physical_size[1], found_reg_patches[i]->physical_size[2]);
-//	}
 
 	for (int i = 0; i < found_reg_patches_count; i++)
 	{
-		free(found_reg_patches[i]);
-		found_reg_patches[i] = 0;
+		printf("%d: local %d: global: %d, %dx%dx%d, %dx%dx%d, physical: %dx%dx%d, %dx%dx%d\n", file->comm->simulation_rank, i, local_patch->patch[i]->global_id,
+				local_patch->patch[i]->offset[0], local_patch->patch[i]->offset[1], local_patch->patch[i]->offset[2],
+				local_patch->patch[i]->size[0], local_patch->patch[i]->size[1], local_patch->patch[i]->size[2],
+				local_patch->patch[i]->physical_offset[0], local_patch->patch[i]->physical_offset[1], local_patch->patch[i]->physical_offset[2],
+				local_patch->patch[i]->physical_size[0], local_patch->patch[i]->physical_size[1], local_patch->patch[i]->physical_size[2]);
 	}
-	free(found_reg_patches);
+	return MPR_success;
+}
 
+MPR_return_code MPR_restructure(MPR_file file, int start_var_index, int end_var_index)
+{
+	return MPR_success;
+}
+
+MPR_return_code MPR_restructure_cleanup(MPR_file file)
+{
+	for (int i = 0; i < file->local_patch->patch_count; i++)
+	{
+		free(file->local_patch->patch[i]);
+		file->local_patch->patch[i] = 0;
+	}
+
+	free(file->local_patch->patch);
 	return MPR_success;
 }
 

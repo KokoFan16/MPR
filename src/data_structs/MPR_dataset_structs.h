@@ -18,8 +18,6 @@ struct mpr_dataset_struct
 
 	int variable_count;                               /* The number of variables contained in the dataset */
 
-	int local_patch_count;                            /* The number of patches per process */
-
 	char filename[MPR_FILE_PATH_LENGTH];              /* The .mpr file path */
 	char filename_template[MPR_FILE_PATH_LENGTH];     /* Filename template use to resolve the path of the .mpr file and binaries */
 	char filename_time_template[MPR_FILE_PATH_LENGTH];/* Filename template used to resolve the path of time folders */

@@ -35,6 +35,18 @@ MPR_return_code MPR_variable_create(char* variable_name, unsigned int bits_per_s
   return MPR_success;
 }
 
+MPR_return_code MPR_variable_write_data(MPR_variable variable, const void* buffer)
+{
+	if (!variable)
+		return MPR_err_variable;
+
+	const void *temp_buffer = buffer;
+
+//	variable->local_patch->buffer = (unsigned char*)temp_buffer;
+
+	return MPR_success;
+}
+
 MPR_return_code MPR_append_and_write_variable(MPR_file file, MPR_variable variable)
 {
 

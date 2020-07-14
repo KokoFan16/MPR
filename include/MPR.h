@@ -48,4 +48,6 @@ MPR_return_code MPR_variable_create(char* variable_name, unsigned int bits_per_s
 
 MPR_return_code MPR_append_and_write_variable(MPR_file file, MPR_variable variable);
 
+MPR_return_code MPR_variable_write_data(MPR_variable variable, const void* buffer);
+
 #endif /* INCLUDE_MPR_H_ */

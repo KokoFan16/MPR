@@ -60,7 +60,7 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 		memcpy((*file)->mpr->local_box, local, MPR_MAX_DIMENSIONS * sizeof(int));
 
 	if (local != NULL)
-			memcpy((*file)->mpr->local_offset, offset, MPR_MAX_DIMENSIONS * sizeof(int));
+		memcpy((*file)->mpr->local_offset, offset, MPR_MAX_DIMENSIONS * sizeof(int));
 
 	(*file)->comm->simulation_comm = access_type->comm;
 
@@ -74,7 +74,6 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	(*file)->mpr->last_tstep = 0;
 
 	(*file)->mpr->variable_count = -1;
-	(*file)->mpr->local_patch_count = 0;
 
 	strncpy(file_name_skeleton, filename, strlen(filename) - 4);
 	file_name_skeleton[strlen(filename) - 4] = '\0';
@@ -102,7 +101,7 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	(*file)->local_variable_index = 0;
 	(*file)->local_variable_count = 0;
 	(*file)->variable_index_tracker = 0;
-
+	(*file)->max_wavelet_level = 0;
 	(*file)->fs_block_size = 0;
 
 	if ((*file)->comm->simulation_rank == 0)

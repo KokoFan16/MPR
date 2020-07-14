@@ -22,12 +22,11 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi, int MODE)
 		return MPR_err_file;
 	}
 
-	if (MPR_restructure_setup(file, svi, evi))
+	if (MPR_restructure_perform(file, svi, evi))
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-
 
 //	if (MODE == MPR_RAW_IO)
 //		ret = MPR_raw_write(file, svi, evi);

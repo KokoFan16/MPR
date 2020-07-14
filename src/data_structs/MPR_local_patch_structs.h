@@ -10,7 +10,10 @@
 
 struct mpr_local_patch_struct
 {
-	int patch_count;          /* Number of patches in the super patch */
+	int patch_count;          /* Number of patches in the local patch */
+
+	unsigned char* buffer;    /* data buffer */
+
 	MPR_patch *patch;         /* Pointer to the patches that are included in the local dataset */
 };
 typedef struct mpr_local_patch_struct* MPR_local_patch;

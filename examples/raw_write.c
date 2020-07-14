@@ -79,6 +79,7 @@ int main(int argc, char **argv)
 	    	set_mpr_variable(var);
 
 	    MPR_close(file);
+
 	}
 
 	if (MPR_close_access(p_access) != MPR_success)
@@ -339,6 +340,11 @@ static void set_mpr_variable(int var)
   if (ret != MPR_success)
 	  terminate_with_error_msg("MPR_variable_create");
 
+  ret = MPR_variable_write_data(variable[var], data[var]);
+  if (ret != MPR_success)
+	  terminate_with_error_msg("MPR_variable_create");
+
+  /* Set variable array */
   ret = MPR_append_and_write_variable(file, variable[var]);
   if (ret != MPR_success)
 	  terminate_with_error_msg("MPR_append_and_write_variable");

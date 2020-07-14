@@ -28,15 +28,15 @@ struct mpr_file_descriptor
 
 	MPR_patch restructured_patch;         /* Patch related information */
 
-	MPR_local_patch local_patch;          /* Local patches related information */
-
-	MPR_variable variable[MPR_MAX_VARIABLE_COUNT];
+	MPR_variable variable[MPR_MAX_VARIABLE_COUNT];  /* Array of variables */
 
 	MPR_time time;                        /* For detailed time profiling of all phases */
 
 	int local_variable_index;             /* starting index of variable that needs to be written out before a flush */
 	int local_variable_count;             /* total number of variables that is written out in a flush */
 	int variable_index_tracker;           /* tracking upto which variable io has been done (used for flushing) */
+
+	int max_wavelet_level;                /* The maximum wavelet level based on the brick size */
 };
 typedef struct mpr_file_descriptor* MPR_file;
 
