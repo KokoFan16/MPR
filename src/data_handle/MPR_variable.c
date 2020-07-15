@@ -21,6 +21,9 @@ MPR_return_code MPR_variable_create(char* variable_name, unsigned int bits_per_s
   *variable = malloc(sizeof *(*variable));
   memset(*variable, 0, sizeof *(*variable));
 
+  (*variable)->local_patch = malloc(sizeof(*((*variable)->local_patch)));
+  memset((*variable)->local_patch, 0, sizeof (*((*variable)->local_patch)));
+
   int bits = 0;
   MPR_default_bits_per_datatype(type_name, &bits);
   if (bits !=0 && bits != bits_per_sample)

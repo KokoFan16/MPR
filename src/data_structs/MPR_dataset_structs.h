@@ -18,6 +18,8 @@ struct mpr_dataset_struct
 
 	int variable_count;                               /* The number of variables contained in the dataset */
 
+	int total_patches_num;                            /* The total number of patches */
+
 	char filename[MPR_FILE_PATH_LENGTH];              /* The .mpr file path */
 	char filename_template[MPR_FILE_PATH_LENGTH];     /* Filename template use to resolve the path of the .mpr file and binaries */
 	char filename_time_template[MPR_FILE_PATH_LENGTH];/* Filename template used to resolve the path of time folders */
@@ -32,13 +34,13 @@ struct mpr_dataset_struct
 	int compression_param;                            /* Compression parameter */
 	float compression_bit_rate;                       /* Compression bit rate */
 
-	int file_counts;                                   /* The number of out file */
-	unsigned long long file_size;                      /* The total size of each out file */
+	int file_counts;                                  /* The number of out file */
+	unsigned long long file_size;                     /* The total size of each out file */
 	int patch_count_per_out_file;                          /* the number of patches owned by each out file */
 
-	int is_aggregator;                                 /* If the rank is a aggregator */
+	int is_aggregator;                                /* If the rank is a aggregator */
 
-	unsigned long long required_file_param;            /* The required file parameter (size or patch_num) per out file */
+	unsigned long long required_file_param;           /* The required file parameter (size or patch_num) per out file */
 
 };
 typedef struct mpr_dataset_struct* MPR_dataset;
