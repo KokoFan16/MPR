@@ -12,6 +12,8 @@ struct mpr_patch_struct
 {
 	int global_id;                                  /* global id for patch */
 
+//	int owned_rank;                                 /* the process which owned this patch */
+
 	unsigned char* buffer;                          /* data buffer of a patch */
 
 	int patch_size[MPR_MAX_DIMENSIONS];             /* restructured grid size */
@@ -23,7 +25,7 @@ struct mpr_patch_struct
 	int physical_offset[MPR_MAX_DIMENSIONS];        /* the physical offset of a patch in 3D local space */
 	int physical_size[MPR_MAX_DIMENSIONS];          /* the physical size in each dimensions for patch */
 
-	int wavelet_level;                              /* The WAVELET level of the patch */
+	int wavelet_level;                              /* the WAVELET level of the patch */
 };
 typedef struct mpr_patch_struct* MPR_patch;
 

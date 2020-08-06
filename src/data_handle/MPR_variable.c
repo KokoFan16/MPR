@@ -43,12 +43,19 @@ MPR_return_code MPR_variable_write_data(MPR_variable variable, const void* buffe
 	if (!variable)
 		return MPR_err_variable;
 
-	const void *temp_buffer = buffer;
+	const void *temp_buffer;
 
-//	variable->local_patch->buffer = (unsigned char*)temp_buffer;
+	variable->local_patch = malloc(sizeof(*variable->local_patch));
+	memset(variable->local_patch, 0, sizeof (*(variable->local_patch)));
+
+	temp_buffer = buffer;
+	variable->local_patch->buffer= (unsigned char*)temp_buffer;
+
+//	variable->local_patch->patch_count = 0;
 
 	return MPR_success;
 }
+
 
 MPR_return_code MPR_append_and_write_variable(MPR_file file, MPR_variable variable)
 {
@@ -68,4 +75,17 @@ MPR_return_code MPR_append_and_write_variable(MPR_file file, MPR_variable variab
   file->local_variable_count++;
 
   return MPR_success;
+}
+
+MPR_return_code MPR_variable_cleanup(MPR_file file, MPR_variable variable)
+{
+	free(variable->local_patch->buffer);
+	for (int i = 0; i < variable->local_patch->patch_count; i++)
+	{
+		free(variable->local_patch->patch[i]->buffer);
+		free(variable->local_patch->patch[i]);
+	}
+	free(variable->local_patch->patch);
+	free(variable->local_patch);
+	return MPR_success;
 }

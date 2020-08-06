@@ -79,11 +79,11 @@ int main(int argc, char **argv)
 	    	set_mpr_variable(var);
 
 	    MPR_close(file);
-
 	}
 
 	if (MPR_close_access(p_access) != MPR_success)
 		terminate_with_error_msg("MPR_close_access");
+
 
 	free(variable);
 	variable = 0;
@@ -279,7 +279,7 @@ static void check_args()
 MPI_Datatype create_subarray()
 {
     MPI_Datatype subarray;
-    MPI_Type_create_subarray(3, global_box_size, local_box_size, local_box_offset, MPI_ORDER_C, MPI_FLOAT, &subarray);
+    MPI_Type_create_subarray(3, global_box_size, local_box_size, local_box_offset, MPI_ORDER_FORTRAN, MPI_FLOAT, &subarray);
     MPI_Type_commit(&subarray);
     return subarray;
 }

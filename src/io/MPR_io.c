@@ -22,34 +22,12 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi, int MODE)
 		return MPR_err_file;
 	}
 
+	/* Perform restructure phase */
 	if (MPR_restructure_perform(file, svi, evi))
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-
-//	if (MODE == MPR_RAW_IO)
-//		ret = MPR_raw_write(file, svi, evi);
-//
-//	else if (MODE == MPR_MUL_RES_IO)
-//		ret = MPR_multi_resolution_write(file, svi, evi);
-//
-//	else if (MODE == MPR_MUL_PRE_IO)
-//		ret = MPR_multi_precision_write(file, svi, evi);
-//
-//	else if (MODE == MPR_MUL_RES_PRE_IO)
-//		ret = MPR_multi_multi_resolution_precision_write(file, svi, evi);
-//	else
-//	{
-//		fprintf(stderr, "[%s] [%d]\n", __FILE__, __LINE__);
-//		return MPR_err_unsupported_flags;
-//	}
-//
-//	if (ret != MPR_success)
-//	{
-//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//		return MPR_err_file;
-//	}
 
 	return MPR_success;
 }
