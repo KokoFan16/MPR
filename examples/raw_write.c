@@ -20,8 +20,9 @@ char var_list[512];
 char output_file_name[512];
 unsigned char **data;
 static MPR_point rst_box;
-
-static unsigned long long required_file_param = 0;
+int agg_mode = -1;
+int out_file_num = 0;
+int proc_num_per_node = 0;
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -34,7 +35,7 @@ static void create_synthetic_simulation_data();
 static void destroy_data();
 
 char *usage = "Serial Usage: ./idx_write -g 32x32x32 -l 32x32x32 -r 40x40x40 -v 2 -t 4 -f output_idx_file_name\n"
-                     "Parallel Usage: mpirun -n 8 ./idx_write -g 64x64x64 -l 32x32x32 -r 40x40x40 -v 2 -t 4 -f output_idx_file_name\n"
+                     "Parallel Usage: mpirun -n 8 ./idx_write -g 64x64x64 -l 32x32x32 -r 40x40x40 -v 2 -t 4 -f output_idx_file_name -p 4 -m 1 -n 4\n"
                      "  -g: global dimensions\n"
                      "  -l: local (per-process) dimensions\n"
                      "  -r: restructured box dimension\n"
@@ -42,7 +43,9 @@ char *usage = "Serial Usage: ./idx_write -g 32x32x32 -l 32x32x32 -r 40x40x40 -v 
                      "  -f: file name template\n"
                      "  -t: number of timesteps\n"
                      "  -v: number of variables (or file containing a list of variables)\n"
-                     "  -m: maximum file size\n";
+					 "  -p: the number of processes per node"
+                     "  -m: the aggregation mode (0 means fixed size mode, 1 means fixed patch number mode)\n"
+					 "  -n: the number of out files\n";
 
 int main(int argc, char **argv)
 {
@@ -98,7 +101,7 @@ int main(int argc, char **argv)
 /* Parse arguments */
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:l:r:i:f:t:v:s:";
+  char flags[] = "g:l:r:i:f:t:v:p:m:n:";
   int one_opt = 0;
 
   while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -154,9 +157,19 @@ static void parse_args(int argc, char **argv)
 	  }
 	  break;
 
-    case('s'): // required parameter for out file (0 means the fixed size mode, 1 means fixed patch number)
-      if (sscanf(optarg, "%lld", &required_file_param) < 0)
-        terminate_with_error_msg("Invalid variable file\n%s", usage);
+    case('p'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
+      if (sscanf(optarg, "%d", &proc_num_per_node) == EOF || proc_num_per_node < 1)
+        terminate_with_error_msg("Invalid number of processes per node\n%s", usage);
+      break;
+
+    case('m'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
+      if (sscanf(optarg, "%d", &agg_mode) < 0 )
+        terminate_with_error_msg("Invalid aggregation mode\n%s", usage);
+      break;
+
+    case('n'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
+      if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > process_count)
+        terminate_with_error_msg("Invalid number of out files\n%s", usage);
       break;
 
     default:
@@ -264,15 +277,18 @@ static int generate_vars(){
 
 static void check_args()
 {
-  if (global_box_size[X] < local_box_size[X] || global_box_size[Y] < local_box_size[Y] || global_box_size[Z] < local_box_size[Z])
-    terminate_with_error_msg("ERROR: Global box is smaller than local box in one of the dimensions\n");
+	if (global_box_size[X] < local_box_size[X] || global_box_size[Y] < local_box_size[Y] || global_box_size[Z] < local_box_size[Z])
+	  terminate_with_error_msg("ERROR: Global box is smaller than local box in one of the dimensions\n");
 
-  // check if the number of processes given by the user is consistent with the actual number of processes needed
-  int brick_count = (int)((global_box_size[X] + local_box_size[X] - 1) / local_box_size[X]) *
-                    (int)((global_box_size[Y] + local_box_size[Y] - 1) / local_box_size[Y]) *
-                    (int)((global_box_size[Z] + local_box_size[Z] - 1) / local_box_size[Z]);
-  if(brick_count != process_count)
-    terminate_with_error_msg("ERROR: Number of sub-blocks (%d) doesn't match number of processes (%d)\n", brick_count, process_count);
+	// check if the number of processes given by the user is consistent with the actual number of processes needed
+	int brick_count = (int)((global_box_size[X] + local_box_size[X] - 1) / local_box_size[X]) *
+					(int)((global_box_size[Y] + local_box_size[Y] - 1) / local_box_size[Y]) *
+					(int)((global_box_size[Z] + local_box_size[Z] - 1) / local_box_size[Z]);
+	if (brick_count != process_count)
+	  terminate_with_error_msg("ERROR: Number of sub-blocks (%d) doesn't match number of processes (%d)\n", brick_count, process_count);
+
+	if (proc_num_per_node < 1)
+	  terminate_with_error_msg("Please specify the number of processes per node\n%s", usage);
 }
 
 /* Create a subarray for read non contiguous data */
@@ -325,7 +341,9 @@ static void set_mpr_file(int ts)
   MPR_set_current_time_step(file, ts);   /* Set the current timestep */
   MPR_set_variable_count(file, variable_count);   /* Set the number of variables */
   MPR_set_io_mode(file, MPR_RAW_IO);   /* Select I/O mode */
-  MPR_set_required_file_param(file, required_file_param);   /* Set required file size */
+  MPR_set_aggregation_mode(file, agg_mode);
+  MPR_set_out_file_num(file, out_file_num);
+  MPR_set_procs_num_per_node(file, proc_num_per_node);
   MPR_set_restructuring_box(file, rst_box);  /* Set the restructuring box */
 
   return;

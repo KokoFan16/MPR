@@ -8,7 +8,6 @@
 
 #include "../MPR_inc.h"
 #include <errno.h>
-#include <sys/types.h>
 
 MPR_return_code MPR_create_folder_structure(MPR_file file, int start_var_index, int end_var_index)
 {

@@ -15,7 +15,9 @@
 #include "data_structs/MPR_file_structs.h"
 #include "io/MPR_io.h"
 #include "io/MPR_metadata_io.h"
+#include "io/MPR_raw_io.h"
 #include "core/MPR_restructure.h"
+#include "core/MPR_aggregation.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -24,7 +26,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <limits.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <math.h>
+
 
 
 #endif /* SRC_MPR_INC_H_ */

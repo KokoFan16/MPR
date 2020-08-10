@@ -32,9 +32,11 @@ MPR_return_code MPR_set_restructuing_factor(MPR_file file, float rst_factor_x, f
 
 MPR_return_code MPR_get_restructuing_factor(MPR_file file, float* rst_factor_x, float* rst_factor_y, float* rst_factor_z);
 
-MPR_return_code MPR_set_required_file_param(MPR_file file, unsigned long long rfp);
+MPR_return_code MPR_set_aggregation_mode(MPR_file file, int mode);
 
-MPR_return_code MPR_get_required_file_param(MPR_file file, unsigned long long* rfp);
+MPR_return_code MPR_set_out_file_num(MPR_file file, int num);
+
+MPR_return_code MPR_set_procs_num_per_node(MPR_file file, int npro);
 
 MPR_return_code MPR_set_io_mode(MPR_file file, enum MPR_io_type io_type);
 

@@ -78,17 +78,18 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	strncpy(file_name_skeleton, filename, strlen(filename) - 4);
 	file_name_skeleton[strlen(filename) - 4] = '\0';
 	sprintf((*file)->mpr->filename, "%s.mpr", file_name_skeleton);
+	sprintf((*file)->mpr->filename_time_template, "time%%09d/");
 
 	(*file)->mpr->compression_type = MPR_NO_COMPRESSION;
 	(*file)->mpr->compression_bit_rate = 64;
 	(*file)->mpr->compression_param = 1;
 
-	(*file)->mpr->file_counts = 0;
+	(*file)->mpr->out_file_num = 0;
 	(*file)->mpr->file_size = 0;
-	(*file)->mpr->patch_count_per_out_file = 0;
+//	(*file)->mpr->patch_count_per_out_file = 0;
 	(*file)->mpr->is_aggregator = 0;
 
-	(*file)->mpr->required_file_param = 0;
+	(*file)->mpr->aggregation_mode = -1;
 
 	(*file)->mpr->restructuring_factor[0] = 1;
 	(*file)->mpr->restructuring_factor[1] = 1;

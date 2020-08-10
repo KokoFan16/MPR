@@ -79,22 +79,33 @@ MPR_return_code MPR_get_restructuing_factor(MPR_file file, float* rst_factor_x, 
   return MPR_success;
 }
 
-MPR_return_code MPR_set_required_file_param(MPR_file file, unsigned long long rfp)
+MPR_return_code MPR_set_aggregation_mode(MPR_file file, int mode)
 {
 	if (!file)
       return MPR_err_file;
 
-    file->mpr->required_file_param = rfp;
+    file->mpr->aggregation_mode = mode;
 
     return MPR_success;
 }
 
-MPR_return_code MPR_get_required_file_param(MPR_file file, unsigned long long* rfp)
+MPR_return_code MPR_set_out_file_num(MPR_file file, int num)
 {
 	if (!file)
       return MPR_err_file;
 
-    *rfp = file->mpr->required_file_param;
+    file->mpr->out_file_num = num;
+
+    return MPR_success;
+}
+
+
+MPR_return_code MPR_set_procs_num_per_node(MPR_file file, int npro)
+{
+	if (!file)
+      return MPR_err_file;
+
+    file->mpr->proc_num_per_node = npro;
 
     return MPR_success;
 }

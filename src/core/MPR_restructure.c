@@ -6,7 +6,6 @@
  */
 
 #include "../MPR_inc.h"
-#include <math.h>
 
 static int intersect_patch(MPR_patch A, MPR_patch B);
 static int contains_patch(MPR_patch reg_patch, MPR_patch* patches, int count);
@@ -32,6 +31,8 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 		max_found_reg_patches *= ceil((float)file->mpr->global_box[d]/(float)file->restructured_patch->patch_size[d]);
 
+	file->mpr->total_patches_num = max_found_reg_patches; /* The global total number of patches */
+
 	MPR_patch local_proc_patch = (MPR_patch)malloc(sizeof (*local_proc_patch)); /* Treat local dataset as a big patch */
 	memset(local_proc_patch, 0, sizeof (*local_proc_patch)); /* Initial the local patch */
     for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
@@ -40,13 +41,32 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
       local_proc_patch->size[d] = file->mpr->local_box[d];
     }
 
+    /* Extra patches assignment based on the number of processes per node */
     int local_patch_num = max_found_reg_patches / procs_num; /* The local number of patches per process */
     int remain_patch_num = max_found_reg_patches % procs_num; /* Remainder */
-    if (remain_patch_num != 0) /* Assign the extra patches while maintaining the load balance */
+    int node_num = ceil((float)procs_num / file->mpr->proc_num_per_node); /* The number of nodes based on the number of processes per node */
+    /* If all the processes belong to one node */
+    if (node_num == 1)
+    	local_patch_num = (rank < remain_patch_num)? (local_patch_num + 1): local_patch_num;
+    else  /* If they belong to multiple nodes */
     {
-    	int div = procs_num / remain_patch_num;
-    	if (rank % div == 0  && rank / div < remain_patch_num)
-    		local_patch_num += 1;
+		int avg_rem_patch_num_per_node = remain_patch_num / node_num; /* The average number of extra patches per node */
+
+		int proc_reminder = procs_num % file->mpr->proc_num_per_node; /* the extra patch reminder */
+		int proc_num_last_node = (proc_reminder == 0)? file->mpr->proc_num_per_node: proc_reminder; /* the number of processes of last node */
+
+		int rem_patch_assign_array[node_num]; /* extra patches assignment array for nodes */
+		/* calculate the number of extra patches assigned for the last node first */
+		rem_patch_assign_array[node_num-1] = (proc_num_last_node < avg_rem_patch_num_per_node)? proc_num_last_node: avg_rem_patch_num_per_node;
+		remain_patch_num -= rem_patch_assign_array[node_num-1];
+		avg_rem_patch_num_per_node = remain_patch_num / (node_num - 1); /* minus the number of last node */
+		/* calculate the number extra patches assigned for others */
+		for (int i = 0; i < node_num - 1; i++)
+			rem_patch_assign_array[i] = (i < (remain_patch_num % (node_num - 1))? (avg_rem_patch_num_per_node + 1): avg_rem_patch_num_per_node);
+		/* calculate the number of patches for each process */
+		int id = rank / file->mpr->proc_num_per_node;
+		if (rank % file->mpr->proc_num_per_node < rem_patch_assign_array[id])
+			local_patch_num += 1;
     }
 
     int required_local_patch_num[procs_num]; /* The required local number of patches per process */
@@ -166,8 +186,14 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 					}
 					if (flag == 0) /* If the current patch didn't be assigned to a process */
 					{
-						a = min_value_index(local_own_patch_num, procs_num); /* Found the minimum number of patches among process */
-						local_own_patch_num[a] += 1; /* the number of patches of rank a add 1 */
+						for (a = 0; a < procs_num; a++)
+						{
+							if (local_own_patch_num[a] < required_local_patch_num[a])
+							{
+								local_own_patch_num[a] += 1;
+								break;
+							}
+						}
 					}
 					/***** Patch Assignment End *****/
 
@@ -258,29 +284,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 				}
 			}
 		}
-
-//		if (rank == 3 && v == 0)
-//		{
-//			for (int i = 0; i < local_patch_num; i++)
-//			{
-//				if (local_patch->patch[i]->global_id == 8)
-//				{
-//					for (int j = 0; j < patch_size; j++)
-//					{
-//						float a;
-//						memcpy(&a, &local_patch->patch[i]->buffer[j*sizeof(float)], sizeof(float));
-//						printf("%f\n", a);
-//					}
-//				}
-////				printf("rank: %d: v: %d, id: %d, edge: %d, offset: %dx%dx%d, size: %dx%dx%d, phy_off: %dx%dx%d, phy_size: %dx%dx%d\n", rank, v, local_patch->patch[i]->global_id, local_patch->patch[i]->is_boundary_patch,
-////						local_patch->patch[i]->offset[0], local_patch->patch[i]->offset[1], local_patch->patch[i]->offset[2],
-////						local_patch->patch[i]->size[0], local_patch->patch[i]->size[1], local_patch->patch[i]->size[2],
-////						local_patch->patch[i]->physical_offset[0], local_patch->patch[i]->physical_offset[1], local_patch->patch[i]->physical_offset[2],
-////						local_patch->patch[i]->physical_size[0], local_patch->patch[i]->physical_size[1], local_patch->patch[i]->physical_size[2]);
-//			}
-//
-//		}
-
 
 	    /* Clean up */
 	    for (int i = 0; i < found_reg_patches_count; i++)
