@@ -168,7 +168,7 @@ static void parse_args(int argc, char **argv)
       break;
 
     case('n'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
-      if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > process_count)
+      if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > (process_count - 1))
         terminate_with_error_msg("Invalid number of out files\n%s", usage);
       break;
 

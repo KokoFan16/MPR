@@ -75,6 +75,12 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 
 	(*file)->mpr->variable_count = -1;
 
+	(*file)->mpr->total_patches_num = 0;
+
+	(*file)->mpr->proc_num_per_node = 0;
+	(*file)->mpr->node_num = 0;
+	(*file)->mpr->proc_num_last_node = 0;
+
 	strncpy(file_name_skeleton, filename, strlen(filename) - 4);
 	file_name_skeleton[strlen(filename) - 4] = '\0';
 	sprintf((*file)->mpr->filename, "%s.mpr", file_name_skeleton);

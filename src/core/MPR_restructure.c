@@ -9,7 +9,6 @@
 
 static int intersect_patch(MPR_patch A, MPR_patch B);
 static int contains_patch(MPR_patch reg_patch, MPR_patch* patches, int count);
-static int min_value_index(int* patch_num_array, int count);
 
 
 MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int end_var_index)
@@ -45,6 +44,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
     int local_patch_num = max_found_reg_patches / procs_num; /* The local number of patches per process */
     int remain_patch_num = max_found_reg_patches % procs_num; /* Remainder */
     int node_num = ceil((float)procs_num / file->mpr->proc_num_per_node); /* The number of nodes based on the number of processes per node */
+    file->mpr->node_num = node_num;
     /* If all the processes belong to one node */
     if (node_num == 1)
     	local_patch_num = (rank < remain_patch_num)? (local_patch_num + 1): local_patch_num;
@@ -52,8 +52,9 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
     {
 		int avg_rem_patch_num_per_node = remain_patch_num / node_num; /* The average number of extra patches per node */
 
-		int proc_reminder = procs_num % file->mpr->proc_num_per_node; /* the extra patch reminder */
+		int proc_reminder = procs_num % file->mpr->proc_num_per_node;
 		int proc_num_last_node = (proc_reminder == 0)? file->mpr->proc_num_per_node: proc_reminder; /* the number of processes of last node */
+		file->mpr->proc_num_last_node = proc_num_last_node;
 
 		int rem_patch_assign_array[node_num]; /* extra patches assignment array for nodes */
 		/* calculate the number of extra patches assigned for the last node first */
@@ -62,7 +63,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		avg_rem_patch_num_per_node = remain_patch_num / (node_num - 1); /* minus the number of last node */
 		/* calculate the number extra patches assigned for others */
 		for (int i = 0; i < node_num - 1; i++)
-			rem_patch_assign_array[i] = (i < (remain_patch_num % (node_num - 1))? (avg_rem_patch_num_per_node + 1): avg_rem_patch_num_per_node);
+			rem_patch_assign_array[i] = (i < (remain_patch_num % (node_num - 1)))? (avg_rem_patch_num_per_node + 1): avg_rem_patch_num_per_node;
 		/* calculate the number of patches for each process */
 		int id = rank / file->mpr->proc_num_per_node;
 		if (rank % file->mpr->proc_num_per_node < rem_patch_assign_array[id])
@@ -218,6 +219,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 						memcpy(local_patch->patch[local_patch_id], reg_patch, sizeof (*reg_patch));
 			    		local_patch->patch[local_patch_id]->buffer = malloc(patch_size * bits);
 			    		memset(local_patch->patch[local_patch_id]->buffer, 0, patch_size * bits);
+			    		local_patch->patch[local_patch_id]->buffer_size = patch_size * bits;
 						for (int r = 0; r < procs_num; r++)
 						{
 							if (own_ranks[r] == 1)
@@ -297,23 +299,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
     free(local_proc_patch);
 	return MPR_success;
 }
-
-/* Find minimum value in a array (param: array and size)*/
-static int min_value_index(int* patch_num_array, int count)
-{
-	int id = -1;
-	int min = INT_MAX;
-	for (int i = 0; i < count; i++)
-	{
-		if (patch_num_array[i] < min)
-		{
-			min = patch_num_array[i];
-			id = i;
-		}
-	}
-	return id;
-}
-
 
 /* Function to check if patch A and B intersects */
 static int intersect_patch(MPR_patch A, MPR_patch B)

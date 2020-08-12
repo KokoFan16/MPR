@@ -21,6 +21,8 @@ struct mpr_dataset_struct
 	int total_patches_num;                            /* The total number of patches */
 
 	int proc_num_per_node;                            /* The number of processes per node */
+	int node_num;                                     /* The number of nodes */
+	int proc_num_last_node;                           /* The number of processes of last node */
 
 	char filename[MPR_FILE_PATH_LENGTH];              /* The .mpr file path */
 	char filename_template[MPR_FILE_PATH_LENGTH];     /* Filename template use to resolve the path of the .mpr file and binaries */
@@ -38,7 +40,6 @@ struct mpr_dataset_struct
 
 	int out_file_num;                                 /* The number of out file */
 	unsigned long long file_size;                     /* The total size of each out file */
-//	int patch_count_per_out_file;                     /* the number of patches owned by each out file */
 
 	int is_aggregator;                                /* If the rank is a aggregator */
 	int aggregation_mode;                             /* The aggregation mode */

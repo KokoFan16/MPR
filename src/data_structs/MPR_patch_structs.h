@@ -16,6 +16,8 @@ struct mpr_patch_struct
 
 	unsigned char* buffer;                          /* data buffer of a patch */
 
+	int buffer_size;                                /* the size of the buffer */
+
 	int patch_size[MPR_MAX_DIMENSIONS];             /* restructured grid size */
 	int is_boundary_patch;                          /* 1 if the patch is at the boundary (non-pwer two dataset) 0 otherwise */
 
