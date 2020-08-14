@@ -9,6 +9,7 @@
 
 static void decide_aggregator(MPR_file file);
 static int calculate_agg_num_with_node(MPR_file file);
+int cmpfunc (const void * a, const void * b);
 
 MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 {
@@ -52,6 +53,16 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 	}
 	int agg_ranks[out_file_num]; /* AGG Array */
 	MPI_Allgatherv(&rank, 1, MPI_INT, agg_ranks, recv_count, agg_disp, MPI_INT, comm);
+
+
+
+//	printf("%d: %d\n", rank, file->mpr->is_aggregator);
+
+
+//	for (int i = 0; i < patch_count; i++)
+//	{
+//		printf("%d: %d\n", rank, file->variable[0]->local_patch->patch[i]->global_id);
+//	}
 
 
 	for (int v = svi; v < evi; v++)
@@ -186,23 +197,21 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 			MPI_Allgatherv(&agg_patch_num, 1, MPI_INT, agg_patch_num_array, recv_count, agg_disp, MPI_INT, comm);
 
 			/* assign patches to aggregators based on the increasing order of patch id*/
-			int id = 0;
-			int num = agg_patch_num_array[id];
-			for (int i = 0; i < total_patch_num; i++)
+			int sp = 0;
+			for (int i = 0; i < out_file_num; i++)
 			{
-				if (assign_patch_array[i] == -1 && i < num)
+				int ep = sp + agg_patch_num_array[i];
+				for (int j = 0; j < total_patch_num; j++)
 				{
-					assign_patch_array[i] = agg_ranks[id];
-					agg_size += (rank == agg_ranks[id])? patch_size_array[i]: 0;
+					if (patch_id_array[j] >= sp && patch_id_array[j] < ep)
+					{
+						assign_patch_array[j] = agg_ranks[i];
+						agg_size += (rank == agg_ranks[i])? patch_size_array[j]: 0;
+					}
 				}
-				else
-				{
-					id++;
-					num += agg_patch_num_array[id];
-					assign_patch_array[i] = agg_ranks[id];
-					agg_size += (rank == agg_ranks[id])? patch_size_array[i]: 0;
-				}
+				sp += agg_patch_num_array[i];
 			}
+
 		}
 		else if (mode == 3)
 		{
@@ -221,16 +230,46 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 		memcpy(send_array, &assign_patch_array[displs[rank]], patch_count * sizeof(int));
 		int recv_array[agg_patch_num]; /* Local receive array per process */
 		int recv_id_array[agg_patch_num]; /* The size of received patches */
-		int id = 0;
-		for (int i = 0; i < total_patch_num; i++)
+
+		/* Sort the receive array for fixed-order mode */
+		if (mode == 2)
 		{
-			if (assign_patch_array[i] == rank)
+			int agg_patch_num_array[proc_num]; /* array: the number of patches per aggregator */
+			MPI_Allgather(&agg_patch_num, 1, MPI_INT, agg_patch_num_array, 1, MPI_INT, comm);
+
+			int agg_dis = 0;
+			int agg_dis_array[proc_num];
+			for(int i = 0; i < proc_num; i++)
 			{
-				recv_array[id] = global_rank_array[i];
-				recv_id_array[id] = i;
-				id++;
+				agg_dis_array[i] = agg_dis;
+				agg_dis += agg_patch_num_array[i];
+			}
+			agg_dis = agg_dis_array[rank];
+
+
+			for (int i = 0; i < total_patch_num; i++)
+			{
+				if (patch_id_array[i] >= agg_dis && patch_id_array[i] < (agg_dis + agg_patch_num))
+				{
+					recv_array[patch_id_array[i] - agg_dis] = global_rank_array[i];
+					recv_id_array[patch_id_array[i] - agg_dis] = i;
+				}
 			}
 		}
+		else /* Other modes don't case about order */
+		{
+			int id = 0;
+			for (int i = 0; i < total_patch_num; i++)
+			{
+				if (assign_patch_array[i] == rank)
+				{
+					recv_array[id] = global_rank_array[i];
+					recv_id_array[id] = i;
+					id++;
+				}
+			}
+		}
+
 		/* Non-blocking point to point communication */
 		unsigned char* buf = local_patch->buffer; /* reuse the local buffer per variable */
 		buf = malloc(agg_size); /* allocate the buffer based on the size after aggregation */
@@ -243,44 +282,33 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 		unsigned long long offset = 0;
 		for (int i = 0; i < patch_count; i++)
 		{
+			/* send data to AGG */
 			int buffer_size = local_patch->patch[i]->buffer_size;
-			if (send_array[i] == rank)
-			{   /* copy buffer when the patches should be sent to itself */
-				memcpy(&buf[offset], local_patch->patch[i]->buffer, buffer_size);
-				offset += buffer_size;
-			}
-			else
-			{   /* send data to AGG */
-				MPI_Isend(local_patch->patch[i]->buffer, buffer_size, MPI_BYTE, send_array[i], 0, comm, &req[req_id]);
-				req_id++;
-			}
+			MPI_Isend(local_patch->patch[i]->buffer, buffer_size, MPI_BYTE, send_array[i], 0, comm, &req[req_id]);
+			req_id++;
 		}
 		/* Recv data */
 		for (int i = 0; i < agg_patch_num; i++)
-		{   /* skip the patches which received from self */
-			if (recv_array[i] == rank)
-				continue;
-			else
-			{   /* receive data from non-AGG */
-				MPI_Irecv(&buf[offset], patch_size_array[recv_id_array[i]], MPI_BYTE, recv_array[i], 0, comm, &req[req_id]);
-				offset += patch_size_array[recv_id_array[i]];
-				req_id++;
-			}
+		{
+			/* receive data from non-AGG */
+			MPI_Irecv(&buf[offset], patch_size_array[recv_id_array[i]], MPI_BYTE, recv_array[i], 0, comm, &req[req_id]);
+			offset += patch_size_array[recv_id_array[i]];
+			req_id++;
 		}
 		MPI_Waitall(req_id, req, stat);
 
 //		for(int i = 0; i < patch_count; i++)
 //		{
-//			printf("send %d: %d\n", rank, send_array[i]);
+//			printf("send %d: %d %d\n", rank, send_array[i], local_patch_id_array[i]);
 //		}
 //
 //		for(int i = 0; i < agg_patch_num; i++)
 //		{
-//			printf("recv %d: %d, %d\n", rank, recv_id_array[i], patch_id_array[recv_id_array[i]]);
+//			printf("recv %d: %d %d, %d\n", rank, recv_array[i], recv_id_array[i], patch_id_array[recv_id_array[i]]);
 //		}
 
-//		int count = 3;
-//		if (rank == 6 && v == 1)
+//		int count = 1;
+//		if (rank == 4 && v == 0)
 //		{
 //			for (int i = count * 64; i < (count + 1) * 64; i++)
 //			{
@@ -291,6 +319,10 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 //		}
 	}
 	return MPR_success;
+}
+
+int cmpfunc (const void * a, const void * b) {
+   return ( *(int*)a - *(int*)b );
 }
 
 static void decide_aggregator(MPR_file file)
