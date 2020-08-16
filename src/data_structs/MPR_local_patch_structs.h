@@ -14,6 +14,8 @@ struct mpr_local_patch_struct
 
 	unsigned char* buffer;    /* data buffer */
 
+	unsigned long long out_file_size;        /* the size out file*/
+
 	MPR_patch *patch;         /* Pointer to the patches that are included in the local dataset */
 };
 typedef struct mpr_local_patch_struct* MPR_local_patch;

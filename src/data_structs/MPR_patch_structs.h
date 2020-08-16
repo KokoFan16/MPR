@@ -12,11 +12,9 @@ struct mpr_patch_struct
 {
 	int global_id;                                  /* global id for patch */
 
-//	int owned_rank;                                 /* the process which owned this patch */
-
 	unsigned char* buffer;                          /* data buffer of a patch */
 
-	int buffer_size;                                /* the size of the buffer */
+	int patch_buffer_size;                          /* the size of the buffer */
 
 	int patch_size[MPR_MAX_DIMENSIONS];             /* restructured grid size */
 	int is_boundary_patch;                          /* 1 if the patch is at the boundary (non-pwer two dataset) 0 otherwise */

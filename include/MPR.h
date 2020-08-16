@@ -52,6 +52,6 @@ MPR_return_code MPR_append_and_write_variable(MPR_file file, MPR_variable variab
 
 MPR_return_code MPR_variable_write_data(MPR_variable variable, const void* buffer);
 
-MPR_return_code MPR_variable_cleanup(MPR_file file, MPR_variable variable);
+MPR_return_code MPR_variable_buffer_cleanup(MPR_file file, int svi, int evi);
 
 #endif /* INCLUDE_MPR_H_ */

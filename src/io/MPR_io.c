@@ -5,7 +5,7 @@
  *      Author: kokofan
  */
 
-#include "../MPR_inc.h"
+#include "MPR.h"
 
 MPR_return_code MPR_write(MPR_file file, int svi, int evi, int MODE)
 {
@@ -28,12 +28,10 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi, int MODE)
 		return MPR_err_file;
 	}
 
-	MPR_return_code ret = 0;
 	/* Write Mode */
+	MPR_return_code ret = 0;
 	if (MODE == MPR_RAW_IO)
-	{
 		ret =  MPR_raw_write(file, svi, evi);
-	}
 
 	if (ret != MPR_success)
 	{
@@ -41,19 +39,14 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi, int MODE)
 		return MPR_err_file;
 	}
 
-	return MPR_success;
-}
-
-
-/* Set the default restructuring box (32x32x32) */
-MPR_return_code MPR_set_rst_box_size(MPR_file file, int svi)
-{
-	if ((file->restructured_patch->patch_size[0] == -1 || file->restructured_patch->patch_size[1] == -1 || file->restructured_patch->patch_size[2] == -1)
-		|| (file->restructured_patch->patch_size[0] == 0 &&  file->restructured_patch->patch_size[1] == 0 && file->restructured_patch->patch_size[2] == 0))
+	/* buffers cleanup */
+	if (MPR_variable_buffer_cleanup(file, svi, evi) != MPR_success)
 	{
-		fprintf(stderr,"Warning: restructuring box is not set, using default 32x32x32 size. [File %s Line %d]\n", __FILE__, __LINE__);
-		file->restructured_patch->patch_size[0]=32;file->restructured_patch->patch_size[1]=32;file->restructured_patch->patch_size[2]=32;
+
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
 	}
 
 	return MPR_success;
 }
+

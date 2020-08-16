@@ -21,9 +21,6 @@ MPR_return_code MPR_variable_create(char* variable_name, unsigned int bits_per_s
   *variable = malloc(sizeof *(*variable));
   memset(*variable, 0, sizeof *(*variable));
 
-  (*variable)->local_patch = malloc(sizeof(*((*variable)->local_patch)));
-  memset((*variable)->local_patch, 0, sizeof (*((*variable)->local_patch)));
-
   int bits = 0;
   MPR_default_bits_per_datatype(type_name, &bits);
   if (bits !=0 && bits != bits_per_sample)
@@ -35,6 +32,12 @@ MPR_return_code MPR_variable_create(char* variable_name, unsigned int bits_per_s
   strcpy((*variable)->type_name, type_name);
   strcpy((*variable)->var_name, variable_name);
 
+  (*variable)->local_patch = malloc(sizeof(*((*variable)->local_patch)));
+  memset((*variable)->local_patch, 0, sizeof (*((*variable)->local_patch)));
+
+  (*variable)->local_patch->out_file_size = 0;
+  (*variable)->local_patch->patch_count = 0;
+
   return MPR_success;
 }
 
@@ -45,13 +48,8 @@ MPR_return_code MPR_variable_write_data(MPR_variable variable, const void* buffe
 
 	const void *temp_buffer;
 
-	variable->local_patch = malloc(sizeof(*variable->local_patch));
-	memset(variable->local_patch, 0, sizeof (*(variable->local_patch)));
-
 	temp_buffer = buffer;
 	variable->local_patch->buffer= (unsigned char*)temp_buffer;
-
-//	variable->local_patch->patch_count = 0;
 
 	return MPR_success;
 }
@@ -77,15 +75,20 @@ MPR_return_code MPR_append_and_write_variable(MPR_file file, MPR_variable variab
   return MPR_success;
 }
 
-MPR_return_code MPR_variable_cleanup(MPR_file file, MPR_variable variable)
+
+MPR_return_code MPR_variable_buffer_cleanup(MPR_file file, int svi, int evi)
 {
-	free(variable->local_patch->buffer);
-	for (int i = 0; i < variable->local_patch->patch_count; i++)
+	for (int v = svi; v < evi; v++)
 	{
-		free(variable->local_patch->patch[i]->buffer);
-		free(variable->local_patch->patch[i]);
+		for (int i = 0; i < file->variable[v]->local_patch->patch_count; i++)
+		{
+			free(file->variable[v]->local_patch->patch[i]->buffer);
+			free(file->variable[v]->local_patch->patch[i]);
+		}
+		free(file->variable[v]->local_patch->buffer);
+		free(file->variable[v]->local_patch->patch);
+		free(file->variable[v]->local_patch);
 	}
-	free(variable->local_patch->patch);
-	free(variable->local_patch);
 	return MPR_success;
 }
+
