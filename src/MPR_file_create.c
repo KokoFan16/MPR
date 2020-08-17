@@ -10,7 +10,7 @@
 
 #include "../MPR_inc.h"
 
-MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access access_type, MPR_point global, MPR_point local, MPR_point offset, MPR_file* file)
+MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access access_type, MPR_point global, MPR_point local, MPR_point offset, MPR_point patch, MPR_file* file)
 {
 
 	if (flags != MPR_MODE_CREATE && flags != MPR_MODE_EXCL)
@@ -50,9 +50,6 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	(*file)->time = malloc(sizeof (*((*file)->time)));
 	memset((*file)->time, 0, sizeof (*((*file)->time)));
 
-	(*file)->restructured_patch = malloc(sizeof(*(*file)->restructured_patch ));
-	memset((*file)->restructured_patch , 0, sizeof(*(*file)->restructured_patch));
-
 	if (global != NULL)
 		memcpy((*file)->mpr->global_box, global, MPR_MAX_DIMENSIONS * sizeof(int));
 
@@ -61,6 +58,9 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 
 	if (local != NULL)
 		memcpy((*file)->mpr->local_offset, offset, MPR_MAX_DIMENSIONS * sizeof(int));
+
+	if (patch != NULL)
+		memcpy((*file)->mpr->patch_box, patch, MPR_MAX_DIMENSIONS * sizeof(int));
 
 	(*file)->comm->simulation_comm = access_type->comm;
 
@@ -87,23 +87,14 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	sprintf((*file)->mpr->filename_time_template, "time%%09d/");
 
 	(*file)->mpr->compression_type = MPR_NO_COMPRESSION;
-	(*file)->mpr->compression_bit_rate = 64;
+	(*file)->mpr->compression_bit_rate = 0;
 	(*file)->mpr->compression_param = 1;
 
 	(*file)->mpr->out_file_num = 0;
 	(*file)->mpr->file_size = 0;
-//	(*file)->mpr->patch_count_per_out_file = 0;
 	(*file)->mpr->is_aggregator = 0;
 
 	(*file)->mpr->aggregation_mode = -1;
-
-	(*file)->mpr->restructuring_factor[0] = 1;
-	(*file)->mpr->restructuring_factor[1] = 1;
-	(*file)->mpr->restructuring_factor[2] = 1;
-
-	(*file)->restructured_patch->patch_size[0] = -1;
-	(*file)->restructured_patch->patch_size[1] = -1;
-	(*file)->restructured_patch->patch_size[2] = -1;
 
 	(*file)->local_variable_index = 0;
 	(*file)->local_variable_count = 0;

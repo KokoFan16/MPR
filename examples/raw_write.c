@@ -19,7 +19,7 @@ char output_file_template[512];
 char var_list[512];
 char output_file_name[512];
 unsigned char **data;
-static MPR_point rst_box;
+static MPR_point patch_box;
 int agg_mode = -1;
 int out_file_num = 0;
 int proc_num_per_node = 0;
@@ -35,17 +35,17 @@ static void create_synthetic_simulation_data();
 static void destroy_data();
 
 char *usage = "Serial Usage: ./idx_write -g 32x32x32 -l 32x32x32 -r 40x40x40 -v 2 -t 4 -f output_idx_file_name\n"
-                     "Parallel Usage: mpirun -n 8 ./idx_write -g 64x64x64 -l 32x32x32 -r 40x40x40 -v 2 -t 4 -f output_idx_file_name -p 4 -m 1 -n 4\n"
+                     "Parallel Usage: mpirun -n 8 ./idx_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -m 1 -o 4\n"
                      "  -g: global dimensions\n"
                      "  -l: local (per-process) dimensions\n"
-                     "  -r: restructured box dimension\n"
+                     "  -p: patch box dimension\n"
 					 "  -i: input file name\n"
                      "  -f: file name template\n"
                      "  -t: number of timesteps\n"
                      "  -v: number of variables (or file containing a list of variables)\n"
-					 "  -p: the number of processes per node"
+					 "  -n: the number of processes per node"
                      "  -m: the aggregation mode (0 means fixed size mode, 1 means fixed patch number mode)\n"
-					 "  -n: the number of out files\n";
+					 "  -o: the number of out files\n";
 
 int main(int argc, char **argv)
 {
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
 /* Parse arguments */
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:l:r:i:f:t:v:p:m:n:";
+  char flags[] = "g:l:p:i:f:t:v:n:m:o:";
   int one_opt = 0;
 
   while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -120,11 +120,11 @@ static void parse_args(int argc, char **argv)
         terminate_with_error_msg("Invalid local dimension\n%s", usage);
       break;
 
-    case('r'): // local dimension
-      if ((sscanf(optarg, "%dx%dx%d", &rst_box_size[0], &rst_box_size[1], &rst_box_size[2]) == EOF) ||
-          (rst_box_size[0] < 1 || rst_box_size[1] < 1 || rst_box_size[2] < 1))
+    case('p'): // local dimension
+      if ((sscanf(optarg, "%dx%dx%d", &patch_box_size[0], &patch_box_size[1], &patch_box_size[2]) == EOF) ||
+          (patch_box_size[0] < 1 || patch_box_size[1] < 1 || patch_box_size[2] < 1))
         terminate_with_error_msg("Invalid restructuring box dimension\n%s", usage);
-      MPR_set_point(rst_box, rst_box_size[X], rst_box_size[Y], rst_box_size[Z]);
+      MPR_set_point(patch_box, patch_box_size[X], patch_box_size[Y], patch_box_size[Z]);
       break;
 
     case('i'): // input file name
@@ -157,7 +157,7 @@ static void parse_args(int argc, char **argv)
 	  }
 	  break;
 
-    case('p'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
+    case('n'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
       if (sscanf(optarg, "%d", &proc_num_per_node) == EOF || proc_num_per_node < 1)
         terminate_with_error_msg("Invalid number of processes per node\n%s", usage);
       break;
@@ -167,7 +167,7 @@ static void parse_args(int argc, char **argv)
         terminate_with_error_msg("Invalid aggregation mode\n%s", usage);
       break;
 
-    case('n'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
+    case('o'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
       if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > (process_count - 1))
         terminate_with_error_msg("Invalid number of out files\n%s", usage);
       break;
@@ -334,7 +334,7 @@ static void set_mpr_file(int ts)
 {
   MPR_return_code ret;
 
-  ret = MPR_file_create(output_file_name, MPR_MODE_CREATE, p_access, global_size, local_size, local_offset, &file);
+  ret = MPR_file_create(output_file_name, MPR_MODE_CREATE, p_access, global_size, local_size, local_offset, patch_box, &file);
   if (ret != MPR_success)
 	  terminate_with_error_msg("MPR_file_create\n");
 
@@ -344,7 +344,6 @@ static void set_mpr_file(int ts)
   MPR_set_aggregation_mode(file, agg_mode);
   MPR_set_out_file_num(file, out_file_num);
   MPR_set_procs_num_per_node(file, proc_num_per_node);
-  MPR_set_restructuring_box(file, rst_box);  /* Set the restructuring box */
 
   return;
 }

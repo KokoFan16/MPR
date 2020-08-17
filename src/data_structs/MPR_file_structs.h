@@ -26,8 +26,6 @@ struct mpr_file_descriptor
 
 	MPR_dataset mpr;                      /* Basic information */
 
-	MPR_patch restructured_patch;         /* Patch related information */
-
 	MPR_variable variable[MPR_MAX_VARIABLE_COUNT];  /* Array of variables */
 
 	MPR_time time;                        /* For detailed time profiling of all phases */

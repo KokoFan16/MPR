@@ -17,7 +17,7 @@ static int process_count = 1, rank = 0;
 static int global_box_size[NUM_DIMS];
 static int local_box_offset[NUM_DIMS];
 static int local_box_size[NUM_DIMS];
-static int rst_box_size[NUM_DIMS];
+static int patch_box_size[NUM_DIMS];
 int sub_div[NUM_DIMS];
 static int time_step_count = 1;
 static int variable_count = 1;

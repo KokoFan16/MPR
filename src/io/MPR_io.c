@@ -10,7 +10,7 @@
 MPR_return_code MPR_write(MPR_file file, int svi, int evi, int MODE)
 {
 	/* Set the default restructuring box (32x32x32) */
-	if (MPR_set_rst_box_size(file, svi) != MPR_success)
+	if (MPR_set_patch_box_size(file, svi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
@@ -28,7 +28,7 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi, int MODE)
 		return MPR_err_file;
 	}
 
-	/* Write Mode */
+	/* Write Mode: write data out */
 	MPR_return_code ret = 0;
 	if (MODE == MPR_RAW_IO)
 		ret =  MPR_raw_write(file, svi, evi);

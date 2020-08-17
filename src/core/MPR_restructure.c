@@ -11,13 +11,13 @@ static int intersect_patch(MPR_patch A, MPR_patch B);
 static int contains_patch(MPR_patch reg_patch, MPR_patch* patches, int count);
 
 /* Set the default restructuring box (32x32x32) */
-MPR_return_code MPR_set_rst_box_size(MPR_file file, int svi)
+MPR_return_code MPR_set_patch_box_size(MPR_file file, int svi)
 {
-	if ((file->restructured_patch->patch_size[0] == -1 || file->restructured_patch->patch_size[1] == -1 || file->restructured_patch->patch_size[2] == -1)
-		|| (file->restructured_patch->patch_size[0] == 0 &&  file->restructured_patch->patch_size[1] == 0 && file->restructured_patch->patch_size[2] == 0))
+	if ((file->mpr->patch_box[0] == -1 || file->mpr->patch_box[1] == -1 || file->mpr->patch_box[2] == -1)
+		|| (file->mpr->patch_box[0] == 0 &&  file->mpr->patch_box[1] == 0 && file->mpr->patch_box[2] == 0))
 	{
-		fprintf(stderr,"Warning: restructuring box is not set, using default 32x32x32 size. [File %s Line %d]\n", __FILE__, __LINE__);
-		file->restructured_patch->patch_size[0]=32;file->restructured_patch->patch_size[1]=32;file->restructured_patch->patch_size[2]=32;
+		fprintf(stderr,"Warning: patch box is not set, using default 32x32x32 size. [File %s Line %d]\n", __FILE__, __LINE__);
+		file->mpr->patch_box[0]=32;file->mpr->patch_box[1]=32;file->mpr->patch_box[2]=32;
 	}
 
 	return MPR_success;
@@ -32,7 +32,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	int global_box[MPR_MAX_DIMENSIONS]; /* The size of global dataset */
 	int patch_box[MPR_MAX_DIMENSIONS]; /* The size of patch */
 	memcpy(global_box, file->mpr->global_box, MPR_MAX_DIMENSIONS * sizeof(int)); /* Initialization */
-	memcpy(patch_box, file->restructured_patch->patch_size, MPR_MAX_DIMENSIONS * sizeof(int)); /* Initialization */
+	memcpy(patch_box, file->mpr->patch_box, MPR_MAX_DIMENSIONS * sizeof(int)); /* Initialization */
 
 	int patch_size = patch_box[0] * patch_box[1] * patch_box[2]; /* The size of regular patch */
 
@@ -40,7 +40,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 
 	int max_found_reg_patches = 1; /* The total number of patches for the global data */
 	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
-		max_found_reg_patches *= ceil((float)file->mpr->global_box[d]/(float)file->restructured_patch->patch_size[d]);
+		max_found_reg_patches *= ceil((float)global_box[d]/patch_box[d]);
 
 	file->mpr->total_patches_num = max_found_reg_patches; /* The global total number of patches */
 

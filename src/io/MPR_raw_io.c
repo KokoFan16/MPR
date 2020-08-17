@@ -9,9 +9,27 @@
 
 MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 {
+	if (MPR_raw_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
+	/* Write metadata out */
+	if (MPR_metadata_raw_write_out(file) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
+	return MPR_success;
+}
+
+MPR_return_code MPR_raw_write_data_out(MPR_file file, int svi, int evi)
+{
 	int bits = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
 	/* The size of each patch */
-	int patch_size =  file->restructured_patch->patch_size[0] * file->restructured_patch->patch_size[1] * file->restructured_patch->patch_size[2] * bits;
+	int patch_size =  file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bits;
 	int patch_count = file->variable[svi]->local_patch->patch_count; /* patch count per process */
 
 	/* If the aggregation mode isn't set */
@@ -74,6 +92,17 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 	}
 	free(file_name);
 	free(directory_path);
+	return MPR_success;
+}
+
+MPR_return_code MPR_metadata_raw_write_out(MPR_file file)
+{
+	/* Write basic information out */
+	if (MPR_basic_info_metadata_write_out(file) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
 	return MPR_success;
 }
 

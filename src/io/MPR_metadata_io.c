@@ -65,3 +65,64 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int start_var_index, 
 	return MPR_success;
 }
 
+MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
+{
+	char* file_name = file->mpr->filename; /* file name for */
+	/* Check if the data format is .mpr */
+	if (strncmp(".mpr", &file_name[strlen(file_name) - 4], 4) != 0)
+	{
+		fprintf(stderr, "[%s] [%d] Bad file name extension.\n", __FILE__, __LINE__);
+		return 1;
+	}
+
+	if (file->comm->simulation_rank == 0)
+	{
+		FILE* fp = fopen(file_name, "w"); /* open file */
+	    if (!fp) /* Check file handle */
+	    {
+			fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
+			return -1;
+	    }
+	    /* Write IO Mode */
+	    if (file->mpr->io_type == MPR_RAW_IO)
+	    	fprintf(fp, "(IO mode)\nRAW\n");
+	    else if (file->mpr->io_type == MPR_MUL_RES_IO)
+	    	fprintf(fp, "(IO mode)\nMUL_RES\n");
+	    else if (file->mpr->io_type == MPR_MUL_PRE_IO)
+			fprintf(fp, "(IO mode)\nMUL_PRE\n");
+	    else if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+	    	fprintf(fp, "(IO mode)\nMUL_RES_PRE\n");
+	    /* Write global box and patch box */
+	    fprintf(fp, "(Global box)\n%d %d %d\n", file->mpr->global_box[0], file->mpr->global_box[1], file->mpr->global_box[2]);
+	    fprintf(fp, "(Patch box)\n%d %d %d\n", file->mpr->patch_box[0], file->mpr->patch_box[1], file->mpr->patch_box[2]);
+	    /* Write the number of out files */
+	    fprintf(fp, "(Out file num)\n%d\n", file->mpr->out_file_num);
+	    /* Write variables count and type */
+	    fprintf(fp, "(Variable count)\n%d\n", file->mpr->variable_count);
+	    fprintf(fp, "(fields)\n");
+	    for (int i = 0; i < file->mpr->variable_count; i++)
+	    {
+	      fprintf(fp, "%s %s", file->variable[i]->var_name, file->variable[i]->type_name);
+	      if (i != file->mpr->variable_count - 1)
+	        fprintf(fp, " + \n");
+	      else
+	    	fprintf(fp, "\n");
+	    }
+
+	    /* Write compression rate and mode */
+	    if (file->mpr->compression_type == 0)
+	    	fprintf(fp, "(Compression type)\nNo compression\n");
+	    else if (file->mpr->compression_type == 1)
+	    	fprintf(fp, "(Compression type)\nZFP accuracy\n");
+	    else if (file->mpr->compression_type == 2)
+	    	fprintf(fp, "(Compression type)\nZFP precision\n");
+	    fprintf(fp, "(Compression bit rate)\n%f\n", file->mpr->compression_bit_rate);
+
+	    fprintf(fp, "(time)\n%d %d time%%09d/", file->mpr->first_tstep, file->mpr->current_time_step);
+
+		fclose(fp);
+	}
+
+	return MPR_success;
+}
+

@@ -48,7 +48,6 @@ MPR_return_code MPR_close(MPR_file file)
 	file->mpr->variable_count = 0;
 
 	free(file->mpr);
-	free(file->restructured_patch);
 	free(file->time);
 	free(file->comm);
 	free(file);

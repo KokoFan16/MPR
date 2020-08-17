@@ -10,4 +10,6 @@
 
 MPR_return_code MPR_create_folder_structure(MPR_file file, int start_var_index, int end_var_index);
 
+MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file);
+
 #endif /* SRC_IO_MPR_METADATA_IO_H_ */

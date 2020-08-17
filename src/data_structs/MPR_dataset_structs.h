@@ -31,8 +31,7 @@ struct mpr_dataset_struct
 	int global_box[MPR_MAX_DIMENSIONS];               /* Global box of the dataset */
 	int local_box[MPR_MAX_DIMENSIONS];                /* Local box of dataset */
 	int local_offset[MPR_MAX_DIMENSIONS];             /* Local offset of local dataset */
-
-	float restructuring_factor[MPR_MAX_DIMENSIONS];   /* To be used for restructuring only (controls two phase IO) */
+	int patch_box[MPR_MAX_DIMENSIONS];                /* Patch box */
 
 	int compression_type;                             /* Compression Mode */
 	int compression_param;                            /* Compression parameter */
