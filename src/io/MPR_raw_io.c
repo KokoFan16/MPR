@@ -16,7 +16,7 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 	}
 
 	/* Write metadata out */
-	if (MPR_metadata_raw_write_out(file) != MPR_success)
+	if (MPR_metadata_raw_write_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
@@ -86,6 +86,8 @@ MPR_return_code MPR_raw_write_data_out(MPR_file file, int svi, int evi)
 			  fprintf(stderr, "[%s] [%d] pwrite() failed.\n", __FILE__, __LINE__);
 			  return MPR_err_io;
 			}
+			for (int i = 0; i < local_patch->agg_patch_count; i++)
+				local_patch->agg_patch_disps[i] += out_offset;
 			out_offset += local_patch->out_file_size;
 			close(fp);
 		}
@@ -95,10 +97,15 @@ MPR_return_code MPR_raw_write_data_out(MPR_file file, int svi, int evi)
 	return MPR_success;
 }
 
-MPR_return_code MPR_metadata_raw_write_out(MPR_file file)
+MPR_return_code MPR_metadata_raw_write_out(MPR_file file, int svi, int evi)
 {
 	/* Write basic information out */
 	if (MPR_basic_info_metadata_write_out(file) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	if (MPR_out_file_metadata_write_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;

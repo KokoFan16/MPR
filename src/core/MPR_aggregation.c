@@ -208,6 +208,10 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 		else
 			return MPR_err_unsupported_flags;
 
+		local_patch->patch_id_array = malloc(agg_patch_num*sizeof(int));
+		local_patch->agg_patch_disps = malloc(agg_patch_num*sizeof(unsigned long long));
+		local_patch->agg_patch_count = agg_patch_num;
+
 		int local_rank_array[patch_count];
 		for(int i = 0; i < patch_count; i++)
 			local_rank_array[i] = rank;
@@ -241,6 +245,7 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 				{
 					recv_array[patch_id_array[i] - agg_dis] = global_rank_array[i];
 					recv_id_array[patch_id_array[i] - agg_dis] = i;
+					local_patch->patch_id_array[patch_id_array[i] - agg_dis] = patch_id_array[i];
 				}
 			}
 		}
@@ -253,10 +258,12 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 				{
 					recv_array[id] = global_rank_array[i];
 					recv_id_array[id] = i;
+					local_patch->patch_id_array[id] = patch_id_array[i];
 					id++;
 				}
 			}
 		}
+
 		/* Non-blocking point to point communication */
 		local_patch->buffer = malloc(agg_size); /* reuse the local buffer per variable */
 		local_patch->out_file_size = agg_size;
@@ -279,6 +286,7 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 		{
 			/* receive data from non-AGG */
 			MPI_Irecv(&local_patch->buffer[offset], patch_size_array[recv_id_array[i]], MPI_BYTE, recv_array[i], 0, comm, &req[req_id]);
+			local_patch->agg_patch_disps[i] = offset;
 			offset += patch_size_array[recv_id_array[i]];
 			req_id++;
 		}

@@ -10,13 +10,17 @@
 
 struct mpr_local_patch_struct
 {
-	int patch_count;          /* Number of patches in the local patch */
+	int patch_count;                         /* Number of patches in the local patch */
 
-	unsigned char* buffer;    /* data buffer */
+	unsigned char* buffer;                   /* data buffer */
 
 	unsigned long long out_file_size;        /* the size out file*/
 
-	MPR_patch *patch;         /* Pointer to the patches that are included in the local dataset */
+	MPR_patch *patch;                        /* Pointer to the patches that are included in the local dataset */
+
+	int agg_patch_count;                     /* Number of patches in the local patch after aggregation */
+	int* patch_id_array;                     /* A array for patches id */
+	unsigned long long* agg_patch_disps;     /* The displacement in the buffer of each patch after aggregation */
 };
 typedef struct mpr_local_patch_struct* MPR_local_patch;
 

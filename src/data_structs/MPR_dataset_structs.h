@@ -34,7 +34,7 @@ struct mpr_dataset_struct
 	int patch_box[MPR_MAX_DIMENSIONS];                /* Patch box */
 
 	int compression_type;                             /* Compression Mode */
-	int compression_param;                            /* Compression parameter */
+	float compression_param;                          /* Compression parameter */
 	float compression_bit_rate;                       /* Compression bit rate */
 
 	int out_file_num;                                 /* The number of out file */
@@ -42,6 +42,8 @@ struct mpr_dataset_struct
 
 	int is_aggregator;                                /* If the rank is a aggregator */
 	int aggregation_mode;                             /* The aggregation mode */
+
+	int max_wavelet_level;                            /* The maximum wavelet level based on the brick size */
 };
 typedef struct mpr_dataset_struct* MPR_dataset;
 

@@ -9,7 +9,7 @@
 #include "../MPR_inc.h"
 #include <errno.h>
 
-MPR_return_code MPR_create_folder_structure(MPR_file file, int start_var_index, int end_var_index)
+MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 {
 	char* file_name = file->mpr->filename;
 
@@ -97,9 +97,10 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 	    fprintf(fp, "(Patch box)\n%d %d %d\n", file->mpr->patch_box[0], file->mpr->patch_box[1], file->mpr->patch_box[2]);
 	    /* Write the number of out files */
 	    fprintf(fp, "(Out file num)\n%d\n", file->mpr->out_file_num);
-	    /* Write variables count and type */
-	    fprintf(fp, "(Variable count)\n%d\n", file->mpr->variable_count);
-	    fprintf(fp, "(fields)\n");
+	    /* Write total number of patches */
+	    fprintf(fp, "(Total patch number)\n%d\n", file->mpr->total_patches_num);
+	    /* Write variables */
+	    fprintf(fp, "(Fields)\n");
 	    for (int i = 0; i < file->mpr->variable_count; i++)
 	    {
 	      fprintf(fp, "%s %s", file->variable[i]->var_name, file->variable[i]->type_name);
@@ -108,7 +109,9 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 	      else
 	    	fprintf(fp, "\n");
 	    }
-
+	    /* Write number of process per node */
+	    fprintf(fp, "(Process number per node)\n%d\n", file->mpr->proc_num_per_node);
+	    fprintf(fp, "(Process number last node)\n%d\n", file->mpr->proc_num_last_node);
 	    /* Write compression rate and mode */
 	    if (file->mpr->compression_type == 0)
 	    	fprintf(fp, "(Compression type)\nNo compression\n");
@@ -117,12 +120,40 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 	    else if (file->mpr->compression_type == 2)
 	    	fprintf(fp, "(Compression type)\nZFP precision\n");
 	    fprintf(fp, "(Compression bit rate)\n%f\n", file->mpr->compression_bit_rate);
-
+	    fprintf(fp, "(Compression parameter)\n%f\n", file->mpr->compression_param);
+	    /* Write wavalet levels */
+	    fprintf(fp, "(Wavelet level)\n%d\n", file->mpr->max_wavelet_level);
+	    /* Write timesteps */
 	    fprintf(fp, "(time)\n%d %d time%%09d/", file->mpr->first_tstep, file->mpr->current_time_step);
 
 		fclose(fp);
 	}
+	return MPR_success;
+}
 
+MPR_return_code MPR_out_file_metadata_write_out(MPR_file file, int svi, int evi)
+{
+	char* directory_path = malloc(sizeof(*directory_path) * PATH_MAX);
+	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
+	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
+	// file name of out file related meta-data
+	char out_file_info_path[PATH_MAX];
+	sprintf(out_file_info_path, "%s_FILE_INFO", directory_path);
+
+	FILE* fp = fopen(out_file_info_path, "a");
+	if (file->mpr->is_aggregator == 1)
+	{
+		fprintf(fp, "(file_%d)\n", file->comm->simulation_rank);
+		for (int v = svi; v < evi; v++)
+		{
+			MPR_local_patch local_patch = file->variable[v]->local_patch;
+			for (int i = 0; i < local_patch->agg_patch_count; i++)
+			{
+				fprintf(fp, "%d %d %llu\n", v, local_patch->patch_id_array[i], local_patch->agg_patch_disps[i]);
+			}
+		}
+	}
+	fclose(fp);
 	return MPR_success;
 }
 

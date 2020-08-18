@@ -33,8 +33,6 @@ struct mpr_file_descriptor
 	int local_variable_index;             /* starting index of variable that needs to be written out before a flush */
 	int local_variable_count;             /* total number of variables that is written out in a flush */
 	int variable_index_tracker;           /* tracking upto which variable io has been done (used for flushing) */
-
-	int max_wavelet_level;                /* The maximum wavelet level based on the brick size */
 };
 typedef struct mpr_file_descriptor* MPR_file;
 

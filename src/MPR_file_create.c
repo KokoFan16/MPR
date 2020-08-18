@@ -88,18 +88,18 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 
 	(*file)->mpr->compression_type = MPR_NO_COMPRESSION;
 	(*file)->mpr->compression_bit_rate = 0;
-	(*file)->mpr->compression_param = 1;
+	(*file)->mpr->compression_param = 0;
 
 	(*file)->mpr->out_file_num = 0;
 	(*file)->mpr->file_size = 0;
 	(*file)->mpr->is_aggregator = 0;
 
 	(*file)->mpr->aggregation_mode = -1;
+	(*file)->mpr->max_wavelet_level = 0;
 
 	(*file)->local_variable_index = 0;
 	(*file)->local_variable_count = 0;
 	(*file)->variable_index_tracker = 0;
-	(*file)->max_wavelet_level = 0;
 	(*file)->fs_block_size = 0;
 
 	if ((*file)->comm->simulation_rank == 0)
