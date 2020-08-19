@@ -8,7 +8,7 @@
 #ifndef SRC_IO_MPR_IO_H_
 #define SRC_IO_MPR_IO_H_
 
-MPR_return_code MPR_write(MPR_file file, int svi, int evi, int MODE);
+MPR_return_code MPR_write(MPR_file file, int svi, int evi);
 
 
 #endif /* SRC_IO_MPR_IO_H_ */

@@ -49,6 +49,7 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 
 	(*file)->time = malloc(sizeof (*((*file)->time)));
 	memset((*file)->time, 0, sizeof (*((*file)->time)));
+	(*file)->time->total_start = MPI_Wtime();  /* the start time for this program */
 
 	if (global != NULL)
 		memcpy((*file)->mpr->global_box, global, MPR_MAX_DIMENSIONS * sizeof(int));

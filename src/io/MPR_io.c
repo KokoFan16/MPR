@@ -7,8 +7,9 @@
 
 #include "MPR.h"
 
-MPR_return_code MPR_write(MPR_file file, int svi, int evi, int MODE)
+MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 {
+	int MODE = file->mpr->io_type;
 	/* Set the default restructuring box (32x32x32) */
 	if (MPR_set_patch_box_size(file, svi) != MPR_success)
 	{
@@ -22,11 +23,13 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi, int MODE)
 		return MPR_err_file;
 	}
 	/* Perform restructure phase */
+	file->time->rst_start = MPI_Wtime();
 	if (MPR_restructure_perform(file, svi, evi))
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->rst_end = MPI_Wtime();
 
 	/* Write Mode: write data out */
 	MPR_return_code ret = 0;

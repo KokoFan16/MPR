@@ -9,19 +9,23 @@
 
 MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 {
+	/* write data out */
+	file->time->wrt_data_start = MPI_Wtime();
 	if (MPR_raw_write_data_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->wrt_data_end = MPI_Wtime();
 
 	/* Write metadata out */
+	file->time->wrt_metadata_start = MPI_Wtime();
 	if (MPR_metadata_raw_write_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-
+	file->time->wrt_metadata_end = MPI_Wtime();
 	return MPR_success;
 }
 
@@ -35,7 +39,9 @@ MPR_return_code MPR_raw_write_data_out(MPR_file file, int svi, int evi)
 	/* If the aggregation mode isn't set */
 	if (file->mpr->aggregation_mode == -1)
 	{
-		file->mpr->is_aggregator = 1;
+		file->time->agg_start = 0; /* no aggregation */
+		file->time->agg_end = 0;
+		file->mpr->is_aggregator = 1; /* all the processes are aggregators */
 		unsigned long long out_file_size = patch_count * patch_size;
 		for (int v = svi; v < evi; v++)
 		{
@@ -52,12 +58,14 @@ MPR_return_code MPR_raw_write_data_out(MPR_file file, int svi, int evi)
 	}
 	else   /* Aggregation */
 	{
+		file->time->agg_start = MPI_Wtime();
 		int ret = MPR_aggregation(file, svi, evi);
 		if (ret != MPR_success)
 		{
 			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 			return MPR_err_file;
 		}
+		file->time->agg_end = MPI_Wtime();
 	}
 
 	/* the directory patch for out files */

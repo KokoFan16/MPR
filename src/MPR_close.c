@@ -7,6 +7,8 @@
 
 #include "MPR.h"
 
+static void MPR_timing_output(MPR_file file, int svi, int evi);
+
 MPR_return_code MPR_flush(MPR_file file)
 {
 	/* making sure that variables are added to the dataset */
@@ -22,12 +24,15 @@ MPR_return_code MPR_flush(MPR_file file)
 
 	if (file->flags == MPR_MODE_CREATE)
 	{
-		if (MPR_write(file, lvi, (lvi + lvc), file->mpr->io_type) != MPR_success)
+		if (MPR_write(file, lvi, (lvi + lvc)) != MPR_success)
 		{
 			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 			return MPR_err_io;
 		}
 	}
+	file->time->total_end = MPI_Wtime(); /* the end time for the program */
+
+	MPR_timing_output(file, lvi, (lvi + lvc));
 
 	return MPR_success;
 }
@@ -53,4 +58,23 @@ MPR_return_code MPR_close(MPR_file file)
 	free(file);
 
 	return MPR_success;
+}
+
+static void MPR_timing_output(MPR_file file, int svi, int evi)
+{
+	int MODE = file->mpr->io_type;
+	int rank = file->comm->simulation_rank;
+	double total_time = file->time->total_end - file->time->total_start;
+	double rst_time = file->time->rst_end - file->time->rst_start;
+	double agg_time = file->time->agg_end - file->time->agg_start;
+	double wrt_data_time = file->time->wrt_data_end - file->time->wrt_data_start;
+	double wrt_metadata_time = file->time->wrt_metadata_end - file->time->wrt_metadata_start;
+
+	double max_total_time = 0;
+
+	if (MODE == MPR_RAW_IO)
+	{
+		if (file->mpr->is_aggregator == 1)
+			fprintf(stderr,"Agg_%d: [%f] >= [rst %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, agg_time, wrt_data_time, wrt_metadata_time);
+	}
 }
