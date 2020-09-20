@@ -32,7 +32,7 @@ MPR_return_code MPR_flush(MPR_file file)
 	}
 	file->time->total_end = MPI_Wtime(); /* the end time for the program */
 
-	MPR_timing_output(file, lvi, (lvi + lvc));
+//	MPR_timing_output(file, lvi, (lvi + lvc));
 
 	return MPR_success;
 }
@@ -71,10 +71,13 @@ static void MPR_timing_output(MPR_file file, int svi, int evi)
 	double wrt_metadata_time = file->time->wrt_metadata_end - file->time->wrt_metadata_start;
 
 	double max_total_time = 0;
+	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, file->comm->simulation_comm);
 
 	if (MODE == MPR_RAW_IO)
 	{
 		if (file->mpr->is_aggregator == 1)
-			fprintf(stderr,"Agg_%d: [%f] >= [rst %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, agg_time, wrt_data_time, wrt_metadata_time);
+			fprintf(stderr,"AGG_%d: [%f] >= [rst %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, agg_time, wrt_data_time, wrt_metadata_time);
+		if (total_time == max_total_time)
+			fprintf(stderr, "MAX %d: [%f] >= [rst %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, agg_time, wrt_data_time, wrt_metadata_time);
 	}
 }

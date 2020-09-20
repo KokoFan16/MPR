@@ -12,6 +12,8 @@ struct mpr_patch_struct
 {
 	int global_id;                                  /* global id for patch */
 
+	int owned_rank;                                 /* the rank id which owns this patch */
+
 	unsigned char* buffer;                          /* data buffer of a patch */
 
 	int patch_buffer_size;                          /* the size of the buffer */
