@@ -60,6 +60,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
     int remain_patch_num = max_found_reg_patches % procs_num; /* Remainder */
     int node_num = ceil((float)procs_num / file->mpr->proc_num_per_node); /* The number of nodes based on the number of processes per node */
     file->mpr->node_num = node_num;
+
     /* If all the processes belong to one node */
     if (node_num == 1)
     	local_patch_num = (rank < remain_patch_num)? (local_patch_num + 1): local_patch_num;
@@ -93,7 +94,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	memset(found_reg_patches, 0, sizeof(MPR_patch*)*max_found_reg_patches); /* Initialization */
 
 	MPR_local_patch local_patch_v0 = file->variable[0]->local_patch; /* Local patch pointer */
-	local_patch_v0->patch_count = local_patch_num;
 	local_patch_v0->patch = malloc(sizeof(MPR_patch*)*local_patch_num); /* Local patch array per variable */
 	/* Initialize all the patch pointer in local patch array and allocate the memory for patch buffer */
 	for (int i = 0; i < local_patch_num; i++)
@@ -262,11 +262,11 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	for (int v = start_var_index; v < end_var_index; v++)
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
+		local_patch->patch_count = local_patch_num;
 
 		if (v != 0)
 		{
 			local_patch->patch = malloc(sizeof(MPR_patch*)*local_patch_num); /* Local patch array per variable */
-			local_patch->patch_count = local_patch_num;
 			/* Initialize all the patch pointer in local patch array and allocate the memory for patch buffer */
 			for (int i = 0; i < local_patch_num; i++)
 			{
