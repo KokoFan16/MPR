@@ -31,10 +31,8 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 
 MPR_return_code MPR_raw_write_data_out(MPR_file file, int svi, int evi)
 {
-	int bits = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
 	/* The size of each patch */
-	int patch_size =  file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bits;
-	int patch_count = file->variable[svi]->local_patch->patch_count; /* patch count per process */
+	int patch_size =  file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
 
 	/* If the aggregation mode isn't set */
 	if (file->mpr->aggregation_mode == -1)
@@ -42,16 +40,26 @@ MPR_return_code MPR_raw_write_data_out(MPR_file file, int svi, int evi)
 		file->time->agg_start = 0; /* no aggregation */
 		file->time->agg_end = 0;
 		file->mpr->is_aggregator = 1; /* all the processes are aggregators */
-		unsigned long long out_file_size = patch_count * patch_size;
 		for (int v = svi; v < evi; v++)
 		{
 			unsigned long long offset = 0;
 			MPR_local_patch local_patch = file->variable[v]->local_patch;
+
+			int patch_count = local_patch->patch_count; /* patch count per process */
+			int bits = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+			unsigned long long out_file_size = patch_count * patch_size * bits;
+			local_patch->agg_patch_count = patch_count;
+
+			local_patch->patch_id_array = malloc(patch_count*sizeof(int));
+			local_patch->agg_patch_disps = malloc(patch_count*sizeof(unsigned long long));
+
 			local_patch->out_file_size = out_file_size;
 			local_patch->buffer = malloc(out_file_size);
 			for (int i = 0; i < patch_count; i++)
 			{
-				memcpy(&local_patch->buffer[offset], local_patch->patch[i]->buffer, patch_size);
+				local_patch->patch_id_array[i] = local_patch->patch[i]->global_id;
+				local_patch->agg_patch_disps[i] = offset;
+				memcpy(&local_patch->buffer[offset], local_patch->patch[i]->buffer, patch_size * bits);
 				offset += patch_size;
 			}
 		}

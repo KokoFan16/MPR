@@ -174,9 +174,7 @@ MPR_return_code MPR_out_file_metadata_write_out(MPR_file file, int svi, int evi)
 			{
 				MPR_local_patch local_patch = file->variable[v]->local_patch;
 				for (int i = 0; i < local_patch->agg_patch_count; i++)
-				{
 					fprintf(fp, "%d %d %llu\n", v, local_patch->patch_id_array[i], local_patch->agg_patch_disps[i]);
-				}
 			}
 		}
 		fclose(fp);

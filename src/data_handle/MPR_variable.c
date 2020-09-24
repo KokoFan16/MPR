@@ -35,6 +35,9 @@ MPR_return_code MPR_variable_create(char* variable_name, unsigned int bits_per_s
   (*variable)->local_patch = malloc(sizeof(*((*variable)->local_patch)));
   memset((*variable)->local_patch, 0, sizeof (*((*variable)->local_patch)));
 
+  (*variable)->local_patch->agg_patch_disps = NULL;
+  (*variable)->local_patch->patch_id_array = NULL;
+
   (*variable)->local_patch->out_file_size = 0;
   (*variable)->local_patch->patch_count = 0;
 

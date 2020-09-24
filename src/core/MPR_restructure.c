@@ -37,8 +37,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	memcpy(patch_box, file->mpr->patch_box, MPR_MAX_DIMENSIONS * sizeof(int)); /* Initialization */
 
 	int patch_size = patch_box[0] * patch_box[1] * patch_box[2]; /* The size of regular patch */
-
-	int bits = file->variable[start_var_index]->vps * file->variable[start_var_index]->bpv/8; /* bytes per data */
 	/***************************************************************************/
 
 	/******************** Calculate total number of patches *********************/
@@ -263,6 +261,8 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
 		local_patch->patch_count = local_patch_num;
+
+		int bits = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		if (v != 0)
 		{
