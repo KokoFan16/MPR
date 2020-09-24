@@ -16,6 +16,7 @@
 #include "io/MPR_io.h"
 #include "io/MPR_metadata_io.h"
 #include "io/MPR_raw_io.h"
+#include "io/MPR_multipre_io.h"
 #include "core/MPR_restructure.h"
 #include "core/MPR_aggregation.h"
 #include "core/MPR_compression.h"

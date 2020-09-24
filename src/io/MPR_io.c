@@ -32,21 +32,18 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	file->time->rst_end = MPI_Wtime();
 
 	/* Write Mode: write data out */
+	int ret = 0;
 	if (MODE == MPR_RAW_IO)
-	{
-		if (MPR_raw_write(file, svi, evi) != MPR_success)
-		{
-			fprintf(stderr,"File %s Line %d\n", __FILE__, __LINE__);
-			return MPR_err_file;
-		}
-	}
+		ret = MPR_raw_write(file, svi, evi);
 	else if (MODE == MPR_MUL_PRE_IO)
+		ret = MPR_multi_pre_write(file, svi, evi);
+	else
+		fprintf(stderr, "Unsupported MPR Mode");
+
+	if (ret != MPR_success)
 	{
-		if (MPR_ZFP_compression_perform(file, svi, evi))
-		{
-			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-			return MPR_err_file;
-		}
+		fprintf(stderr,"File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
 	}
 
 	/* buffers cleanup */
