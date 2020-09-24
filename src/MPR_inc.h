@@ -18,6 +18,7 @@
 #include "io/MPR_raw_io.h"
 #include "core/MPR_restructure.h"
 #include "core/MPR_aggregation.h"
+#include "core/MPR_compression.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -32,6 +33,7 @@
 #include <fcntl.h>
 #include <math.h>
 
+#include "../external/zfp/include/zfp.h"
 
 
 #endif /* SRC_MPR_INC_H_ */
