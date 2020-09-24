@@ -53,20 +53,16 @@ MPR_return_code MPR_raw_write_data_out(MPR_file file, int svi, int evi)
 	/* Write file */
 	if (file->mpr->is_aggregator == 1)
 	{
-		unsigned long long out_offset = 0; /* the offset for each patch */
 		for (int v = svi; v < evi; v++)
 		{
 			MPR_local_patch local_patch = file->variable[v]->local_patch;
 			int fp = open(file_name, O_CREAT | O_WRONLY | O_APPEND, 0664);
-			int write_count = pwrite(fp, local_patch->buffer, local_patch->out_file_size, out_offset);
+			int write_count = write(fp, local_patch->buffer, local_patch->out_file_size);
 			if (write_count != local_patch->out_file_size)
 			{
 			  fprintf(stderr, "[%s] [%d] pwrite() failed.\n", __FILE__, __LINE__);
 			  return MPR_err_io;
 			}
-			for (int i = 0; i < local_patch->agg_patch_count; i++)
-				local_patch->agg_patch_disps[i] += out_offset;
-			out_offset += local_patch->out_file_size;
 			close(fp);
 		}
 	}

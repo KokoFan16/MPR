@@ -12,9 +12,6 @@ static int calculate_agg_num_with_node(MPR_file file);
 
 MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 {
-	/* The size of each patch */
-	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
-
 	/* If the aggregation mode isn't set */
 	if (file->mpr->aggregation_mode == -1)
 	{
@@ -28,22 +25,26 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 			int patch_count = local_patch->patch_count; /* patch count per process */
 			int bits = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
-			unsigned long long out_file_size = patch_count * patch_size * bits;
+
 			local_patch->agg_patch_count = patch_count;
 
 			local_patch->patch_id_array = malloc(patch_count*sizeof(int));
 			local_patch->agg_patch_disps = malloc(patch_count*sizeof(unsigned long long));
 
-			local_patch->out_file_size = out_file_size;
-			local_patch->buffer = malloc(out_file_size);
+			unsigned long long max_size = patch_count * file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
+			local_patch->buffer = malloc(max_size * bits);
 			for (int i = 0; i < patch_count; i++)
 			{
 				local_patch->patch_id_array[i] = local_patch->patch[i]->global_id;
 				local_patch->agg_patch_disps[i] = offset;
-				memcpy(&local_patch->buffer[offset], local_patch->patch[i]->buffer, patch_size * bits);
-				offset += patch_size;
+				int buffer_size = local_patch->patch[i]->patch_buffer_size;
+				memcpy(&local_patch->buffer[offset], local_patch->patch[i]->buffer, buffer_size);
+				offset += buffer_size;
 			}
+			local_patch->out_file_size = offset;
 		}
+
+
 	}
 	else   /* Aggregation */
 	{
