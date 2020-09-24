@@ -10,6 +10,55 @@
 static void decide_aggregator(MPR_file file);
 static int calculate_agg_num_with_node(MPR_file file);
 
+MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
+{
+	/* The size of each patch */
+	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
+
+	/* If the aggregation mode isn't set */
+	if (file->mpr->aggregation_mode == -1)
+	{
+		file->time->agg_start = 0; /* no aggregation */
+		file->time->agg_end = 0;
+		file->mpr->is_aggregator = 1; /* all the processes are aggregators */
+		for (int v = svi; v < evi; v++)
+		{
+			unsigned long long offset = 0;
+			MPR_local_patch local_patch = file->variable[v]->local_patch;
+
+			int patch_count = local_patch->patch_count; /* patch count per process */
+			int bits = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+			unsigned long long out_file_size = patch_count * patch_size * bits;
+			local_patch->agg_patch_count = patch_count;
+
+			local_patch->patch_id_array = malloc(patch_count*sizeof(int));
+			local_patch->agg_patch_disps = malloc(patch_count*sizeof(unsigned long long));
+
+			local_patch->out_file_size = out_file_size;
+			local_patch->buffer = malloc(out_file_size);
+			for (int i = 0; i < patch_count; i++)
+			{
+				local_patch->patch_id_array[i] = local_patch->patch[i]->global_id;
+				local_patch->agg_patch_disps[i] = offset;
+				memcpy(&local_patch->buffer[offset], local_patch->patch[i]->buffer, patch_size * bits);
+				offset += patch_size;
+			}
+		}
+	}
+	else   /* Aggregation */
+	{
+		file->time->agg_start = MPI_Wtime();
+		if (MPR_aggregation(file, svi, evi) != MPR_success)
+		{
+			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+			return MPR_err_file;
+		}
+		file->time->agg_end = MPI_Wtime();
+	}
+	return MPR_success;
+}
+
+
 MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 {
 	int proc_num = file->comm->simulation_nprocs;  /* The number of processes */
