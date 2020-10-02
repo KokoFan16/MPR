@@ -29,13 +29,13 @@ MPR_return_code MPR_ZFP_compression_perform(MPR_file file, int svi, int evi)
 			MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 			memset(output, 0, sizeof (*output)); /* Initialization */
 
-			MPR_compress_3D_data(reg_patch->buffer, patch_x, patch_y, patch_z, 0, 10, type_name, &output);
+			MPR_compress_3D_data(reg_patch->buffer, patch_x, patch_y, patch_z, 0, 0, type_name, &output);
 			reg_patch->patch_buffer_size = output->compress_size;
-			printf("%d: %d, %d\n", rank, reg_patch->global_id, output->compress_size);
+			free(reg_patch->buffer);
+			reg_patch->buffer = (unsigned char*)malloc(output->compress_size);
+			memcpy(reg_patch->buffer, output->p, output->compress_size);
 		}
-
 	}
-
 	return MPR_success;
 }
 
