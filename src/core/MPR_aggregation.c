@@ -16,8 +16,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 	/* If the aggregation mode isn't set */
 	if (file->mpr->aggregation_mode == -1)
 	{
-		file->time->agg_start = 0; /* no aggregation */
-		file->time->agg_end = 0;
 		file->mpr->is_aggregator = 1; /* all the processes are aggregators */
 		for (int v = svi; v < evi; v++)
 		{
@@ -48,13 +46,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 	}
 	else   /* Aggregation */
 	{
-		file->time->agg_start = MPI_Wtime();
 		if (MPR_aggregation(file, svi, evi) != MPR_success)
 		{
 			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 			return MPR_err_file;
 		}
-		file->time->agg_end = MPI_Wtime();
 	}
 	return MPR_success;
 }

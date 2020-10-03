@@ -11,11 +11,13 @@
 MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 {
 	/* Aggregation phase */
+	file->time->agg_start = MPI_Wtime();
 	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->agg_end = MPI_Wtime();
 
 	/* write data out */
 	file->time->wrt_data_start = MPI_Wtime();
@@ -40,18 +42,22 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 /* Write data out with multiple precision mode */
 MPR_return_code MPR_multi_pre_write(MPR_file file, int svi, int evi)
 {
+	file->time->zfp_start = MPI_Wtime();
 	if (MPR_ZFP_compression_perform(file, svi, evi))
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->zfp_end = MPI_Wtime();
 
 	/* Aggregation phase */
+	file->time->agg_start = MPI_Wtime();
 	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->agg_end = MPI_Wtime();
 
 	/* write data out */
 	file->time->wrt_data_start = MPI_Wtime();
