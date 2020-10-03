@@ -186,6 +186,9 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 				agg_size = agg_sizes[i];
 		}
 
+		local_patch->patch_id_array = malloc(recv_num * sizeof(int));
+		local_patch->agg_patch_disps = malloc(recv_num * sizeof(unsigned long long));
+
 		/********************** Point-to-point communication **********************/
 		local_patch->buffer = malloc(agg_size); /* reuse the local buffer per variable */
 		local_patch->out_file_size = agg_size;
@@ -209,6 +212,8 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 		for (int i = 0; i < recv_num; i++)
 		{
 			MPI_Irecv(&local_patch->buffer[offset], patch_sizes[recv_array[i]], MPI_BYTE, patch_ranks[recv_array[i]], recv_array[i], comm, &req[req_id]);
+			local_patch->patch_id_array[i] = recv_array[i];
+			local_patch->agg_patch_disps[i] = offset;
 			offset += patch_sizes[recv_array[i]];
 			req_id++;
 		}
