@@ -1,12 +1,13 @@
 /*
- * raw_io.c
+ * MPR_write_io.c
  *
- *  Created on: Aug 6, 2020
+ *  Created on: Oct 2, 2020
  *      Author: kokofan
  */
 
 #include "../MPR_inc.h"
 
+/* Write data out with raw write mode */
 MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 {
 	/* Aggregation phase */
@@ -18,7 +19,7 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 
 	/* write data out */
 	file->time->wrt_data_start = MPI_Wtime();
-	if (MPR_raw_write_data_out(file, svi, evi) != MPR_success)
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
@@ -27,16 +28,37 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 
 	/* Write metadata out */
 	file->time->wrt_metadata_start = MPI_Wtime();
-	if (MPR_metadata_raw_write_out(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
+//	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
+//	{
+//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+//		return MPR_err_file;
+//	}
 	file->time->wrt_metadata_end = MPI_Wtime();
 	return MPR_success;
 }
 
-MPR_return_code MPR_raw_write_data_out(MPR_file file, int svi, int evi)
+/* Write data out with multiple precision mode */
+MPR_return_code MPR_multi_pre_write(MPR_file file, int svi, int evi)
+{
+	if (MPR_ZFP_compression_perform(file, svi, evi))
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
+	/* Aggregation phase */
+	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
+	return MPR_success;
+}
+
+
+/* Write data out */
+MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)
 {
 	/* the directory patch for out files */
 	char *directory_path;
@@ -71,7 +93,9 @@ MPR_return_code MPR_raw_write_data_out(MPR_file file, int svi, int evi)
 	return MPR_success;
 }
 
-MPR_return_code MPR_metadata_raw_write_out(MPR_file file, int svi, int evi)
+
+/* Write meta-data out */
+MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 {
 	/* Write basic information out */
 	if (MPR_basic_info_metadata_write_out(file) != MPR_success)
@@ -86,4 +110,3 @@ MPR_return_code MPR_metadata_raw_write_out(MPR_file file, int svi, int evi)
 	}
 	return MPR_success;
 }
-
