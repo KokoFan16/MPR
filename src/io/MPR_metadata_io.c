@@ -28,20 +28,6 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 	sprintf(data_set_path, time_template, directory_path, file->mpr->current_time_step);
 	free(directory_path);
 
-	char metedata_dir[PATH_MAX];
-	sprintf(metedata_dir, "%s_file_metadata", directory_path);
-	if (file->comm->simulation_rank == 0)
-	{
-		// patch metadata directory
-		int ret = mkdir(metedata_dir, S_IRWXU | S_IRWXG | S_IRWXO);
-		if (ret != 0 && errno != EEXIST)
-		{
-			fprintf(stderr, "Error: failed to mkdir %s\n", metedata_dir);
-			return MPR_err_file;
-		}
-	}
-
-
 	char last_path[PATH_MAX] = {0};
 	char this_path[PATH_MAX] = {0};
 	char tmp_path[PATH_MAX] = {0};
