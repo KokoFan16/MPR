@@ -10,14 +10,74 @@
 
 #include "../MPR_inc.h"
 
+static void wavelet_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num);
+static void wavelet_helper(unsigned char* buf, int step, int ng_step, int flag, int bytes, int* patch_box, char* type_name);
+
+
 MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 {
+	int rank = file->comm->simulation_rank; /* The rank of process */
+	int procs_num = file->comm->simulation_nprocs; /* The number of processes */
+	MPI_Comm comm = file->comm->simulation_comm; /* MPI Communicator */
+
+	int min = file->mpr->patch_box[0]; /* Get the minimum size of all dimensions */
+	for (int i = 1; i < MPR_MAX_DIMENSIONS; i++)
+	{
+		if (file->mpr->patch_box[i] < min)
+			min = file->mpr->patch_box[i];
+	}
+	int trans_num = log2(min); /* Calculate the the number of transforms */
+
+//	if (rank == 0)
+//	{
+//		for (int j = 0; j < 64; j++)
+//		{
+//			float a;
+//			memcpy(&a, &file->variable[0]->local_patch->patch[0]->buffer[j*sizeof(float)], sizeof(float));
+//			printf("%f\n", a);
+//		}
+//	}
+
+	for (int v = svi; v < evi; v++)
+	{
+		MPR_local_patch local_patch = file->variable[v]->local_patch;
+		int patch_count = local_patch->patch_count; /* The number of patches per process */
+
+		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+
+		for (int i = 0; i < patch_count; i++)
+		{
+			wavelet_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[v]->type_name, trans_num);
+		}
+
+	}
+
+
 	printf("Wavelet transform start\n");
 	return MPR_success;
 }
 
+
+// Wavelet transform
+static void wavelet_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num)
+{
+  for (int i = 1; i < (trans_num + 1); i++)
+  {
+    int step = pow(2, i);
+    int ng_step = step/2;
+
+    // Calculate x-dir
+    wavelet_helper(buffer, step, ng_step, 0, bytes, patch_box, type_name);
+    // Calculate y-dir
+    wavelet_helper(buffer, step, ng_step, 1, bytes, patch_box, type_name);
+    // Calculate z-dir
+    wavelet_helper(buffer, step, ng_step, 2, bytes, patch_box, type_name);
+  }
+}
+
+
 // A wavelet helper
-static void PIDX_wavelet_helper(unsigned char* buf, int step, int ng_step, int flag, int bits, uint64_t x, uint64_t y, uint64_t z, char* type_name)
+static void wavelet_helper(unsigned char* buf, int step, int ng_step, int flag, int bytes, int* patch_box, char* type_name)
 {
   int si = ng_step; int sj = ng_step; int sk = ng_step;
 
@@ -47,20 +107,20 @@ static void PIDX_wavelet_helper(unsigned char* buf, int step, int ng_step, int f
   int64_t i64_data = 0;
   int64_t i64_neigb = 0;
 
-  for (int k = 0; k < z; k+=sk)
+  for (int k = 0; k < patch_box[2]; k+=sk)
   {
-	for (int i = 0; i < y; i+=si)
+	for (int i = 0; i < patch_box[1]; i+=si)
 	{
-	  for (int j = 0; j < x; j+=sj)
+	  for (int j = 0; j < patch_box[0]; j+=sj)
 	  {
-	    int index = k * x * y + i * x + j;
+	    int index = k * patch_box[1] * patch_box[0] + i * patch_box[0] + j;
 	    // Define the neighbor position based on orientations (x, y, z)
 	    if (flag == 0)
 	      neighbor_ind = index + ng_step;
 	    if (flag == 1)
-	      neighbor_ind = index + ng_step * x;
+	      neighbor_ind = index + ng_step * patch_box[0];
 	    if (flag == 2)
-	      neighbor_ind = index + ng_step * y * x;
+	      neighbor_ind = index + ng_step * patch_box[1] * patch_box[0];
 
 
 	    if (strcmp(type_name, MPR_DType.UINT8) == 0 || strcmp(type_name, MPR_DType.UINT8_GA) == 0 || strcmp(type_name, MPR_DType.UINT8_RGB) == 0)
@@ -145,23 +205,6 @@ static void PIDX_wavelet_helper(unsigned char* buf, int step, int ng_step, int f
 	    }
 	  }
 	}
-  }
-}
-
-// Wavelet transform
-static void MPR_wavelet_transform(unsigned char* buffer, uint64_t x, uint64_t y, uint64_t z, int bits, char* type_name, int wavelet_level)
-{
-  for (int level = 1; level <= wavelet_level; level++)
-  {
-    int step = pow(2, level);
-    int ng_step = step/2;
-
-    // Calculate x-dir
-    PIDX_wavelet_helper(buffer, step, ng_step, 0, bits, x, y, z, type_name);
-    // Calculate y-dir
-    PIDX_wavelet_helper(buffer, step, ng_step, 1, bits, x, y, z, type_name);
-    // Calculate z-dir
-    PIDX_wavelet_helper(buffer, step, ng_step, 2, bits, x, y, z, type_name);
   }
 }
 

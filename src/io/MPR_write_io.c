@@ -42,12 +42,15 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 
 MPR_return_code MPR_multi_res_write(MPR_file file, int svi, int evi)
 {
+	file->time->wave_start = MPI_Wtime();
 	if (MPR_wavelet_transform_perform(file, svi, evi))
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->wave_end = MPI_Wtime();
 
+	printf("Wavelet transform takes %f s.\n", (file->time->wave_end - file->time->wave_start));
 	return MPR_success;
 }
 
