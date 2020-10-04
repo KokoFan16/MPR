@@ -104,17 +104,12 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 			total_size += patch_sizes[i];
 		long double average_file_size = (double)total_size / out_file_num; /* The idea average file size*/
 
-		int global_box[MPR_MAX_DIMENSIONS]; /* The size of global dataset */
-		int patch_box[MPR_MAX_DIMENSIONS]; /* The size of patch */
-		memcpy(global_box, file->mpr->global_box, MPR_MAX_DIMENSIONS * sizeof(int)); /* Initialization */
-		memcpy(patch_box, file->mpr->patch_box, MPR_MAX_DIMENSIONS * sizeof(int)); /* Initialization */
-
 		/* Calculate the patch count in each dimension, and its next power 2 value (e.g., 3x3x3 -> 4x4x4)*/
 		int patch_count_xyz[MPR_MAX_DIMENSIONS];
 		int next_2_power_xyz[MPR_MAX_DIMENSIONS];
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 		{
-			patch_count_xyz[i] = ceil((float)global_box[i] / patch_box[i]);
+			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
 			next_2_power_xyz[i] = pow(2, ceil(log2(patch_count_xyz[i])));
 		}
 
@@ -220,6 +215,7 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 	return MPR_success;
 }
 
+/* Decide aggregators */
 static void decide_aggregator(MPR_file file, int* agg_ranks)
 {
 	int rank = file->comm->simulation_rank; /* The rank of each process */
