@@ -39,6 +39,19 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 	return MPR_success;
 }
 
+
+MPR_return_code MPR_multi_res_write(MPR_file file, int svi, int evi)
+{
+	if (MPR_wavelet_transform_perform(file, svi, evi))
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
+	return MPR_success;
+}
+
+
 /* Write data out with multiple precision mode */
 MPR_return_code MPR_multi_pre_write(MPR_file file, int svi, int evi)
 {

@@ -19,6 +19,7 @@
 #include "core/MPR_restructure.h"
 #include "core/MPR_aggregation.h"
 #include "core/MPR_compression.h"
+#include "core/MPR_wavelet.h"
 
 #include <stdarg.h>
 #include <stdio.h>
