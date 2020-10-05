@@ -66,6 +66,7 @@ static void MPR_timing_output(MPR_file file)
 	int rank = file->comm->simulation_rank;
 	double total_time = file->time->total_end - file->time->total_start;
 	double rst_time = file->time->rst_end - file->time->rst_start;
+	double wave_time = file->time->wave_end - file->time->wave_start;
 	double comp_time = file->time->zfp_end - file->time->zfp_start;
 	double agg_time = file->time->agg_end - file->time->agg_start;
 	double wrt_data_time = file->time->wrt_data_end - file->time->wrt_data_start;
@@ -90,6 +91,13 @@ static void MPR_timing_output(MPR_file file)
 			fprintf(stderr,"AGG_%d: [%f] >= [rst %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, agg_time, wrt_data_time, wrt_metadata_time);
 		if (total_time == max_total_time)
 			fprintf(stderr, "MAX_%d: [%f] >= [rst %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, agg_time, wrt_data_time, wrt_metadata_time);
+	}
+	else if (MODE == MPR_MUL_RES_IO)
+	{
+		if (file->mpr->is_aggregator == 1)
+			fprintf(stderr,"AGG_%d: [%f] >= [rst %f wave %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, agg_time, wrt_data_time, wrt_metadata_time);
+		if (total_time == max_total_time)
+			fprintf(stderr, "MAX_%d: [%f] >= [rst %f wave %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, agg_time, wrt_data_time, wrt_metadata_time);
 	}
 	else if (MODE == MPR_MUL_PRE_IO)
 	{

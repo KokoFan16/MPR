@@ -50,6 +50,24 @@ MPR_return_code MPR_multi_res_write(MPR_file file, int svi, int evi)
 	}
 	file->time->wave_end = MPI_Wtime();
 
+	/* Aggregation phase */
+	file->time->agg_start = MPI_Wtime();
+	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->agg_end = MPI_Wtime();
+
+	/* write data out */
+	file->time->wrt_data_start = MPI_Wtime();
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_data_end = MPI_Wtime();
+
 	printf("Wavelet transform takes %f s.\n", (file->time->wave_end - file->time->wave_start));
 	return MPR_success;
 }
