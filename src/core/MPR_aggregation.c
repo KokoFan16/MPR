@@ -23,7 +23,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			MPR_local_patch local_patch = file->variable[v]->local_patch;
 
 			int patch_count = local_patch->patch_count; /* patch count per process */
-			int bits = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+			int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 			local_patch->agg_patch_count = patch_count;
 
@@ -31,7 +31,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			local_patch->agg_patch_disps = malloc(patch_count*sizeof(unsigned long long));
 
 			unsigned long long max_size = patch_count * file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
-			local_patch->buffer = malloc(max_size * bits);
+			local_patch->buffer = malloc(max_size * bytes);
 			for (int i = 0; i < patch_count; i++)
 			{
 				local_patch->patch_id_array[i] = local_patch->patch[i]->global_id;
@@ -103,15 +103,20 @@ MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
 		for (int i = 0; i < total_patch_num; i++)
 			total_size += patch_sizes[i];
 		long double average_file_size = (double)total_size / out_file_num; /* The idea average file size*/
+		file->mpr->compression_bit_rate = total_size;
 
 		/* Calculate the patch count in each dimension, and its next power 2 value (e.g., 3x3x3 -> 4x4x4)*/
 		int patch_count_xyz[MPR_MAX_DIMENSIONS];
 		int next_2_power_xyz[MPR_MAX_DIMENSIONS];
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 		{
+			file->mpr->compression_bit_rate /= file->mpr->global_box[i];
 			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
 			next_2_power_xyz[i] = pow(2, ceil(log2(patch_count_xyz[i])));
 		}
+
+		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+		file->mpr->compression_bit_rate /= bytes;
 
 		/* Reorder the patch size array and id array with z-order curve */
 		int patch_count_power2 = next_2_power_xyz[0] * next_2_power_xyz[1] * next_2_power_xyz[2];
