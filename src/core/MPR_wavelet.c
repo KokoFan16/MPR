@@ -29,6 +29,7 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 			min = file->mpr->patch_box[i];
 	}
 	int trans_num = log2(min); /* Calculate the the number of transforms */
+	file->mpr->wavelet_trans_num = trans_num;
 
 	for (int v = svi; v < evi; v++)
 	{
@@ -204,7 +205,6 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 
 static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf, int* patch_box, int trans_num, int bytes)
 {
-	int sub_box[3] = {1, 1, 1};
 	int index = 0;
 
 	int step = pow(2, trans_num);

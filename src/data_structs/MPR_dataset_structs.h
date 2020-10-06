@@ -43,7 +43,7 @@ struct mpr_dataset_struct
 	int is_aggregator;                                /* If the rank is a aggregator */
 	int aggregation_mode;                             /* The aggregation mode */
 
-	int max_wavelet_level;                            /* The maximum wavelet level based on the brick size */
+	int wavelet_trans_num;                            /* The maximum wavelet level based on the brick size */
 };
 typedef struct mpr_dataset_struct* MPR_dataset;
 

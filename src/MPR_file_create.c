@@ -96,7 +96,7 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	(*file)->mpr->is_aggregator = 0;
 
 	(*file)->mpr->aggregation_mode = -1;
-	(*file)->mpr->max_wavelet_level = 0;
+	(*file)->mpr->wavelet_trans_num = 0;
 
 	(*file)->local_variable_index = 0;
 	(*file)->local_variable_count = 0;
