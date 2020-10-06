@@ -48,16 +48,6 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 
 	}
 
-//	if (rank == 0)
-//	{
-//		for (int j = 0; j < 64; j++)
-//		{
-//			float a;
-//			memcpy(&a, &file->variable[0]->local_patch->patch[0]->buffer[j*sizeof(float)], sizeof(float));
-//			printf("%f\n", a);
-//		}
-//	}
-
 	return MPR_success;
 }
 
