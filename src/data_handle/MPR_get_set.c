@@ -54,16 +54,6 @@ MPR_return_code MPR_get_current_time_step(MPR_file file, int* current_time_step)
   return MPR_success;
 }
 
-MPR_return_code MPR_set_aggregation_mode(MPR_file file, int mode)
-{
-	if (!file)
-      return MPR_err_file;
-
-    file->mpr->aggregation_mode = mode;
-
-    return MPR_success;
-}
-
 MPR_return_code MPR_set_out_file_num(MPR_file file, int num)
 {
 	if (!file)

@@ -13,56 +13,10 @@ static unsigned int calZOrder(unsigned int x, unsigned int y, unsigned int z);
 
 MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 {
-	/* If the aggregation mode isn't set */
-	if (file->mpr->aggregation_mode == -1)
-	{
-		file->mpr->is_aggregator = 1; /* all the processes are aggregators */
-		for (int v = svi; v < evi; v++)
-		{
-			unsigned long long offset = 0;
-			MPR_local_patch local_patch = file->variable[v]->local_patch;
-
-			int patch_count = local_patch->patch_count; /* patch count per process */
-			int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
-
-			local_patch->agg_patch_count = patch_count;
-
-			local_patch->patch_id_array = malloc(patch_count*sizeof(int));
-			local_patch->agg_patch_disps = malloc(patch_count*sizeof(unsigned long long));
-
-			unsigned long long max_size = patch_count * file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
-			local_patch->buffer = malloc(max_size * bytes);
-			for (int i = 0; i < patch_count; i++)
-			{
-				local_patch->patch_id_array[i] = local_patch->patch[i]->global_id;
-				local_patch->agg_patch_disps[i] = offset;
-				int buffer_size = local_patch->patch[i]->patch_buffer_size;
-				memcpy(&local_patch->buffer[offset], local_patch->patch[i]->buffer, buffer_size);
-				offset += buffer_size;
-			}
-			local_patch->buffer = (unsigned char*) realloc(local_patch->buffer, offset);
-			local_patch->out_file_size = offset;
-		}
-	}
-	else   /* Aggregation */
-	{
-		if (MPR_aggregation(file, svi, evi) != MPR_success)
-		{
-			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-			return MPR_err_file;
-		}
-	}
-	return MPR_success;
-}
-
-
-MPR_return_code MPR_aggregation(MPR_file file, int svi, int evi)
-{
 	int proc_num = file->comm->simulation_nprocs;  /* The number of processes */
 	int rank = file->comm->simulation_rank; /* The rank of each process */
 	MPI_Comm comm = file->comm->simulation_comm; /* The MPI communicator */
 
-	int mode = file->mpr->aggregation_mode;  /* Aggregation Mode: 0 (fixed-size) 1 (fixed-patch-number) */
 	int out_file_num = file->mpr->out_file_num;  /* The number of out files(aggregators) */
 	int total_patch_num = file->mpr->total_patches_num; /* The number of total patches */
 	int node_num = file->mpr->node_num; /* the number of nodes */

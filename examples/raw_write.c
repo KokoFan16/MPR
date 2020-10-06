@@ -20,7 +20,6 @@ char var_list[512];
 char output_file_name[512];
 unsigned char **data;
 static MPR_point patch_box;
-int agg_mode = -1;
 int out_file_num = 0;
 int proc_num_per_node = 0;
 
@@ -35,7 +34,7 @@ static void create_synthetic_simulation_data();
 static void destroy_data();
 
 char *usage = "Serial Usage: ./raw_write -g 32x32x32 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name\n"
-                     "Parallel Usage: mpirun -n 8 ./idx_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -m 1 -o 4\n"
+                     "Parallel Usage: mpirun -n 8 ./idx_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -o 4\n"
                      "  -g: global dimensions\n"
                      "  -l: local (per-process) dimensions\n"
                      "  -p: patch box dimension\n"
@@ -44,7 +43,6 @@ char *usage = "Serial Usage: ./raw_write -g 32x32x32 -l 32x32x32 -p 40x40x40 -v 
                      "  -t: number of timesteps\n"
                      "  -v: number of variables (or file containing a list of variables)\n"
 					 "  -n: the number of processes per node"
-                     "  -m: the aggregation mode (0 means fixed size mode, 1 means fixed patch number mode)\n"
 					 "  -o: the number of out files\n";
 
 int main(int argc, char **argv)
@@ -157,18 +155,13 @@ static void parse_args(int argc, char **argv)
 	  }
 	  break;
 
-    case('n'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
+    case('n'): // The number of processes per node
       if (sscanf(optarg, "%d", &proc_num_per_node) == EOF || proc_num_per_node < 1)
         terminate_with_error_msg("Invalid number of processes per node\n%s", usage);
       break;
 
-    case('m'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
-      if (sscanf(optarg, "%d", &agg_mode) < 0 )
-        terminate_with_error_msg("Invalid aggregation mode\n%s", usage);
-      break;
-
-    case('o'): // Aggregation Mode (0 means the fixed size mode, 1 means fixed patch number)
-      if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > (process_count - 1))
+    case('o'): // The number of out files
+      if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > process_count)
         terminate_with_error_msg("Invalid number of out files\n%s", usage);
       break;
 
@@ -341,7 +334,6 @@ static void set_mpr_file(int ts)
   MPR_set_current_time_step(file, ts);   /* Set the current timestep */
   MPR_set_variable_count(file, variable_count);   /* Set the number of variables */
   MPR_set_io_mode(file, MPR_RAW_IO);   /* Select I/O mode */
-  MPR_set_aggregation_mode(file, agg_mode);
   MPR_set_out_file_num(file, out_file_num);
   MPR_set_procs_num_per_node(file, proc_num_per_node);
 

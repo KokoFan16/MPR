@@ -41,7 +41,6 @@ struct mpr_dataset_struct
 	unsigned long long file_size;                     /* The total size of each out file */
 
 	int is_aggregator;                                /* If the rank is a aggregator */
-	int aggregation_mode;                             /* The aggregation mode */
 
 	int wavelet_trans_num;                            /* The maximum wavelet level based on the brick size */
 };

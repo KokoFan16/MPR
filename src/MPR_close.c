@@ -75,16 +75,6 @@ static void MPR_timing_output(MPR_file file)
 	double max_total_time = 0;
 	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, file->comm->simulation_comm);
 
-	if (rank == 0)
-	{
-		char mode[100];
-		if (file->mpr->aggregation_mode == 0)
-			sprintf(mode, "%s", "Fixed-size");
-		else
-			sprintf(mode, "%s", "Default");
-		printf("Current aggregation mode is %s mode\n", mode);
-	}
-
 	if (MODE == MPR_RAW_IO)
 	{
 		if (file->mpr->is_aggregator == 1)
