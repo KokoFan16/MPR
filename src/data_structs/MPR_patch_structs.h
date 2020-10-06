@@ -27,7 +27,8 @@ struct mpr_patch_struct
 	int physical_offset[MPR_MAX_DIMENSIONS];        /* the physical offset of a patch in 3D local space */
 	int physical_size[MPR_MAX_DIMENSIONS];          /* the physical size in each dimensions for patch */
 
-	int wavelet_level;                              /* the WAVELET level of the patch */
+	int subband_num;                                /* the number of sunbands per patch */
+	int* subbands_comp_size;                        /* the compressed size of each sub-band */
 };
 typedef struct mpr_patch_struct* MPR_patch;
 

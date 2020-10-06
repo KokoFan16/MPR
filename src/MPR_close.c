@@ -106,4 +106,11 @@ static void MPR_timing_output(MPR_file file)
 		if (total_time == max_total_time)
 			fprintf(stderr, "MAX_%d: [%f] >= [rst %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
 	}
+	else if (MODE == MPR_MUL_RES_PRE_IO)
+	{
+		if (file->mpr->is_aggregator == 1)
+			fprintf(stderr,"AGG_%d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+		if (total_time == max_total_time)
+			fprintf(stderr, "MAX_%d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+	}
 }

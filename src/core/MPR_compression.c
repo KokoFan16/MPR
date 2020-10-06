@@ -3,6 +3,76 @@
 #include <zfp.h>
 #include "../MPR_inc.h"
 
+static void calculate_res_level_box(int* res_box, int* patch_box, int level);
+
+MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, int evi)
+{
+	for (int v = svi; v < evi; v++)
+	{
+		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
+		char* type_name = file->variable[v]->type_name;
+		int local_patch_count = local_patch->patch_count;
+		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+
+		for (int p = 0; p < local_patch_count; p++)
+		{
+			int res_box[MPR_MAX_DIMENSIONS]; /* resolution box per each level */
+			calculate_res_level_box(res_box, file->mpr->patch_box, file->mpr->wavelet_trans_num);
+
+			int offset = 0; /* the offset for each sub-band */
+			int comp_offset = 0;  /* the offset for each sun-band after compressed (should be smaller then offset)*/
+
+			MPR_patch reg_patch = local_patch->patch[p];
+			MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
+			memset(output, 0, sizeof (*output)); /* Initialization */
+
+			reg_patch->subbands_comp_size = malloc(reg_patch->subband_num * sizeof(int));
+			int sid = 0;
+
+			// Compressed DC component
+			int size = res_box[0] * res_box[1] * res_box[2]; /* size of resolution box per level */
+			unsigned char* dc_buf = malloc(size * bytes); /* buffer for DC component */
+			memcpy(dc_buf, &reg_patch->buffer[offset], size * bytes);
+			MPR_compress_3D_data(dc_buf, res_box[0], res_box[1], res_box[2], 0, 0, type_name, &output); /* ZFP Compression */
+			free(dc_buf);
+			memcpy(&reg_patch->buffer[comp_offset], output->p, output->compress_size);
+			free(output->p);
+			comp_offset += output->compress_size;
+			offset += size * bytes;
+			reg_patch->subbands_comp_size[sid++] = output->compress_size;
+
+			for (int i = file->mpr->wavelet_trans_num; i > 0; i--)
+			{
+				calculate_res_level_box(res_box, file->mpr->patch_box, i);
+				size = res_box[0] * res_box[1] * res_box[2];
+				unsigned char* sub_buf = malloc(size * bytes);
+				for (int j = 0; j < 7; j++) /* compresses 7 sub-bands for each level*/
+				{
+					memcpy(sub_buf, &reg_patch->buffer[offset], size * bytes); /* buffer for each sub-band*/
+					offset += size * bytes;
+					MPR_compress_3D_data(sub_buf, res_box[0], res_box[1], res_box[2], 0, 0, type_name, &output); /* ZFP Compression */
+					memcpy(&reg_patch->buffer[comp_offset], output->p, output->compress_size); /* copy the compresses buffer to patch buffer */
+					free(output->p); /* free compresses buffer */
+					comp_offset += output->compress_size;
+					reg_patch->subbands_comp_size[sid++] = output->compress_size;
+				}
+				free(sub_buf);
+			}
+			reg_patch->buffer = realloc(reg_patch->buffer, comp_offset); /* changed the size of patch buffer */
+			reg_patch->patch_buffer_size = comp_offset; /* the total compressed size per patch */
+		}
+	}
+	return MPR_success;
+}
+
+static void calculate_res_level_box(int* res_box, int* patch_box, int level)
+{
+	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+	{
+		res_box[i] = patch_box[i]/pow(2, level);
+	}
+}
+
 MPR_return_code MPR_ZFP_compression_perform(MPR_file file, int svi, int evi)
 {
 	int rank = file->comm->simulation_rank; /* The rank of process */
@@ -21,7 +91,6 @@ MPR_return_code MPR_ZFP_compression_perform(MPR_file file, int svi, int evi)
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
 		char* type_name = file->variable[v]->type_name;
 		int local_patch_count = local_patch->patch_count;
-		int bits = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		for (int p = 0; p < local_patch_count; p++)
 		{
@@ -34,6 +103,7 @@ MPR_return_code MPR_ZFP_compression_perform(MPR_file file, int svi, int evi)
 			free(reg_patch->buffer);
 			reg_patch->buffer = (unsigned char*)malloc(output->compress_size);
 			memcpy(reg_patch->buffer, output->p, output->compress_size);
+			free(output->p);
 		}
 	}
 	return MPR_success;
@@ -67,12 +137,12 @@ MPR_return_code MPR_compress_3D_data(unsigned char* buf, int dim_x, int dim_y, i
 	{
 		printf("ERROR: O means accuracy, and 1 means precision\n");
 	}
-	size_t max_compressed_bytes = zfp_stream_maximum_size(zfp, field);
+	int max_compressed_bytes = zfp_stream_maximum_size(zfp, field);
 	// ZFP pointer structure
 	(*output)->p = (unsigned char*) malloc(max_compressed_bytes);
 	bitstream* stream = stream_open((*output)->p, max_compressed_bytes);
 	zfp_stream_set_bit_stream(zfp, stream);
-	size_t compressed_bytes = zfp_compress(zfp, field);
+	int compressed_bytes = zfp_compress(zfp, field);
 	(*output)->compress_size = compressed_bytes; // Data size after compression
 	if (compressed_bytes == 0)
 		puts("ERROR: Something wrong happened during compression\n");

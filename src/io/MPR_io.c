@@ -39,6 +39,8 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		ret = MPR_multi_res_write(file, svi, evi);
 	else if (MODE == MPR_MUL_PRE_IO)
 		ret = MPR_multi_pre_write(file, svi, evi);
+	else if (MODE == MPR_MUL_RES_PRE_IO)
+		ret = MPR_multi_pre_res_write(file, svi, evi);
 	else
 		fprintf(stderr, "Unsupported MPR Mode.\n");
 

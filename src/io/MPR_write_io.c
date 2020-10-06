@@ -42,6 +42,7 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 
 MPR_return_code MPR_multi_res_write(MPR_file file, int svi, int evi)
 {
+	/* Wavelet transform */
 	file->time->wave_start = MPI_Wtime();
 	if (MPR_wavelet_transform_perform(file, svi, evi))
 	{
@@ -105,6 +106,47 @@ MPR_return_code MPR_multi_pre_write(MPR_file file, int svi, int evi)
 	return MPR_success;
 }
 
+
+MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
+{
+	/* Wavelet transform */
+	file->time->wave_start = MPI_Wtime();
+	if (MPR_wavelet_transform_perform(file, svi, evi))
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wave_end = MPI_Wtime();
+
+	/* compressed each sub-bands after wavelet transform*/
+	file->time->zfp_start = MPI_Wtime();
+	if (MPR_ZFP_multi_res_compression_perform(file, svi, evi))
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->zfp_end = MPI_Wtime();
+
+	/* Aggregation phase */
+	file->time->agg_start = MPI_Wtime();
+	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->agg_end = MPI_Wtime();
+
+	/* write data out */
+	file->time->wrt_data_start = MPI_Wtime();
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_data_end = MPI_Wtime();
+
+	return MPR_success;
+}
 
 /* Write data out */
 MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)

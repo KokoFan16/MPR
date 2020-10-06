@@ -14,6 +14,8 @@ MPR_return_code MPR_multi_res_write(MPR_file file, int svi, int evi);
 
 MPR_return_code MPR_multi_pre_write(MPR_file file, int svi, int evi);
 
+MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi);
+
 MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi);
 
 MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi);
