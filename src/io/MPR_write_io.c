@@ -221,10 +221,17 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-//	if (MPR_out_file_metadata_write_out(file, svi, evi) != MPR_success)
-//	{
-//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//		return MPR_err_file;
-//	}
+
+	if (MPR_bounding_box_metadata_write_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
+	if (MPR_out_file_metadata_write_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
 	return MPR_success;
 }

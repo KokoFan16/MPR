@@ -131,40 +131,90 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 	return MPR_success;
 }
 
-MPR_return_code MPR_out_file_metadata_write_out(MPR_file file, int svi, int evi)
+
+MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int evi)
 {
-	char directory_path[PATH_MAX];
+	char directory_path[PATH_MAX]; /* file template */
 	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
 	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
 
-	char tmp_path[PATH_MAX];
-	memset(tmp_path, 0, sizeof(*tmp_path) * PATH_MAX);
-	sprintf(tmp_path, "%s_file_metadata", directory_path);
+	char bounding_meta_path[PATH_MAX]; /* the patch bounding box metadata */
+	memset(bounding_meta_path, 0, sizeof(*bounding_meta_path) * PATH_MAX);
+	sprintf(bounding_meta_path, "%s_bounding_box", directory_path);
 
-	// file name of out file related meta-data
-	char out_file_info_path[PATH_MAX];
-	memset(out_file_info_path, 0, sizeof(*out_file_info_path) * PATH_MAX);
-	sprintf(out_file_info_path, "%s/file_%d", tmp_path, file->comm->simulation_rank);
-
-	if (file->mpr->is_aggregator == 1)
+	for (int v = svi; v < evi; v++) /* Loop all the variables */
 	{
-		FILE* fp = fopen(out_file_info_path, "w");
-		if (fp == NULL)
+		MPR_local_patch local_patch = file->variable[v]->local_patch;
+		int bounding_buffer[MPR_MAX_DIMENSIONS * 2 * file->comm->simulation_nprocs]; /* the bounding box for all the processes*/
+		MPI_Gather(local_patch->bounding_box, MPR_MAX_DIMENSIONS*2, MPI_INT, bounding_buffer, MPR_MAX_DIMENSIONS*2, MPI_INT, 0, file->comm->simulation_comm);
+
+		int agg_ranks[file->comm->simulation_nprocs]; /* each element i specify whether process i is a aggregator */
+		MPI_Gather(&file->mpr->is_aggregator, 1, MPI_INT, agg_ranks, 1, MPI_INT, 0, file->comm->simulation_comm);
+
+		if (file->comm->simulation_rank == 0)
 		{
-			fprintf(stderr, "Error: failed to open %s\n", out_file_info_path);
-			return MPR_err_file;
-		}
-		else
-		{
-			for (int v = svi; v < evi; v++)
+			FILE* fp = fopen(bounding_meta_path, "a"); /* open file (append mode) */
+		    if (!fp) /* Check file handle */
+		    {
+				fprintf(stderr, " [%s] [%d] Write bounding box metadata failed!\n", __FILE__, __LINE__);
+				return -1;
+		    }
+			for (int i = 0; i < file->comm->simulation_nprocs; i++)
 			{
-				MPR_local_patch local_patch = file->variable[v]->local_patch;
-				for (int i = 0; i < local_patch->agg_patch_count; i++)
-					fprintf(fp, "%d %d %llu\n", v, local_patch->patch_id_array[i], local_patch->agg_patch_disps[i]);
+				if (agg_ranks[i] == 1)
+				{
+				    fprintf(fp, "%d %d ", v, i); /* write variable and aggregator rank */
+				    for (int j = 0; j < MPR_MAX_DIMENSIONS * 2; j++)
+				    	fprintf(fp, "%d ", bounding_buffer[i*MPR_MAX_DIMENSIONS*2 + j]); /* write bounding box */
+				    fprintf(fp, "\n");
+				}
 			}
+			fclose(fp);
 		}
-		fclose(fp);
 	}
+	return MPR_success;
+}
+
+MPR_return_code MPR_out_file_metadata_write_out(MPR_file file, int svi, int evi)
+{
+
+//	MPR_local_patch local_patch = file->variable[0]->local_patch;
+//	printf("%d: %dx%dx%d, %dx%dx%d\n", file->comm->simulation_rank, local_patch->bounding_box[0], local_patch->bounding_box[1],
+//			local_patch->bounding_box[2], local_patch->bounding_box[3], local_patch->bounding_box[4],
+//			local_patch->bounding_box[5]);
+
+//	char directory_path[PATH_MAX];
+//	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
+//	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
+
+//	char tmp_path[PATH_MAX];
+//	memset(tmp_path, 0, sizeof(*tmp_path) * PATH_MAX);
+//	sprintf(tmp_path, "%s_file_metadata", directory_path);
+//
+//	// file name of out file related meta-data
+//	char out_file_info_path[PATH_MAX];
+//	memset(out_file_info_path, 0, sizeof(*out_file_info_path) * PATH_MAX);
+//	sprintf(out_file_info_path, "%s/file_%d", tmp_path, file->comm->simulation_rank);
+//
+//	if (file->mpr->is_aggregator == 1)
+//	{
+//		FILE* fp = fopen(out_file_info_path, "w");
+//		if (fp == NULL)
+//		{
+//			fprintf(stderr, "Error: failed to open %s\n", out_file_info_path);
+//			return MPR_err_file;
+//		}
+//		else
+//		{
+//			for (int v = svi; v < evi; v++)
+//			{
+//				MPR_local_patch local_patch = file->variable[v]->local_patch;
+//				for (int i = 0; i < local_patch->agg_patch_count; i++)
+//					fprintf(fp, "%d %d %llu\n", v, local_patch->patch_id_array[i], local_patch->agg_patch_disps[i]);
+//			}
+//		}
+//		fclose(fp);
+//	}
 	return MPR_success;
 }
 
