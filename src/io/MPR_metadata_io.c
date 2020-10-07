@@ -83,7 +83,7 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 	}
 
 	/* Write file related metadata out */
-	if (MPR_out_file_metadata_write_out(file, svi, evi) != MPR_success)
+	if (MPR_file_metadata_write_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
@@ -202,46 +202,81 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 	return MPR_success;
 }
 
-MPR_return_code MPR_out_file_metadata_write_out(MPR_file file, int svi, int evi)
+MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 {
+	if (file->mpr->is_aggregator == 1)
+	{
+		int meta_count = 0; /* the number of needed meta-data */
+		unsigned char* meta_buffer = NULL; /* the buffer for meta-data */
 
-//	MPR_local_patch local_patch = file->variable[0]->local_patch;
-//	printf("%d: %dx%dx%d, %dx%dx%d\n", file->comm->simulation_rank, local_patch->bounding_box[0], local_patch->bounding_box[1],
-//			local_patch->bounding_box[2], local_patch->bounding_box[3], local_patch->bounding_box[4],
-//			local_patch->bounding_box[5]);
+		int MODE = file->mpr->io_type; /* write IO mode */
+		if (MODE == MPR_RAW_IO || MODE == MPR_MUL_RES_IO)
+		{
+			meta_count = file->variable[svi]->local_patch->agg_patch_count + 1;
+			meta_buffer = malloc(meta_count * sizeof(int));
+			memcpy(meta_buffer, &file->variable[svi]->local_patch->agg_patch_count, sizeof(int));
+			for (int i = 1; i < meta_count; i++)
+				memcpy(&meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->patch_id_array[i-1], sizeof(int));
+		}
+		else if (MODE == MPR_MUL_PRE_IO || MPR_MUL_RES_PRE_IO)
+		{
+			meta_count += file->mpr->variable_count;
+			meta_buffer = malloc(meta_count * sizeof(unsigned long long));
+			int meta_id = 0;
 
-//	char directory_path[PATH_MAX];
-//	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
-//	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
+			int max_agg_patch_count = 0;
+			for (int v = svi; v < evi; v++)
+			{
+				if (file->variable[v]->local_patch->agg_patch_count > max_agg_patch_count)
+					max_agg_patch_count = file->variable[v]->local_patch->agg_patch_count;
+				unsigned long long patch_count = (unsigned long long)file->variable[v]->local_patch->agg_patch_count;
+				memcpy(&meta_buffer[meta_id*sizeof(unsigned long long)], &patch_count, sizeof(unsigned long long));
+				meta_id++;
+			}
 
-//	char tmp_path[PATH_MAX];
-//	memset(tmp_path, 0, sizeof(*tmp_path) * PATH_MAX);
-//	sprintf(tmp_path, "%s_file_metadata", directory_path);
-//
-//	// file name of out file related meta-data
-//	char out_file_info_path[PATH_MAX];
-//	memset(out_file_info_path, 0, sizeof(*out_file_info_path) * PATH_MAX);
-//	sprintf(out_file_info_path, "%s/file_%d", tmp_path, file->comm->simulation_rank);
-//
-//	if (file->mpr->is_aggregator == 1)
-//	{
-//		FILE* fp = fopen(out_file_info_path, "w");
-//		if (fp == NULL)
-//		{
-//			fprintf(stderr, "Error: failed to open %s\n", out_file_info_path);
-//			return MPR_err_file;
-//		}
-//		else
-//		{
-//			for (int v = svi; v < evi; v++)
+			meta_count += max_agg_patch_count * file->mpr->variable_count * 3;
+			meta_buffer = realloc(meta_buffer, meta_count * sizeof(unsigned long long));
+
+			for (int v = svi; v < evi; v++)
+			{
+				MPR_local_patch local_patch = file->variable[v]->local_patch;
+				for (int i = 0; i < local_patch->agg_patch_count; i++)
+				{
+					unsigned long long pid = (unsigned long long)local_patch->patch_id_array[i];
+					unsigned long long poffset = local_patch->agg_patch_disps[i];
+					unsigned long long psize = (unsigned long long)local_patch->agg_patch_size[i];
+
+					memcpy(&meta_buffer[meta_id*sizeof(unsigned long long)], &pid, sizeof(unsigned long long));
+					memcpy(&meta_buffer[(meta_id + local_patch->agg_patch_count * file->mpr->variable_count)*sizeof(unsigned long long)], &poffset, sizeof(unsigned long long));
+					memcpy(&meta_buffer[(meta_id + local_patch->agg_patch_count * 2 * file->mpr->variable_count)*sizeof(unsigned long long)], &psize, sizeof(unsigned long long));
+					meta_id++;
+				}
+			}
+
+//			if (MODE == MPR_MUL_RES_PRE_IO)
 //			{
-//				MPR_local_patch local_patch = file->variable[v]->local_patch;
-//				for (int i = 0; i < local_patch->agg_patch_count; i++)
-//					fprintf(fp, "%d %d %llu\n", v, local_patch->patch_id_array[i], local_patch->agg_patch_disps[i]);
+//				for (int v = svi; v < evi; v++)
+//				{
+//					MPR_local_patch local_patch = file->variable[v]->local_patch;
+//					for (int i = 0; i < local_patch->agg_patch_count; i++)
+//					{
+//
+//					}
+//				}
+//			}
+		}
+
+//		if (file->comm->simulation_rank == 0)
+//		{
+//			for (int i = 0; i < meta_count; i++)
+//			{
+//				unsigned long long a;
+//				memcpy(&a, &meta_buffer[i*sizeof(unsigned long long)], sizeof(unsigned long long));
+//				printf("%llu\n", a);
 //			}
 //		}
-//		fclose(fp);
-//	}
+		free(meta_buffer); /* Clean up */
+	}
 	return MPR_success;
 }
 

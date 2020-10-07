@@ -95,6 +95,7 @@ MPR_return_code MPR_variable_buffer_cleanup(MPR_file file, int svi, int evi)
 		free(file->variable[v]->local_patch->patch);
 		free(file->variable[v]->local_patch->patch_id_array);
 		free(file->variable[v]->local_patch->agg_patch_disps);
+		free(file->variable[v]->local_patch->agg_patch_size);
 		free(file->variable[v]->local_patch);
 	}
 	return MPR_success;
