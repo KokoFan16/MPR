@@ -159,8 +159,22 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		}
 
 		/* Recv data */
+		int max_xyz[MPR_MAX_DIMENSIONS] = {0, 0, 0};
+		int min_xyz[MPR_MAX_DIMENSIONS] = {INT_MAX, INT_MAX, INT_MAX};
+
 		for (int i = 0; i < recv_num; i++)
 		{
+			int z = recv_array[i] / (patch_count_xyz[0] * patch_count_xyz[1]);
+			int y = (recv_array[i] - (z * patch_count_xyz[0] * patch_count_xyz[1])) / patch_count_xyz[1];
+			int x = recv_array[i] - z * patch_count_xyz[0] * patch_count_xyz[1] - y * patch_count_xyz[1];
+
+			if (z < min_xyz[2]) min_xyz[2] = z;
+			if (z > max_xyz[2]) max_xyz[2] = z;
+			if (y < min_xyz[1]) min_xyz[1] = y;
+			if (y > max_xyz[1]) max_xyz[1] = y;
+			if (x < min_xyz[0]) min_xyz[0] = x;
+			if (x > max_xyz[0]) max_xyz[0] = x;
+
 			MPI_Irecv(&local_patch->buffer[offset], patch_sizes[recv_array[i]], MPI_BYTE, patch_ranks[recv_array[i]], recv_array[i], comm, &req[req_id]);
 			local_patch->patch_id_array[i] = recv_array[i];
 			local_patch->agg_patch_disps[i] = offset;
@@ -170,6 +184,12 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		MPI_Waitall(req_id, req, stat);
 		free(patch_ranks);
 		free(patch_sizes);
+
+		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+		{
+			local_patch->bounding_box[i] = min_xyz[i];
+			local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = max_xyz[i];
+		}
 	}
 	return MPR_success;
 }
