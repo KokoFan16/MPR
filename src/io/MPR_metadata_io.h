@@ -10,6 +10,8 @@
 
 MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi);
 
+MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi);
+
 MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file);
 
 MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int evi);

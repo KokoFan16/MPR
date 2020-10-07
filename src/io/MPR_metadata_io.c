@@ -65,6 +65,33 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 	return MPR_success;
 }
 
+/* Write meta-data out */
+MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
+{
+	/* Write basic information out */
+	if (MPR_basic_info_metadata_write_out(file) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
+	/* Write bounding box metadata out */
+	if (MPR_bounding_box_metadata_write_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
+	/* Write file related metadata out */
+	if (MPR_out_file_metadata_write_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	return MPR_success;
+}
+
+
 MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 {
 	char* file_name = file->mpr->filename; /* file name for */
