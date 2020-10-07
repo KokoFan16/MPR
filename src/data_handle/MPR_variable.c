@@ -90,8 +90,7 @@ MPR_return_code MPR_variable_buffer_cleanup(MPR_file file, int svi, int evi)
 		{
 			free(file->variable[v]->local_patch->patch[i]->buffer);
 			free(file->variable[v]->local_patch->patch[i]);
-			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-				free(file->variable[v]->local_patch->patch[i]->subbands_comp_size);
+			free(file->variable[v]->local_patch->patch[i]->subbands_comp_size);
 		}
 		free(file->variable[v]->local_patch->buffer);
 		free(file->variable[v]->local_patch->patch);
