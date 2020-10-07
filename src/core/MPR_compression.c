@@ -10,6 +10,8 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 	file->mpr->compression_type = 1; /* compression type (1: accuracy, 2: precision)*/
 	file->mpr->compression_param = 0; /* compression parameter */
 
+	int subband_num = file->mpr->wavelet_trans_num * 7 + 1;
+
 	for (int v = svi; v < evi; v++)
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
@@ -29,7 +31,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 			memset(output, 0, sizeof (*output)); /* Initialization */
 
-			reg_patch->subbands_comp_size = malloc(reg_patch->subband_num * sizeof(int));
+			reg_patch->subbands_comp_size = malloc(subband_num * sizeof(int));
 			int sid = 0;
 
 			// Compressed DC component

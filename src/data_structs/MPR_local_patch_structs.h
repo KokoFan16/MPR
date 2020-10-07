@@ -21,9 +21,10 @@ struct mpr_local_patch_struct
 	MPR_patch *patch;                        /* Pointer to the patches that are included in the local dataset */
 
 	int agg_patch_count;                     /* Number of patches in the local patch after aggregation */
-	int* patch_id_array;                     /* A array for patches id */
-	unsigned long long* agg_patch_disps;     /* The displacement in the buffer of each patch after aggregation */
+	int* agg_patch_id_array;                 /* A array for patches id */
+	int* agg_patch_disps;                    /* The displacement in the buffer of each patch after aggregation */
 	int* agg_patch_size;                     /* The size of each patch after aggregation */
+	int* agg_subbands_size;                  /* the size of each sub-band per patch */
 };
 typedef struct mpr_local_patch_struct* MPR_local_patch;
 

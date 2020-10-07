@@ -216,12 +216,12 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 			meta_buffer = malloc(meta_count * sizeof(int));
 			memcpy(meta_buffer, &file->variable[svi]->local_patch->agg_patch_count, sizeof(int));
 			for (int i = 1; i < meta_count; i++)
-				memcpy(&meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->patch_id_array[i-1], sizeof(int));
+				memcpy(&meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->agg_patch_id_array[i-1], sizeof(int));
 		}
 		else if (MODE == MPR_MUL_PRE_IO || MPR_MUL_RES_PRE_IO)
 		{
 			meta_count += file->mpr->variable_count;
-			meta_buffer = malloc(meta_count * sizeof(unsigned long long));
+			meta_buffer = malloc(meta_count * sizeof(int));
 			int meta_id = 0;
 
 			int max_agg_patch_count = 0;
@@ -229,26 +229,24 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 			{
 				if (file->variable[v]->local_patch->agg_patch_count > max_agg_patch_count)
 					max_agg_patch_count = file->variable[v]->local_patch->agg_patch_count;
-				unsigned long long patch_count = (unsigned long long)file->variable[v]->local_patch->agg_patch_count;
-				memcpy(&meta_buffer[meta_id*sizeof(unsigned long long)], &patch_count, sizeof(unsigned long long));
+				memcpy(&meta_buffer[meta_id*sizeof(int)], &file->variable[v]->local_patch->agg_patch_count, sizeof(int));
 				meta_id++;
 			}
 
 			meta_count += max_agg_patch_count * file->mpr->variable_count * 3;
-			meta_buffer = realloc(meta_buffer, meta_count * sizeof(unsigned long long));
+			meta_buffer = realloc(meta_buffer, meta_count * sizeof(int));
 
 			for (int v = svi; v < evi; v++)
 			{
 				MPR_local_patch local_patch = file->variable[v]->local_patch;
 				for (int i = 0; i < local_patch->agg_patch_count; i++)
 				{
-					unsigned long long pid = (unsigned long long)local_patch->patch_id_array[i];
-					unsigned long long poffset = local_patch->agg_patch_disps[i];
-					unsigned long long psize = (unsigned long long)local_patch->agg_patch_size[i];
+					int poffset_id = meta_id + local_patch->agg_patch_count * file->mpr->variable_count;
+					int psize_id = meta_id + local_patch->agg_patch_count * file->mpr->variable_count * 2;
 
-					memcpy(&meta_buffer[meta_id*sizeof(unsigned long long)], &pid, sizeof(unsigned long long));
-					memcpy(&meta_buffer[(meta_id + local_patch->agg_patch_count * file->mpr->variable_count)*sizeof(unsigned long long)], &poffset, sizeof(unsigned long long));
-					memcpy(&meta_buffer[(meta_id + local_patch->agg_patch_count * 2 * file->mpr->variable_count)*sizeof(unsigned long long)], &psize, sizeof(unsigned long long));
+					memcpy(&meta_buffer[meta_id * sizeof(int)], &local_patch->agg_patch_id_array[i], sizeof(int));
+					memcpy(&meta_buffer[poffset_id * sizeof(int)], &local_patch->agg_patch_disps[i], sizeof(int));
+					memcpy(&meta_buffer[psize_id * sizeof(int)], &local_patch->agg_patch_size[i], sizeof(int));
 					meta_id++;
 				}
 			}
@@ -270,9 +268,9 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 //		{
 //			for (int i = 0; i < meta_count; i++)
 //			{
-//				unsigned long long a;
-//				memcpy(&a, &meta_buffer[i*sizeof(unsigned long long)], sizeof(unsigned long long));
-//				printf("%llu\n", a);
+//				int a;
+//				memcpy(&a, &meta_buffer[i*sizeof(int)], sizeof(int));
+//				printf("%d\n", a);
 //			}
 //		}
 		free(meta_buffer); /* Clean up */

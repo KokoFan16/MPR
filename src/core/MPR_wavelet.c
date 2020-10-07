@@ -42,7 +42,7 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 
 		for (int i = 0; i < patch_count; i++)
 		{
-			local_patch->patch[i]->subband_num = subband_num;
+//			local_patch->patch[i]->subband_num = subband_num;
 			wavelet_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[v]->type_name, trans_num);
 			unsigned char* reg_buffer = malloc(local_patch->patch[i]->patch_buffer_size);
 			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes);

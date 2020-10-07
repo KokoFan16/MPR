@@ -8,8 +8,7 @@
 #include "../MPR_inc.h"
 
 static void decide_aggregator(MPR_file file, int* agg_ranks);
-static int calculate_agg_num_with_node(MPR_file file);
-static unsigned int calZOrder(unsigned int x, unsigned int y, unsigned int z);
+static int calZOrder(int x, int y, int z);
 
 MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 {
@@ -56,7 +55,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		unsigned long long total_size = 0; /* The total size of all the patches across all the processes */
 		for (int i = 0; i < total_patch_num; i++)
 			total_size += patch_sizes[i];
-		long double average_file_size = (double)total_size / out_file_num; /* The idea average file size*/
+		double average_file_size = total_size / (double)out_file_num; /* The idea average file size*/
 		file->mpr->compression_bit_rate = total_size;
 
 		/* Calculate the patch count in each dimension, and its next power 2 value (e.g., 3x3x3 -> 4x4x4)*/
@@ -78,14 +77,14 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		memset(patch_sizes_zorder, 0, patch_count_power2 * sizeof(int));
 		int* patch_ids_zorder = (int*)malloc(patch_count_power2 * sizeof(int));  /* patch id with z-order */
 		memset(patch_ids_zorder, -1, patch_count_power2 * sizeof(int));
-		for (unsigned int z = 0; z < patch_count_xyz[2]; z++)
+		for (int z = 0; z < patch_count_xyz[2]; z++)
 		{
-			for (unsigned int y = 0; y < patch_count_xyz[1]; y++)
+			for (int y = 0; y < patch_count_xyz[1]; y++)
 			{
-				for (unsigned int x = 0; x < patch_count_xyz[0]; x++)
+				for (int x = 0; x < patch_count_xyz[0]; x++)
 				{
-					unsigned int zorder = calZOrder(x, y, z);  /* Calculate the index with z-order */
-					unsigned int index = z * patch_count_xyz[1] * patch_count_xyz[0] + y * patch_count_xyz[0] + x;
+					int zorder = calZOrder(x, y, z);  /* Calculate the index with z-order */
+					int index = z * patch_count_xyz[1] * patch_count_xyz[0] + y * patch_count_xyz[0] + x;
 					patch_sizes_zorder[zorder] = patch_sizes[index];
 					patch_ids_zorder[zorder] = index;
 				}
@@ -99,8 +98,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		int patch_assign_array[total_patch_num];
 		memset(patch_assign_array, -1, total_patch_num * sizeof(int));
 
-		unsigned long long agg_sizes[out_file_num]; /* the current size of aggregators */
-		memset(agg_sizes, 0, out_file_num * sizeof(unsigned long long));
+		int agg_sizes[out_file_num]; /* the current size of aggregators */
+		memset(agg_sizes, 0, out_file_num * sizeof(int));
 
 		int recv_array[total_patch_num]; /* Local receive array per process */
 		int recv_num = 0;
@@ -130,15 +129,15 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		local_patch->agg_patch_count = recv_num;
 		/**********************************************************************/
 
-		unsigned long long agg_size = 0;
+		int agg_size = 0;
 		for (int i = 0; i < out_file_num; i++)
 		{
 			if (rank == agg_ranks[i])
 				agg_size = agg_sizes[i];
 		}
 
-		local_patch->patch_id_array = malloc(recv_num * sizeof(int));
-		local_patch->agg_patch_disps = malloc(recv_num * sizeof(unsigned long long));
+		local_patch->agg_patch_id_array = malloc(recv_num * sizeof(int));
+		local_patch->agg_patch_disps = malloc(recv_num * sizeof(int));
 		local_patch->agg_patch_size = malloc(recv_num * sizeof(int));
 
 		/********************** Point-to-point communication **********************/
@@ -149,7 +148,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		MPI_Request req[comm_count];
 		MPI_Status stat[comm_count];
 		int req_id = 0;
-		unsigned long long offset = 0;
+		int offset = 0;
 
 		/* Send data */
 		for (int i = 0; i < patch_count; i++)
@@ -178,7 +177,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			if (x > max_xyz[0]) max_xyz[0] = x;
 
 			MPI_Irecv(&local_patch->buffer[offset], patch_sizes[recv_array[i]], MPI_BYTE, patch_ranks[recv_array[i]], recv_array[i], comm, &req[req_id]);
-			local_patch->patch_id_array[i] = recv_array[i];
+			local_patch->agg_patch_id_array[i] = recv_array[i];
 			local_patch->agg_patch_disps[i] = offset;
 			local_patch->agg_patch_size[i] = patch_sizes[recv_array[i]];
 			offset += patch_sizes[recv_array[i]];
@@ -238,7 +237,7 @@ static void decide_aggregator(MPR_file file, int* agg_ranks)
 }
 
 
-static unsigned int calZOrder(unsigned int x, unsigned int y, unsigned int z)
+static int calZOrder(int x, int y, int z)
 {
 	static const unsigned int B[] = {0x09249249, 0x030C30C3, 0x0300F00F, 0x030000FF};
 	static const unsigned int S[] = {2, 4, 8, 16};
@@ -258,38 +257,6 @@ static unsigned int calZOrder(unsigned int x, unsigned int y, unsigned int z)
 	z = (z | (z << S[1])) & B[1];
 	z = (z | (z << S[0])) & B[0];
 
-	unsigned int result = x | (y << 1) | (z << 2);
+	int result = x | (y << 1) | (z << 2);
 	return result;
-}
-
-static int calculate_agg_num_with_node(MPR_file file)
-{
-	int total_patch_num = file->mpr->total_patches_num; /* The number of total patches */
-	int node_num = file->mpr->node_num; /* the number of nodes */
-	int rank = file->comm->simulation_rank; /* The rank of each process */
-	int out_file_num = file->mpr->out_file_num;  /* The number of out files(aggregators) */
-
-	int avg_patches_per_agg = total_patch_num / out_file_num; /* the average number of patches per aggregator */
-	int reminder = total_patch_num % out_file_num; /* reminder (extra patches ) */
-	int agg_patch_num = 0;
-	if (file->mpr->is_aggregator == 1)
-	{
-		if (node_num == 1) /* If there is just one node */
-			agg_patch_num = (rank < reminder)? (avg_patches_per_agg + 1): avg_patches_per_agg;
-		else /* If there are multiple nodes */
-		{
-			int avg_rem = reminder / node_num; /* the average number of extra patch per node */
-			int rem_assign_array[node_num]; /* array: the number of extra patches */
-			rem_assign_array[node_num - 1] = (avg_rem < file->mpr->proc_num_last_node)? avg_rem : file->mpr->proc_num_last_node;
-			reminder -= rem_assign_array[node_num - 1];
-			avg_rem = reminder / (node_num - 1);
-			for (int i = 0; i < (node_num - 1); i++)
-				rem_assign_array[i] = (i < (reminder % (node_num - 1)))? (avg_rem + 1): avg_rem;
-			/* Calculate the number of patches per aggregator */
-			int id = rank / file->mpr->proc_num_per_node;
-			int rem_agg_patch = rank % file->mpr->proc_num_per_node;
-			agg_patch_num = (rem_agg_patch < rem_assign_array[id])?  (avg_patches_per_agg + 1): avg_patches_per_agg;
-		}
-	}
-	return agg_patch_num;
 }
