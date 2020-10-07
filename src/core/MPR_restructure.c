@@ -104,7 +104,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	int patch_shared_ranks[local_patch_num][procs_num];
 	int share_physical_sizes[local_patch_num][procs_num * MPR_MAX_DIMENSIONS];
 	int patch_share_offsets[local_patch_num][procs_num * MPR_MAX_DIMENSIONS];
-	int boundary_patches[local_patch_num*MPR_MAX_DIMENSIONS];
 
 	int local_patch_id = 0;
 	int global_id = 0; /* The global id for each patch */
@@ -118,7 +117,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 				memset(reg_patch, 0, sizeof (*reg_patch)); /* Initialization */
 
 				reg_patch->global_id = global_id; /* The global id for patch */
-				reg_patch->is_boundary_patch = 0; /* 0 means the patch isn't the edge patch, otherwise, it is */
 
 				/* Interior regular patches */
 				reg_patch->offset[0] = i;
@@ -127,25 +125,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 				reg_patch->size[0] = patch_box[0];
 				reg_patch->size[1] = patch_box[1];
 				reg_patch->size[2] = patch_box[2];
-
-				int boundary_patch[MPR_MAX_DIMENSIONS];
-				memcpy(boundary_patch, reg_patch->size, MPR_MAX_DIMENSIONS*sizeof(int));
-
-				if ((i + patch_box[0]) > global_box[0])
-				{
-					reg_patch->is_boundary_patch = 1;
-					boundary_patch[0] = global_box[0] - i;
-				}
-				if ((j + patch_box[1]) > global_box[1])
-				{
-					reg_patch->is_boundary_patch = 1;
-					boundary_patch[1] = global_box[1] - j;
-				}
-				if ((k + patch_box[2]) > global_box[2])
-				{
-					reg_patch->is_boundary_patch = 1;
-					boundary_patch[2] = global_box[2] - k;
-				}
 
 				/* Find all the processes that intersect with this patch */
 				int physical_sizes[procs_num*MPR_MAX_DIMENSIONS];
@@ -247,7 +226,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 					memcpy(patch_shared_ranks[local_patch_id], own_ranks, procs_num*sizeof(int));
 					memcpy(share_physical_sizes[local_patch_id], physical_sizes, procs_num*MPR_MAX_DIMENSIONS*sizeof(int));
 					memcpy(patch_share_offsets[local_patch_id], patch_share_offset, procs_num*MPR_MAX_DIMENSIONS*sizeof(int));
-					memcpy(&boundary_patches[local_patch_id*MPR_MAX_DIMENSIONS], boundary_patch, MPR_MAX_DIMENSIONS*sizeof(int));
 					local_patch_id++;
 				}
 				free(reg_patch);
@@ -325,14 +303,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 					MPI_Type_free(&recv_type);
 				}
 			}
-
-			/* Set the physical size and offset for edge patch */
-			memcpy(local_patch->patch[i]->physical_offset, local_patch->patch[i]->offset, MPR_MAX_DIMENSIONS * sizeof(int));
-			memcpy(local_patch->patch[i]->physical_size, local_patch->patch[i]->size, MPR_MAX_DIMENSIONS * sizeof(int));
-
-			if (local_patch->patch[i]->is_boundary_patch == 1)
-				memcpy(local_patch->patch[i]->physical_size, &boundary_patches[i*MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
-
 		}
 		MPI_Waitall(req_i, req, stat); /* Wait all the send and receive to be finished */
 	}
