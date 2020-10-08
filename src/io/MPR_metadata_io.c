@@ -169,43 +169,85 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 	memset(bounding_meta_path, 0, sizeof(*bounding_meta_path) * PATH_MAX);
 	sprintf(bounding_meta_path, "%s_bounding_box", directory_path);
 
-	for (int v = svi; v < evi; v++) /* Loop all the variables */
+	unsigned char* meta_buffer = NULL; /* The buffer for dounding box meta-data */
+
+	int agg_ranks[file->comm->simulation_nprocs]; /* each element i specify whether process i is a aggregator */
+	MPI_Gather(&file->mpr->is_aggregator, 1, MPI_INT, agg_ranks, 1, MPI_INT, 0, file->comm->simulation_comm);
+
+	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch of the first variable */
+	int bounding_buffer[MPR_MAX_DIMENSIONS * 2 * file->comm->simulation_nprocs]; /* Gather bounding box array per process to rank 0 */
+	MPI_Gather(local_patch->bounding_box, MPR_MAX_DIMENSIONS*2, MPI_INT, bounding_buffer, MPR_MAX_DIMENSIONS*2, MPI_INT, 0, file->comm->simulation_comm);
+
+	int MODE = file->mpr->io_type; /* Write IO type */
+	int meta_count = (MPR_MAX_DIMENSIONS * 2 + 1) * file->mpr->out_file_num; /* The number of metadata count */
+	int meta_id = 0; /* The current meta-data index */
+	if (file->comm->simulation_rank == 0)
 	{
-		MPR_local_patch local_patch = file->variable[v]->local_patch;
-		int bounding_buffer[MPR_MAX_DIMENSIONS * 2 * file->comm->simulation_nprocs]; /* the bounding box for all the processes*/
-		MPI_Gather(local_patch->bounding_box, MPR_MAX_DIMENSIONS*2, MPI_INT, bounding_buffer, MPR_MAX_DIMENSIONS*2, MPI_INT, 0, file->comm->simulation_comm);
-
-		int agg_ranks[file->comm->simulation_nprocs]; /* each element i specify whether process i is a aggregator */
-		MPI_Gather(&file->mpr->is_aggregator, 1, MPI_INT, agg_ranks, 1, MPI_INT, 0, file->comm->simulation_comm);
-
-		if (file->comm->simulation_rank == 0)
+		meta_buffer = malloc(meta_count * sizeof(int)); /* Allocate memory for meta-data buffer */
+		for (int i = 0; i < file->comm->simulation_nprocs; i++)
 		{
-			FILE* fp = fopen(bounding_meta_path, "a"); /* open file (append mode) */
-		    if (!fp) /* Check file handle */
-		    {
-				fprintf(stderr, " [%s] [%d] Write bounding box metadata failed!\n", __FILE__, __LINE__);
-				return -1;
-		    }
-			for (int i = 0; i < file->comm->simulation_nprocs; i++)
+			if (agg_ranks[i] == 1)
 			{
-				if (agg_ranks[i] == 1)
-				{
-				    fprintf(fp, "%d %d ", v, i); /* write variable and aggregator rank */
-				    for (int j = 0; j < MPR_MAX_DIMENSIONS * 2; j++)
-				    	fprintf(fp, "%d ", bounding_buffer[i*MPR_MAX_DIMENSIONS*2 + j]); /* write bounding box */
-				    fprintf(fp, "\n");
-				}
+				memcpy(&meta_buffer[meta_id * sizeof(int)], &i, sizeof(int)); /* store the aggregator id */
+				meta_id++;
+				memcpy(&meta_buffer[meta_id * sizeof(int)], &bounding_buffer[i*MPR_MAX_DIMENSIONS*2], MPR_MAX_DIMENSIONS*2*sizeof(int));
+				meta_id += MPR_MAX_DIMENSIONS*2;
 			}
-			fclose(fp);
 		}
 	}
+
+	if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO) /* For these two modes, we should store all the bounding box for all the variables */
+	{
+		meta_count += meta_count * (file->mpr->variable_count - 1);
+		if (file->comm->simulation_rank == 0) /* re-allocate memory for metadata buffer */
+			meta_buffer = realloc(meta_buffer, meta_count * sizeof(int));
+
+		for (int v = svi + 1; v < evi; v++) /* loop all the variables except first one */
+		{
+			local_patch = file->variable[v]->local_patch; /* Gather all the bounding box from other processes */
+			MPI_Gather(local_patch->bounding_box, MPR_MAX_DIMENSIONS*2, MPI_INT, bounding_buffer, MPR_MAX_DIMENSIONS*2, MPI_INT, 0, file->comm->simulation_comm);
+
+			if (file->comm->simulation_rank == 0)
+			{
+				for (int i = 0; i < file->comm->simulation_nprocs; i++)
+				{
+					if (agg_ranks[i] == 1)
+					{
+						memcpy(&meta_buffer[meta_id * sizeof(int)], &i, sizeof(int)); /* store the aggregator id */
+						meta_id++;
+						memcpy(&meta_buffer[meta_id * sizeof(int)], &bounding_buffer[i*MPR_MAX_DIMENSIONS*2], MPR_MAX_DIMENSIONS*2*sizeof(int));
+						meta_id += MPR_MAX_DIMENSIONS*2;
+					}
+				}
+			}
+		}
+	}
+
+	/* Write bounding box metadata out */
+	if (file->comm->simulation_rank == 0)
+	{
+		int fp = open(bounding_meta_path, O_CREAT | O_EXCL | O_WRONLY, 0664);
+		if (fp == -1)
+		{
+			fprintf(stderr, "File %s is existed, please delete it.\n", bounding_meta_path);
+			MPI_Abort(MPI_COMM_WORLD, -1);
+		}
+		int write_count = write(fp, meta_buffer, meta_count * sizeof(int));
+		if (write_count != meta_count * sizeof(int))
+		{
+			fprintf(stderr, "[%s] [%d] pwrite() failed.\n", __FILE__, __LINE__);
+			MPI_Abort(MPI_COMM_WORLD, -1);
+		}
+		close(fp);
+	}
+
+	free(meta_buffer);
 	return MPR_success;
 }
 
 MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 {
-	char *directory_path; 	/* the directory patch for out files */
-	directory_path = malloc(sizeof(*directory_path) * PATH_MAX);
+	char directory_path[PATH_MAX]; /* file template */
 	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
 	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
 
@@ -223,7 +265,7 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 			for (int i = 1; i < meta_count; i++) /* the patch id */
 				memcpy(&meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->agg_patch_id_array[i-1], sizeof(int));
 		}
-		else if (MODE == MPR_MUL_PRE_IO || MPR_MUL_RES_PRE_IO) /* Compression involves */
+		else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO) /* Compression involves */
 		{
 			meta_count += file->mpr->variable_count; /* the patch count for aggregator per variable */
 			meta_buffer = malloc(meta_count * sizeof(int));
@@ -277,8 +319,7 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 		}
 
 		/* The file name for out files */
-		char *file_name;
-		file_name = malloc(PATH_MAX * sizeof(*file_name));
+		char file_name[PATH_MAX];
 		memset(file_name, 0, PATH_MAX * sizeof(*file_name));
 		sprintf(file_name, "%s/time%09d/%d", directory_path, file->mpr->current_time_step, file->comm->simulation_rank);
 
@@ -298,9 +339,7 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 		close(fp);
 
 		free(meta_buffer); /* Clean up */
-		free(file_name);
 	}
-	free(directory_path);
 	return MPR_success;
 }
 
