@@ -19,15 +19,6 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 	}
 	file->time->agg_end = MPI_Wtime();
 
-	/* write data out */
-	file->time->wrt_data_start = MPI_Wtime();
-	if (MPR_write_data_out(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->wrt_data_end = MPI_Wtime();
-
 	/* Write metadata out */
 	file->time->wrt_metadata_start = MPI_Wtime();
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
@@ -36,6 +27,15 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->wrt_metadata_end = MPI_Wtime();
+
+	/* write data out */
+	file->time->wrt_data_start = MPI_Wtime();
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_data_end = MPI_Wtime();
 
 	return MPR_success;
 }
@@ -61,15 +61,6 @@ MPR_return_code MPR_multi_res_write(MPR_file file, int svi, int evi)
 	}
 	file->time->agg_end = MPI_Wtime();
 
-	/* write data out */
-	file->time->wrt_data_start = MPI_Wtime();
-	if (MPR_write_data_out(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->wrt_data_end = MPI_Wtime();
-
 	/* Write metadata out */
 	file->time->wrt_metadata_start = MPI_Wtime();
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
@@ -78,6 +69,15 @@ MPR_return_code MPR_multi_res_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->wrt_metadata_end = MPI_Wtime();
+
+	/* write data out */
+	file->time->wrt_data_start = MPI_Wtime();
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_data_end = MPI_Wtime();
 
 	return MPR_success;
 }
@@ -103,15 +103,6 @@ MPR_return_code MPR_multi_pre_write(MPR_file file, int svi, int evi)
 	}
 	file->time->agg_end = MPI_Wtime();
 
-	/* write data out */
-	file->time->wrt_data_start = MPI_Wtime();
-	if (MPR_write_data_out(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->wrt_data_end = MPI_Wtime();
-
 	/* Write metadata out */
 	file->time->wrt_metadata_start = MPI_Wtime();
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
@@ -120,6 +111,15 @@ MPR_return_code MPR_multi_pre_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->wrt_metadata_end = MPI_Wtime();
+
+	/* write data out */
+	file->time->wrt_data_start = MPI_Wtime();
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_data_end = MPI_Wtime();
 
 	return MPR_success;
 }
@@ -154,15 +154,6 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 	}
 	file->time->agg_end = MPI_Wtime();
 
-	/* write data out */
-	file->time->wrt_data_start = MPI_Wtime();
-	if (MPR_write_data_out(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->wrt_data_end = MPI_Wtime();
-
 	/* Write metadata out */
 	file->time->wrt_metadata_start = MPI_Wtime();
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
@@ -171,6 +162,15 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->wrt_metadata_end = MPI_Wtime();
+
+	/* write data out */
+	file->time->wrt_data_start = MPI_Wtime();
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_data_end = MPI_Wtime();
 
 	return MPR_success;
 }
