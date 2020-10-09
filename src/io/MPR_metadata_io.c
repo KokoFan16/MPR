@@ -111,21 +111,15 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 			return -1;
 	    }
 	    /* Write IO Mode */
-	    if (file->mpr->io_type == MPR_RAW_IO)
-	    	fprintf(fp, "(IO mode)\nRAW\n");
-	    else if (file->mpr->io_type == MPR_MUL_RES_IO)
-	    	fprintf(fp, "(IO mode)\nMUL_RES\n");
-	    else if (file->mpr->io_type == MPR_MUL_PRE_IO)
-			fprintf(fp, "(IO mode)\nMUL_PRE\n");
-	    else if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-	    	fprintf(fp, "(IO mode)\nMUL_RES_PRE\n");
+	    fprintf(fp, "(IO mode)\n%d\n", file->mpr->io_type);
+
 	    /* Write global box and patch box */
 	    fprintf(fp, "(Global box)\n%d %d %d\n", file->mpr->global_box[0], file->mpr->global_box[1], file->mpr->global_box[2]);
 	    fprintf(fp, "(Patch box)\n%d %d %d\n", file->mpr->patch_box[0], file->mpr->patch_box[1], file->mpr->patch_box[2]);
 	    /* Write the number of out files */
-	    fprintf(fp, "(Out file num)\n%d\n", file->mpr->out_file_num);
+	    fprintf(fp, "(File num)\n%d\n", file->mpr->out_file_num);
 	    /* Write total number of patches */
-	    fprintf(fp, "(Total patch number)\n%d\n", file->mpr->total_patches_num);
+	    fprintf(fp, "(Patch count)\n%d\n", file->mpr->total_patches_num);
 	    /* Write variables */
 	    fprintf(fp, "(Fields)\n");
 	    for (int i = 0; i < file->mpr->variable_count; i++)
@@ -137,18 +131,13 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 	    	fprintf(fp, "\n");
 	    }
 	    /* Write number of process per node */
-	    fprintf(fp, "(Process number per node)\n%d\n", file->mpr->proc_num_per_node);
-	    fprintf(fp, "(Process number last node)\n%d\n", file->mpr->proc_num_last_node);
+	    fprintf(fp, "(Pnum per node)\n%d\n", file->mpr->proc_num_per_node);
+	    fprintf(fp, "(Pnum last)\n%d\n", file->mpr->proc_num_last_node);
 	    /* Write compression rate and mode */
-	    if (file->mpr->compression_type == 0)
-	    	fprintf(fp, "(Compression type)\nNo compression\n");
-	    else if (file->mpr->compression_type == 1)
-	    	fprintf(fp, "(Compression type)\nZFP accuracy\n");
-	    else if (file->mpr->compression_type == 2)
-	    	fprintf(fp, "(Compression type)\nZFP precision\n");
-	    fprintf(fp, "(Compression parameter)\n%f\n", file->mpr->compression_param);
+	    fprintf(fp, "(Compression)\n%d %f \n", file->mpr->compression_type, file->mpr->compression_param);
+
 	    /* Write wavalet levels */
-	    fprintf(fp, "(Wavelet level)\n%d\n", file->mpr->wavelet_trans_num);
+	    fprintf(fp, "(Res level)\n%d\n", file->mpr->wavelet_trans_num);
 	    /* Write timesteps */
 	    fprintf(fp, "(time)\n%d %d time%%09d/", file->mpr->first_tstep, file->mpr->current_time_step);
 

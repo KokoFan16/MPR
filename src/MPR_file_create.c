@@ -102,7 +102,6 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	(*file)->fs_block_size = 0;
 
 	if ((*file)->comm->simulation_rank == 0)
-
 	{
 		struct stat stat_buf;
 		FILE *dummy = fopen(".dummy.txt", "w");
