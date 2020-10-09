@@ -18,6 +18,8 @@ MPR_return_code MPR_flush(MPR_file file);
 
 MPR_return_code MPR_default_bits_per_datatype(MPR_data_type type, int* bits);
 
+MPR_return_code MPR_file_open(const char* filename, MPR_access access_type, MPR_file* file);
+
 MPR_return_code MPR_values_per_datatype(MPR_data_type type, int* values, int* bits);
 
 MPR_return_code MPR_set_variable_count(MPR_file file, int  variable_count);

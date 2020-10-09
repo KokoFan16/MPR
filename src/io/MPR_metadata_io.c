@@ -6,7 +6,7 @@
  */
 
 
-#include "../MPR_inc.h"
+#include <MPR.h>
 #include <errno.h>
 
 MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
@@ -327,6 +327,205 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 		close(fp);
 
 		free(meta_buffer); /* Clean up */
+	}
+	return MPR_success;
+}
+
+/* Parse the metadata of basic information (xx.mpr) */
+MPR_return_code MPR_basic_metatda_parse(char* file_name, MPR_file* file)
+{
+	if ((*file)->comm->simulation_rank == 0)
+	{
+		FILE *fp = fopen(file_name, "r");
+	    if (fp == NULL)
+	    {
+	      fprintf(stderr, "Error Opening %s\n", file_name);
+	      return MPR_err_file;
+	    }
+		char line [512];
+		char* pch;
+		int count;
+		while (fgets(line, sizeof (line), fp) != NULL)
+		{
+			line[strcspn(line, "\r\n")] = 0;
+
+			if (strcmp(line, "(IO mode)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+				(*file)->mpr->io_type = atoi(line);
+			}
+
+			if (strcmp(line, "(Global box)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+
+				pch = strtok(line, " ");
+				count = 0;
+				while (pch != NULL)
+				{
+					(*file)->mpr->global_box[count] = atoi(pch);
+					count++;
+					pch = strtok(NULL, " ");
+				}
+			}
+
+			if (strcmp(line, "(Patch box)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+
+				pch = strtok(line, " ");
+				count = 0;
+				while (pch != NULL)
+				{
+					(*file)->mpr->patch_box[count] = atoi(pch);
+					count++;
+					pch = strtok(NULL, " ");
+				}
+			}
+
+			if (strcmp(line, "(File num)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+				(*file)->mpr->out_file_num = atoi(line);
+			}
+
+			if (strcmp(line, "(Patch count)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+				(*file)->mpr->total_patches_num = atoi(line);
+			}
+
+			if (strcmp(line, "(Fields)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+
+				count = 0;
+				int variable_counter = 0;
+				while (line[0] != '(')
+				{
+			        (*file)->variable[variable_counter] = malloc(sizeof (*((*file)->variable[variable_counter])));
+			        if ((*file)->variable[variable_counter] == NULL)
+			        	return MPR_err_file;
+			        memset((*file)->variable[variable_counter], 0, sizeof (*((*file)->variable[variable_counter])));
+
+			        pch = strtok(line, " +");
+			        while (pch != NULL)
+			        {
+			            if (count == 0)
+			            {
+							char* temp_name = strdup(pch);
+							strcpy((*file)->variable[variable_counter]->var_name, temp_name);
+							free(temp_name);
+			            }
+
+			            if (count == 1)
+			            {
+							int len = strlen(pch) - 1;
+							if (pch[len] == '\n')
+							  pch[len] = 0;
+
+							strcpy((*file)->variable[variable_counter]->type_name, pch);
+							int bits_per_sample = 0;
+							int ret = MPR_default_bits_per_datatype((*file)->variable[variable_counter]->type_name, &bits_per_sample);
+							if (ret != MPR_success)
+							  return MPR_err_file;
+
+							(*file)->variable[variable_counter]->bpv = bits_per_sample;
+							(*file)->variable[variable_counter]->vps = 1;
+			            }
+			            count++;
+			        	pch = strtok(NULL, " +");
+			        }
+			        count = 0;
+
+			        if ( fgets(line, sizeof line, fp) == NULL)
+			        	return MPR_err_file;
+			        line[strcspn(line, "\r\n")] = 0;
+			        variable_counter++;
+				}
+				(*file)->mpr->variable_count = variable_counter;
+			}
+
+			if (strcmp(line, "(Pnum per node)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+				(*file)->mpr->proc_num_per_node = atoi(line);
+			}
+
+			if (strcmp(line, "(Pnum last)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+				(*file)->mpr->proc_num_last_node = atoi(line);
+			}
+
+			if (strcmp(line, "(Compression)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+
+				pch = strtok(line, " ");
+				count = 0;
+				while (pch != NULL)
+				{
+					if (count == 0)
+						(*file)->mpr->compression_type = atoi(pch);
+					if (count == 1)
+						(*file)->mpr->compression_param = atof(pch);
+					count++;
+					pch = strtok(NULL, " ");
+				}
+			}
+
+			if (strcmp(line, "(Res level)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+				(*file)->mpr->wavelet_trans_num = atoi(line);
+			}
+
+			if (strcmp(line, "(time)") == 0)
+			{
+				if ( fgets(line, sizeof line, fp) == NULL)
+					return MPR_err_file;
+				line[strcspn(line, "\r\n")] = 0;
+
+				pch = strtok(line, " ");
+				count = 0;
+				while (pch != NULL)
+				{
+					if (count == 0)
+						(*file)->mpr->first_tstep = atoi(pch);
+					if (count == 1)
+						(*file)->mpr->last_tstep = atoi(pch);
+					if (count == 2)
+					{
+						strcpy((*file)->mpr->filename_time_template, pch);
+//						replace_str((*file)->mpr->filename_time_template, "%","%%");
+					}
+					count++;
+					pch = strtok(NULL, " ");
+				}
+			}
+		}
+		fclose(fp);
 	}
 	return MPR_success;
 }
