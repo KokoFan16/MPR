@@ -80,20 +80,20 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		for (int i = 0; i < total_patch_num; i++)
 			total_size += patch_sizes[i];
 		double average_file_size = total_size / (double)out_file_num; /* The idea average file size*/
-		file->mpr->compression_bit_rate = total_size;
+		local_patch->compression_ratio = total_size;
 
 		/* Calculate the patch count in each dimension, and its next power 2 value (e.g., 3x3x3 -> 4x4x4)*/
 		int patch_count_xyz[MPR_MAX_DIMENSIONS];
 		int next_2_power_xyz[MPR_MAX_DIMENSIONS];
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 		{
-			file->mpr->compression_bit_rate /= file->mpr->global_box[i];
+			local_patch->compression_ratio /= file->mpr->global_box[i];
 			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
 			next_2_power_xyz[i] = pow(2, ceil(log2(patch_count_xyz[i])));
 		}
 
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
-		file->mpr->compression_bit_rate /= bytes;
+		local_patch->compression_ratio /= bytes;
 
 		/* Reorder the patch size array and id array with z-order curve */
 		int patch_count_power2 = next_2_power_xyz[0] * next_2_power_xyz[1] * next_2_power_xyz[2];

@@ -146,7 +146,6 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 	    	fprintf(fp, "(Compression type)\nZFP accuracy\n");
 	    else if (file->mpr->compression_type == 2)
 	    	fprintf(fp, "(Compression type)\nZFP precision\n");
-	    fprintf(fp, "(Compression bit rate)\n%f\n", file->mpr->compression_bit_rate);
 	    fprintf(fp, "(Compression parameter)\n%f\n", file->mpr->compression_param);
 	    /* Write wavalet levels */
 	    fprintf(fp, "(Wavelet level)\n%d\n", file->mpr->wavelet_trans_num);

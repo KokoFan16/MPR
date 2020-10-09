@@ -35,7 +35,6 @@ struct mpr_dataset_struct
 
 	int compression_type;                             /* Compression Mode */
 	float compression_param;                          /* Compression parameter */
-	float compression_bit_rate;                       /* Compression bit rate */
 
 	int out_file_num;                                 /* The number of out file */
 	unsigned long long file_size;                     /* The total size of each out file */

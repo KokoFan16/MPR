@@ -16,7 +16,9 @@ struct mpr_local_patch_struct
 
 	unsigned char* buffer;                   /* data buffer */
 
-	int out_file_size;        /* the size out file */
+	int out_file_size;                       /* the size out file */
+
+	float compression_ratio;                 /* compression ratio for each variable */
 
 	MPR_patch *patch;                        /* Pointer to the patches that are included in the local dataset */
 

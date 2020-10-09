@@ -7,7 +7,7 @@
 
 #include "MPR.h"
 
-static void MPR_timing_output(MPR_file file);
+static void MPR_timing_output(MPR_file file, int svi, int evi);
 
 MPR_return_code MPR_flush(MPR_file file)
 {
@@ -32,7 +32,7 @@ MPR_return_code MPR_flush(MPR_file file)
 	}
 	file->time->total_end = MPI_Wtime(); /* the end time for the program */
 
-	MPR_timing_output(file);
+	MPR_timing_output(file, lvi, (lvi + lvc));
 
 	return MPR_success;
 }
@@ -60,10 +60,11 @@ MPR_return_code MPR_close(MPR_file file)
 	return MPR_success;
 }
 
-static void MPR_timing_output(MPR_file file)
+static void MPR_timing_output(MPR_file file, int svi, int evi)
 {
 	int MODE = file->mpr->io_type;
 	int rank = file->comm->simulation_rank;
+
 	double total_time = file->time->total_end - file->time->total_start;
 	double rst_time = file->time->rst_end - file->time->rst_start;
 	double wave_time = file->time->wave_end - file->time->wave_start;
@@ -91,6 +92,11 @@ static void MPR_timing_output(MPR_file file)
 	}
 	else if (MODE == MPR_MUL_PRE_IO)
 	{
+		if (rank == 0)
+		{
+			for (int v = svi; v < evi; v++)
+				printf("The compression ratio for variable %d is %f.\n", v, file->variable[v]->local_patch->compression_ratio);
+		}
 		if (file->mpr->is_aggregator == 1)
 			fprintf(stderr,"AGG_%d: [%f] >= [rst %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
 		if (total_time == max_total_time)
@@ -98,6 +104,11 @@ static void MPR_timing_output(MPR_file file)
 	}
 	else if (MODE == MPR_MUL_RES_PRE_IO)
 	{
+		if (rank == 0)
+		{
+			for (int v = svi; v < evi; v++)
+				printf("The compression ratio for variable %d is %f.\n", v, file->variable[v]->local_patch->compression_ratio);
+		}
 		if (file->mpr->is_aggregator == 1)
 			fprintf(stderr,"AGG_%d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
 		if (total_time == max_total_time)

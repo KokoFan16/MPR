@@ -88,7 +88,6 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	sprintf((*file)->mpr->filename_time_template, "time%%09d/");
 
 	(*file)->mpr->compression_type = MPR_NO_COMPRESSION;
-	(*file)->mpr->compression_bit_rate = 0;
 	(*file)->mpr->compression_param = 0;
 
 	(*file)->mpr->out_file_num = 0;
