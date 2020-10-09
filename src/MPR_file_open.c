@@ -66,32 +66,61 @@ MPR_return_code MPR_file_open(const char* filename, MPR_access access_type, MPR_
 
 	MPI_Bcast(&((*file)->mpr->io_type), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
 	MPI_Bcast(&((*file)->mpr->global_box), MPR_MAX_DIMENSIONS, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->patch_box), MPR_MAX_DIMENSIONS, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->out_file_num), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->total_patches_num), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->variable_count), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->proc_num_per_node), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->proc_num_last_node), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->compression_type), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->compression_param), 1, MPI_FLOAT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->wavelet_trans_num), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->first_tstep), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->last_tstep), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->filename_time_template), MPR_FILE_PATH_LENGTH, MPI_CHAR, 0, (*file)->comm->simulation_comm);
 
-	if ((*file)->comm->simulation_rank == 0)
+	if ((*file)->comm->simulation_rank != 0)
 	{
-		printf("%d\n", (*file)->mpr->io_type);
-		printf("%dx%dx%d\n", (*file)->mpr->global_box[0], (*file)->mpr->global_box[1], (*file)->mpr->global_box[2]);
-		printf("%dx%dx%d\n", (*file)->mpr->patch_box[0], (*file)->mpr->patch_box[1], (*file)->mpr->patch_box[2]);
-		printf("%d\n", (*file)->mpr->out_file_num);
-		printf("%d\n", (*file)->mpr->total_patches_num);
-		printf("%d\n", (*file)->mpr->variable_count);
 		for (int v = 0; v < (*file)->mpr->variable_count; v++)
 		{
-			printf("%d %s\n", v, (*file)->variable[v]->var_name);
-			printf("%d %s\n", v, (*file)->variable[v]->type_name);
-			printf("%d %d\n", v, (*file)->variable[v]->bpv);
-			printf("%d %d\n", v, (*file)->variable[v]->vps);
+			(*file)->variable[v] = malloc(sizeof (*((*file)->variable[v])));
+			memset((*file)->variable[v], 0, sizeof (*((*file)->variable[v])));
 		}
-		printf("%d\n", (*file)->mpr->proc_num_per_node);
-		printf("%d\n", (*file)->mpr->proc_num_last_node);
-		printf("%d\n", (*file)->mpr->compression_type);
-		printf("%f\n", (*file)->mpr->compression_param);
-		printf("%d\n", (*file)->mpr->wavelet_trans_num);
-
-		printf("%d\n", (*file)->mpr->first_tstep);
-		printf("%d\n", (*file)->mpr->last_tstep);
-		printf("%s\n", (*file)->mpr->filename_time_template);
 	}
+
+	for (int v = 0; v < (*file)->mpr->variable_count; v++)
+	{
+		MPI_Bcast(&((*file)->variable[v]->bpv), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+		MPI_Bcast(&((*file)->variable[v]->vps), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
+		MPI_Bcast(&((*file)->variable[v]->var_name), MPR_FILE_PATH_LENGTH, MPI_CHAR, 0, (*file)->comm->simulation_comm);
+		MPI_Bcast(&((*file)->variable[v]->type_name), MPR_FILE_PATH_LENGTH, MPI_CHAR, 0, (*file)->comm->simulation_comm);
+	}
+
+//	if ((*file)->comm->simulation_rank == 0)
+//	{
+//		printf("%d\n", (*file)->mpr->io_type);
+//		printf("%dx%dx%d\n", (*file)->mpr->global_box[0], (*file)->mpr->global_box[1], (*file)->mpr->global_box[2]);
+//		printf("%dx%dx%d\n", (*file)->mpr->patch_box[0], (*file)->mpr->patch_box[1], (*file)->mpr->patch_box[2]);
+//		printf("%d\n", (*file)->mpr->out_file_num);
+//		printf("%d\n", (*file)->mpr->total_patches_num);
+//		printf("%d\n", (*file)->mpr->variable_count);
+//		for (int v = 0; v < (*file)->mpr->variable_count; v++)
+//		{
+//			printf("%d %s\n", v, (*file)->variable[v]->var_name);
+//			printf("%d %s\n", v, (*file)->variable[v]->type_name);
+//			printf("%d %d\n", v, (*file)->variable[v]->bpv);
+//			printf("%d %d\n", v, (*file)->variable[v]->vps);
+//		}
+//		printf("%d\n", (*file)->mpr->proc_num_per_node);
+//		printf("%d\n", (*file)->mpr->proc_num_last_node);
+//		printf("%d\n", (*file)->mpr->compression_type);
+//		printf("%f\n", (*file)->mpr->compression_param);
+//		printf("%d\n", (*file)->mpr->wavelet_trans_num);
+//
+//		printf("%d\n", (*file)->mpr->first_tstep);
+//		printf("%d\n", (*file)->mpr->last_tstep);
+//		printf("%s\n", (*file)->mpr->filename_time_template);
+//	}
 
 
 
