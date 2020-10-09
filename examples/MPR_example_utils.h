@@ -27,6 +27,7 @@ static MPR_access p_access;
 static MPR_file file;
 
 static void init_mpi(int argc, char **argv);
+static void check_args();
 static void create_mpr_point_and_access();
 static void terminate_with_error_msg(const char *format, ...);
 static void calculate_per_process_offsets();
@@ -53,6 +54,19 @@ static void create_mpr_point_and_access()
   MPR_create_access(&p_access);
   MPR_set_mpi_access(p_access, MPI_COMM_WORLD);
 //  MPR_create_metadata_cache(&cache);
+}
+
+static void check_args()
+{
+	if (global_box_size[X] < local_box_size[X] || global_box_size[Y] < local_box_size[Y] || global_box_size[Z] < local_box_size[Z])
+	  terminate_with_error_msg("ERROR: Global box is smaller than local box in one of the dimensions\n");
+
+	// check if the number of processes given by the user is consistent with the actual number of processes needed
+	int brick_count = (int)((global_box_size[X] + local_box_size[X] - 1) / local_box_size[X]) *
+					(int)((global_box_size[Y] + local_box_size[Y] - 1) / local_box_size[Y]) *
+					(int)((global_box_size[Z] + local_box_size[Z] - 1) / local_box_size[Z]);
+	if (brick_count != process_count)
+	  terminate_with_error_msg("ERROR: Number of sub-blocks (%d) doesn't match number of processes (%d)\n", brick_count, process_count);
 }
 
 /* Terminate the program */
