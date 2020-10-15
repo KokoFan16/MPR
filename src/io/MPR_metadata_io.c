@@ -367,7 +367,7 @@ MPR_return_code MPR_basic_metatda_parse(char* file_name, MPR_file* file)
 				count = 0;
 				while (pch != NULL)
 				{
-					(*file)->mpr->global_box[count] = atoi(pch);
+					(*file)->mpr->origin_global_box[count] = atoi(pch);
 					count++;
 					pch = strtok(NULL, " ");
 				}

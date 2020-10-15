@@ -7,10 +7,12 @@
 
 #include "../MPR_inc.h"
 
-MPR_return_code MPR_file_open(const char* filename, MPR_access access_type, MPR_file* file)
+MPR_return_code MPR_file_open(const char* filename, int flags, MPR_access access_type, MPR_point global, MPR_point local, MPR_point offset, MPR_file* file)
 {
 	*file = malloc(sizeof (*(*file)) );
 	memset(*file, 0, sizeof (*(*file)) );
+
+	(*file)->flags = flags;
 
 	(*file)->mpr = malloc(sizeof (*((*file)->mpr)));
 	memset((*file)->mpr, 0, sizeof (*((*file)->mpr)));
@@ -22,6 +24,16 @@ MPR_return_code MPR_file_open(const char* filename, MPR_access access_type, MPR_
 	memset((*file)->time, 0, sizeof (*((*file)->time)));
 
 	(*file)->time->total_start = MPI_Wtime();  /* the start time for this program */
+
+	if (global != NULL)
+		memcpy((*file)->mpr->global_box, global, MPR_MAX_DIMENSIONS * sizeof(int));
+
+	if (local != NULL)
+		memcpy((*file)->mpr->local_box, local, MPR_MAX_DIMENSIONS * sizeof(int));
+
+	if (local != NULL)
+		memcpy((*file)->mpr->local_offset, offset, MPR_MAX_DIMENSIONS * sizeof(int));
+
 
 	sprintf((*file)->mpr->filename, "%s", filename);
 	sprintf((*file)->mpr->filename_time_template, "time%%09d/");
@@ -69,7 +81,7 @@ MPR_return_code MPR_file_open(const char* filename, MPR_access access_type, MPR_
 	}
 
 	MPI_Bcast(&((*file)->mpr->io_type), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
-	MPI_Bcast(&((*file)->mpr->global_box), MPR_MAX_DIMENSIONS, MPI_INT, 0, (*file)->comm->simulation_comm);
+	MPI_Bcast(&((*file)->mpr->origin_global_box), MPR_MAX_DIMENSIONS, MPI_INT, 0, (*file)->comm->simulation_comm);
 	MPI_Bcast(&((*file)->mpr->patch_box), MPR_MAX_DIMENSIONS, MPI_INT, 0, (*file)->comm->simulation_comm);
 	MPI_Bcast(&((*file)->mpr->out_file_num), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
 	MPI_Bcast(&((*file)->mpr->total_patches_num), 1, MPI_INT, 0, (*file)->comm->simulation_comm);

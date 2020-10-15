@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 
 	set_pidx_variable_and_create_buffer();
 
-//	printf("%d: %dx%dx%d\n", rank, local_box_offset[0], local_box_offset[1], local_box_offset[2]);
+//	printf("%d: %dx%dx%d\n", rank, file->mpr->local_offset[0], file->mpr->local_offset[1], file->mpr->local_offset[2]);
 
 
 	if (MPR_close_access(p_access) != MPR_success) /* close access */
@@ -108,10 +108,12 @@ static void parse_args(int argc, char **argv)
 
 static void set_pidx_file(int ts)
 {
-	if (MPR_file_open(input_file, p_access, &file) != MPR_success)
+	if (MPR_file_open(input_file, MPR_MODE_RDONLY, p_access, global_size, local_size, local_offset, &file) != MPR_success)
 		terminate_with_error_msg("MPR file open failed.\n");
 
 	MPR_set_current_time_step(file, ts);   /* Set the current timestep */
+
+//	MPR_check_bouding_box();
 }
 
 static void set_pidx_variable_and_create_buffer()

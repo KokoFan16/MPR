@@ -28,10 +28,12 @@ struct mpr_dataset_struct
 	char filename_template[MPR_FILE_PATH_LENGTH];     /* Filename template use to resolve the path of the .mpr file and binaries */
 	char filename_time_template[MPR_FILE_PATH_LENGTH];/* Filename template used to resolve the path of time folders */
 
-	int global_box[MPR_MAX_DIMENSIONS];               /* Global box of the dataset */
+	int global_box[MPR_MAX_DIMENSIONS];               /* Current global box to write/read */
 	int local_box[MPR_MAX_DIMENSIONS];                /* Local box of dataset */
 	int local_offset[MPR_MAX_DIMENSIONS];             /* Local offset of local dataset */
 	int patch_box[MPR_MAX_DIMENSIONS];                /* Patch box */
+
+	int origin_global_box[MPR_MAX_DIMENSIONS];        /* (only for read) The global box of the dataset */
 
 	int compression_type;                             /* Compression Mode */
 	float compression_param;                          /* Compression parameter */

@@ -12,13 +12,13 @@
 
 MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access access_type, MPR_point global, MPR_point local, MPR_point offset, MPR_point patch, MPR_file* file);
 
+MPR_return_code MPR_file_open(const char* filename, int flags, MPR_access access_type, MPR_point global, MPR_point local, MPR_point offset, MPR_file* file);
+
 MPR_return_code MPR_close(MPR_file file);
 
 MPR_return_code MPR_flush(MPR_file file);
 
 MPR_return_code MPR_default_bits_per_datatype(MPR_data_type type, int* bits);
-
-MPR_return_code MPR_file_open(const char* filename, MPR_access access_type, MPR_file* file);
 
 MPR_return_code MPR_values_per_datatype(MPR_data_type type, int* values, int* bits);
 
@@ -44,7 +44,7 @@ MPR_return_code MPR_append_and_write_variable(MPR_file file, MPR_variable variab
 
 MPR_return_code MPR_set_current_variable_index(MPR_file file, int variable_index);
 
-MPR_return_code MPR_get_current_variable(MPR_file file, MPR_variable variable);
+MPR_return_code MPR_get_current_variable(MPR_file file, MPR_variable* variable);
 
 MPR_return_code MPR_variable_write_data(MPR_variable variable, const void* buffer);
 

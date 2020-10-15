@@ -101,7 +101,7 @@ MPR_return_code MPR_set_current_variable_index(MPR_file file, int variable_index
 }
 
 
-MPR_return_code MPR_get_current_variable(MPR_file file, MPR_variable variable)
+MPR_return_code MPR_get_current_variable(MPR_file file, MPR_variable* variable)
 {
 	if (!file)
 		return MPR_err_file;
