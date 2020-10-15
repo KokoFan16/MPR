@@ -82,6 +82,39 @@ MPR_return_code MPR_append_and_write_variable(MPR_file file, MPR_variable variab
 }
 
 
+MPR_return_code MPR_set_current_variable_index(MPR_file file, int variable_index)
+{
+	if (!file)
+		return MPR_err_file;
+
+	if (variable_index < 0)
+		return MPR_err_file;
+
+	if (file->variable_index_tracker >= file->mpr->variable_count)
+		return MPR_err_file;
+
+	file->variable_index_tracker = variable_index;
+	file->local_variable_count = 1;
+	file->local_variable_index = variable_index;
+
+	return MPR_success;
+}
+
+
+MPR_return_code MPR_get_current_variable(MPR_file file, MPR_variable variable)
+{
+	if (!file)
+		return MPR_err_file;
+
+	if (file->variable_index_tracker >= file->mpr->variable_count)
+		return MPR_err_file;
+
+	(*variable) = file->variable[file->variable_index_tracker];
+
+	return MPR_success;
+}
+
+
 MPR_return_code MPR_variable_buffer_cleanup(MPR_file file, int svi, int evi)
 {
 	for (int v = svi; v < evi; v++)

@@ -339,8 +339,8 @@ MPR_return_code MPR_basic_metatda_parse(char* file_name, MPR_file* file)
 		FILE *fp = fopen(file_name, "r");
 	    if (fp == NULL)
 	    {
-	      fprintf(stderr, "Error Opening %s\n", file_name);
-	      return MPR_err_file;
+	    	fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+	    	return MPR_err_file;
 	    }
 		char line [512];
 		char* pch;

@@ -42,6 +42,10 @@ MPR_return_code MPR_variable_create(char* variable_name, unsigned int bits_per_s
 
 MPR_return_code MPR_append_and_write_variable(MPR_file file, MPR_variable variable);
 
+MPR_return_code MPR_set_current_variable_index(MPR_file file, int variable_index);
+
+MPR_return_code MPR_get_current_variable(MPR_file file, MPR_variable variable);
+
 MPR_return_code MPR_variable_write_data(MPR_variable variable, const void* buffer);
 
 MPR_return_code MPR_variable_buffer_cleanup(MPR_file file, int svi, int evi);

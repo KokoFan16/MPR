@@ -12,17 +12,19 @@
 char input_file[512]; /* input file name */
 int current_ts = 0;   /* the time step index to read */
 int variable_index = 0;
-int start_index[NUM_DIMS];
+int global_offset[NUM_DIMS];
+MPR_variable variable;
 
 static void parse_args(int argc, char **argv);
 static void set_pidx_file(int ts);
+static void set_pidx_variable_and_create_buffer();
 
 
 char *usage = "Serial Usage: ./raw_read -g 16x16x16 -l 16x16x16 -s 0x0x0 -i input_file_name -t 0 -v 0\n"
                     "Parallel Usage: mpirun -n 8 ./raw_read -g 16x16x16 -l 8x8x8 -s 0x0x0 -i input_file_name -t 0 -v 0\n"
 					"  -g: the global box to read\n"
 					"  -l: the local chunk per process to read\n"
-					"  -s: the start index of global box to read\n"
+					"  -s: the global offset to read\n"
 					"  -i: input file name\n"
 					"  -t: time step index to read\n"
 					"  -v: variable index to read\n";
@@ -33,15 +35,18 @@ int main(int argc, char **argv)
 
 	parse_args(argc, argv);  /* Parse input arguments and initialize */
 
-	/* Initialize per-process local domain */
-	calculate_per_process_offsets();
+	check_args();  	/* Check arguments */
 
-	create_mpr_point_and_access();
+	calculate_per_process_offsets();  /* Initialize per-process local domain */
 
-//	MPR_create_access(&p_access); /* create MPI access */
-//	MPR_set_mpi_access(p_access, MPI_COMM_WORLD);
+	create_mpr_point_and_access(); 	/* Create MPI access and point */
 
-	set_pidx_file(current_ts);
+	set_pidx_file(current_ts); 	/* Set file structure of current time step */
+
+	set_pidx_variable_and_create_buffer();
+
+//	printf("%d: %dx%dx%d\n", rank, local_box_offset[0], local_box_offset[1], local_box_offset[2]);
+
 
 	if (MPR_close_access(p_access) != MPR_success) /* close access */
 		terminate_with_error_msg("MPR_close_access");
@@ -74,8 +79,8 @@ static void parse_args(int argc, char **argv)
 	    		break;
 
 	    	case('s'): // local dimension
-				if ((sscanf(optarg, "%dx%dx%d", &start_index[0], &start_index[1], &start_index[2]) == EOF) ||
-				(start_index[0] < 0 || start_index[1] < 0 || start_index[2] < 0))
+				if ((sscanf(optarg, "%dx%dx%d", &global_offset[0], &global_offset[1], &global_offset[2]) == EOF) ||
+				(global_offset[0] < 0 || global_offset[1] < 0 || global_offset[2] < 0))
 					terminate_with_error_msg("Invalid local dimension\n%s", usage);
 	    		break;
 
@@ -100,9 +105,22 @@ static void parse_args(int argc, char **argv)
 	}
 }
 
+
 static void set_pidx_file(int ts)
 {
-	MPR_file_open(input_file, p_access, &file);
+	if (MPR_file_open(input_file, p_access, &file) != MPR_success)
+		terminate_with_error_msg("MPR file open failed.\n");
 
 	MPR_set_current_time_step(file, ts);   /* Set the current timestep */
+}
+
+static void set_pidx_variable_and_create_buffer()
+{
+	if (variable_index >= variable_count)
+		terminate_with_error_msg("Variable index more than variable count\n");
+
+	if (MPR_set_current_variable_index(file, variable_index) != MPR_success)
+		terminate_with_error_msg("MPR_set_current_variable_index\n");
+
+	MPR_get_current_variable(file, &variable);
 }
