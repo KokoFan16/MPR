@@ -34,6 +34,7 @@ struct mpr_dataset_struct
 	int patch_box[MPR_MAX_DIMENSIONS];                /* Patch box */
 
 	int origin_global_box[MPR_MAX_DIMENSIONS];        /* (only for read) The global box of the dataset */
+	int global_offset[MPR_MAX_DIMENSIONS];            /* (only for read) The start offset to read */
 
 	int compression_type;                             /* Compression Mode */
 	float compression_param;                          /* Compression parameter */

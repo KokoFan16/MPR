@@ -113,7 +113,9 @@ static void set_pidx_file(int ts)
 
 	MPR_set_current_time_step(file, ts);   /* Set the current timestep */
 
-//	MPR_check_bouding_box();
+	MPR_set_global_offset(file, global_offset);
+
+	MPR_check_bouding_box(file);
 }
 
 static void set_pidx_variable_and_create_buffer()

@@ -97,6 +97,15 @@ MPR_return_code MPR_get_io_mode(MPR_file file, enum MPR_io_type* io_type)
 }
 
 
+MPR_return_code MPR_set_global_offset(MPR_file file, int* offset)
+{
+	if (!file)
+		return MPR_err_file;
 
+	if (offset != NULL)
+		memcpy(file->mpr->global_offset, offset, MPR_MAX_DIMENSIONS * sizeof(int));
+
+	return MPR_success;
+}
 
 
