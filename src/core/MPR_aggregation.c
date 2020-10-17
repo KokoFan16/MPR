@@ -219,7 +219,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 		{
 			local_patch->bounding_box[i] = min_xyz[i];
-			local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = max_xyz[i];
+			local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = max_xyz[i] + 1;
 		}
 	}
 	return MPR_success;
