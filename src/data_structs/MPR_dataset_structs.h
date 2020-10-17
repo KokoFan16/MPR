@@ -45,6 +45,9 @@ struct mpr_dataset_struct
 	int is_aggregator;                                /* If the rank is a aggregator */
 
 	int wavelet_trans_num;                            /* The maximum wavelet level based on the brick size */
+
+	int open_file_num;                                /* (only for read) The number of files which need to be opened by each process*/
+	int* open_file_ids;                               /* (only for read) The file id which need to be opened */
 };
 typedef struct mpr_dataset_struct* MPR_dataset;
 

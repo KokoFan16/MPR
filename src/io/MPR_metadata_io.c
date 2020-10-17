@@ -9,6 +9,8 @@
 #include <MPR.h>
 #include <errno.h>
 
+static int intersect_patch(int* a_size, int* a_offset, int* b_size, int* b_offset);
+
 MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 {
 	char* file_name = file->mpr->filename;
@@ -528,5 +530,63 @@ MPR_return_code MPR_basic_metatda_parse(char* file_name, MPR_file* file)
 		fclose(fp);
 	}
 	return MPR_success;
+}
+
+
+MPR_return_code MPR_bounding_box_metatda_parse(char* file_name, MPR_file file)
+{
+	int count = file->mpr->out_file_num * 7; /* The meta-data count */
+	int* buffer = malloc(count * sizeof(int));  /* buffer for bounding box */
+
+	FILE * fp = fopen(file_name, "r"); /* Open bounding box meta-data file */
+	if (fp == NULL)
+	{
+    	fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+    	return MPR_err_file;
+	}
+	int read_size = fread(buffer, sizeof(int), count, fp); /* Read data */
+	if (read_size != count)
+	{
+    	fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+    	return MPR_err_file;
+	}
+	fclose(fp);
+
+	int file_num = 0;  /* The number files which need to be opened for each process */
+	int file_id[file->mpr->out_file_num]; /* The id of files which need to be opened for each process */
+
+	int local_offset[MPR_MAX_DIMENSIONS]; /* The real offset to read in origin dataset */
+	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++) /* The current offset plus the global offset to read */
+		local_offset[i] = file->mpr->local_offset[i] + file->mpr->global_offset[i];
+
+	/* Loop the bounding box of each file */
+	for (int i = 0; i < file->mpr->out_file_num; i++)
+	{
+		/* bounding offset and size of each file */
+		int bounding_offset[MPR_MAX_DIMENSIONS] = {buffer[i*7+1] * file->mpr->patch_box[0], buffer[i*7+2]* file->mpr->patch_box[1], buffer[i*7+3] * file->mpr->patch_box[2]};
+		int bounding_size[MPR_MAX_DIMENSIONS] = {(buffer[i*7+4] - buffer[i*7+1]) * file->mpr->patch_box[0], (buffer[i*7+5] - buffer[i*7+2]) * file->mpr->patch_box[1], (buffer[i*7+6] - buffer[i*7+3]) * file->mpr->patch_box[2]};
+		/* Check whether need to open the current file */
+		int ret = intersect_patch(bounding_size, bounding_offset, file->mpr->local_box, local_offset);
+		if (ret)
+			file_id[file_num++] = buffer[i*7];
+	}
+	free(buffer);
+
+	file->mpr->open_file_num = file_num;
+	file->mpr->open_file_ids = malloc(file_num * sizeof(int));
+	memcpy(file->mpr->open_file_ids, file_id, file_num * sizeof(int));
+
+	return MPR_success;
+}
+
+
+static int intersect_patch(int* a_size, int* a_offset, int* b_size, int* b_offset)
+{
+	int d = 0, check_bit = 0;
+	for (d = 0; d < MPR_MAX_DIMENSIONS; d++)
+	{
+		check_bit = check_bit || (a_offset[d] + a_size[d] - 1) < b_offset[d] || (b_offset[d] + b_size[d] - 1) < a_offset[d];
+	}
+	return !(check_bit);
 }
 
