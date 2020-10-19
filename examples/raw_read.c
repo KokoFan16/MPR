@@ -12,12 +12,14 @@
 char input_file[512]; /* input file name */
 int current_ts = 0;   /* the time step index to read */
 int variable_index = 0;
+int values_per_sample = 0;
+int bits_per_sample = 0;
 int global_offset[NUM_DIMS];
 MPR_variable variable;
 
 static void parse_args(int argc, char **argv);
-static void set_pidx_file(int ts);
-static void set_pidx_variable_and_create_buffer();
+static void set_mpr_file(int ts);
+static void set_mpr_variable_and_create_buffer();
 
 
 char *usage = "Serial Usage: ./raw_read -g 16x16x16 -l 16x16x16 -s 0x0x0 -i input_file_name -t 0 -v 0\n"
@@ -41,12 +43,11 @@ int main(int argc, char **argv)
 
 	create_mpr_point_and_access(); 	/* Create MPI access and point */
 
-	set_pidx_file(current_ts); 	/* Set file structure of current time step */
+	set_mpr_file(current_ts); 	/* Set file structure of current time step */
 
-	set_pidx_variable_and_create_buffer();
+	set_mpr_variable_and_create_buffer();
 
-//	printf("%d: %dx%dx%d\n", rank, file->mpr->local_offset[0], file->mpr->local_offset[1], file->mpr->local_offset[2]);
-
+	MPR_close(file);
 
 	if (MPR_close_access(p_access) != MPR_success) /* close access */
 		terminate_with_error_msg("MPR_close_access");
@@ -106,7 +107,7 @@ static void parse_args(int argc, char **argv)
 }
 
 
-static void set_pidx_file(int ts)
+static void set_mpr_file(int ts)
 {
 	if (MPR_file_open(input_file, MPR_MODE_RDONLY, p_access, global_size, local_size, local_offset, &file) != MPR_success)
 		terminate_with_error_msg("MPR file open failed.\n");
@@ -115,10 +116,10 @@ static void set_pidx_file(int ts)
 
 	MPR_set_global_offset(file, global_offset);
 
-	MPR_check_bouding_box(file);
+	MPR_check_bouding_box(file); /* check which files need to be opened */
 }
 
-static void set_pidx_variable_and_create_buffer()
+static void set_mpr_variable_and_create_buffer()
 {
 	if (variable_index >= variable_count)
 		terminate_with_error_msg("Variable index more than variable count\n");
@@ -127,4 +128,6 @@ static void set_pidx_variable_and_create_buffer()
 		terminate_with_error_msg("MPR_set_current_variable_index\n");
 
 	MPR_get_current_variable(file, &variable);
+
+	MPR_values_per_datatype(variable->type_name, &values_per_sample, &bits_per_sample);
 }

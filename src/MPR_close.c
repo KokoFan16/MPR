@@ -30,6 +30,15 @@ MPR_return_code MPR_flush(MPR_file file)
 			return MPR_err_io;
 		}
 	}
+
+	if (file->flags == MPR_MODE_RDONLY)
+	{
+		if (MPR_read(file, lvi, (lvi + lvc)) != MPR_success)
+		{
+			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+			return MPR_err_io;
+		}
+	}
 	file->time->total_end = MPI_Wtime(); /* the end time for the program */
 
 	MPR_timing_output(file, lvi, (lvi + lvc));
