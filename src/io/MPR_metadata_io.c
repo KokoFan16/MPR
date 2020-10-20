@@ -251,7 +251,7 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 		{
 			meta_count += file->variable[svi]->local_patch->agg_patch_count; /* the number of patches per file */
 			meta_buffer = malloc(meta_count * sizeof(int)); /* allocate memory */
-			memcpy(meta_buffer, &file->variable[svi]->local_patch->agg_patch_count, sizeof(int));
+			memcpy(meta_buffer, &meta_count, sizeof(int));
 			for (int i = 1; i < meta_count; i++) /* the patch id */
 				memcpy(&meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->agg_patch_id_array[i-1], sizeof(int));
 		}
@@ -576,6 +576,77 @@ MPR_return_code MPR_bounding_box_metatda_parse(char* file_name, MPR_file file)
 	file->mpr->open_file_ids = malloc(file_num * sizeof(int));
 	memcpy(file->mpr->open_file_ids, file_id, file_num * sizeof(int));
 
+	return MPR_success;
+}
+
+
+MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, int var_id)
+{
+	int* buffer = malloc(sizeof(int));  /* buffer for file meta-data */
+
+	FILE * fp = fopen(file_name, "r"); /* Open bounding box meta-data file */
+	if (fp == NULL)
+	{
+    	fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+    	return MPR_err_file;
+	}
+	fread(buffer, sizeof(int), 1, fp); /* Read first data (the size of meta-data) */
+	int count = buffer[0]; /* get the size of meta-data*/
+	fseek(fp, 0L, SEEK_SET);
+
+	buffer = realloc(buffer, count * sizeof(int));
+	int read_count = fread(buffer, sizeof(int), count, fp); /* Read all the meta-data */
+	if (read_count != count)
+	{
+    	fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+    	return MPR_err_file;
+	}
+	fclose(fp);
+
+	int local_offset_xyz[MPR_MAX_DIMENSIONS]; /* The real offset to read in origin dataset */
+	int local_end_xyz[MPR_MAX_DIMENSIONS];    /* The local end coordinate */
+	int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* The patch count in each dimension */
+	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++) /* The current offset plus the global offset to read */
+	{
+		local_offset_xyz[i] = (file->mpr->local_offset[i] + file->mpr->global_offset[i]);
+		local_end_xyz[i] = ceil((local_offset_xyz[i] + file->mpr->local_box[i]) / (float)file->mpr->patch_box[i]);
+		local_offset_xyz[i] /= file->mpr->patch_box[i];
+		patch_count_xyz[i] = ceil((float)file->mpr->origin_global_box[i] / file->mpr->patch_box[i]);
+	}
+
+	/* Obtain the required patches' id for each process */
+	for (int k = local_offset_xyz[2]; k < local_end_xyz[2]; k++)
+	{
+		for (int j = local_offset_xyz[1]; j < local_end_xyz[1]; j++)
+		{
+			for (int i = local_offset_xyz[0]; i < local_end_xyz[0]; i++)
+			{
+				int patch_id = k * patch_count_xyz[0] * patch_count_xyz[1] + j * patch_count_xyz[0] + i;
+				printf("%d %d\n", file->comm->simulation_rank, patch_id);
+			}
+		}
+	}
+
+//	printf("%d: %dx%dx%d\n", file->comm->simulation_rank, patch_count_xyz[0], patch_count_xyz[1], patch_count_xyz[2]);
+
+//	printf("%d: %dx%dx%d\n", file->comm->simulation_rank, local_offset_xyz[0], local_offset_xyz[1], local_offset_xyz[2]);
+//	printf("%d: %dx%dx%d\n", file->comm->simulation_rank, local_end_xyz[0], local_end_xyz[1], local_end_xyz[2]);
+//	int MODE = file->mpr->io_type; /* write IO mode */
+//	if (MODE == MPR_RAW_IO || MODE == MPR_MUL_RES_IO) /* No compression involves */
+//	{
+//
+//	}
+
+//	if (file->comm->simulation_rank == 0)
+//	{
+//		for (int i = 0; i < count; i++)
+//		{
+//			printf("%d\n", buffer[i]);
+//		}
+//	}
+
+//	printf("%d %s\n", file->comm->simulation_rank, file_name);
+	free(buffer);
 	return MPR_success;
 }
 

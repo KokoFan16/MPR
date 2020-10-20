@@ -111,6 +111,9 @@ MPR_return_code MPR_get_current_variable(MPR_file file, MPR_variable* variable)
 
 	(*variable) = file->variable[file->variable_index_tracker];
 
+	(*variable)->local_patch = malloc(sizeof(*((*variable)->local_patch)));
+	memset((*variable)->local_patch, 0, sizeof (*((*variable)->local_patch)));
+
 	return MPR_success;
 }
 

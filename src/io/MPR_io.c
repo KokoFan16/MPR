@@ -62,19 +62,19 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 }
 
 
-MPR_return_code MPR_read(MPR_file file, int svi, int evi)
+MPR_return_code MPR_read(MPR_file file, int svi)
 {
 	int MODE = file->mpr->io_type;
 
 	int ret = 0;
 	if (MODE == MPR_RAW_IO)
-		ret = MPR_raw_read(file, svi, evi);
+		ret = MPR_raw_read(file, svi);
 	else if (MODE == MPR_MUL_RES_IO)
-		ret = MPR_multi_res_read(file, svi, evi);
+		ret = MPR_multi_res_read(file, svi);
 	else if (MODE == MPR_MUL_PRE_IO)
-		ret = MPR_multi_pre_read(file, svi, evi);
+		ret = MPR_multi_pre_read(file, svi);
 	else if (MODE == MPR_MUL_RES_PRE_IO)
-		ret = MPR_multi_pre_res_read(file, svi, evi);
+		ret = MPR_multi_pre_res_read(file, svi);
 	else
 		fprintf(stderr, "Unsupported MPR Mode.\n");
 
