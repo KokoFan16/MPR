@@ -48,6 +48,8 @@ struct mpr_dataset_struct
 
 	int open_file_num;                                /* (only for read) The number of files which need to be opened by each process*/
 	int* open_file_ids;                               /* (only for read) The file id which need to be opened */
+
+	int file_metadata_count;                          /* (only for read) The meta-data count of file */
 };
 typedef struct mpr_dataset_struct* MPR_dataset;
 

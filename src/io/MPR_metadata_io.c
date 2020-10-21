@@ -603,6 +603,8 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 	}
 	fclose(fp);
 
+	file->mpr->file_metadata_count = meta_count;
+
 	int local_offset_xyz[MPR_MAX_DIMENSIONS]; /* The real offset to read in origin dataset */
 	int local_end_xyz[MPR_MAX_DIMENSIONS];    /* The local end coordinate */
 	int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* The patch count in each dimension */
@@ -649,6 +651,7 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 			}
 		}
 	}
+	local_patch->agg_patch_count = required_patch_count;
 
 	free(buffer);
 	return MPR_success;

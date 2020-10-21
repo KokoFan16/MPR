@@ -53,7 +53,33 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 	{
 		sprintf(file_name, "%s/time%09d/%d", file->mpr->filename, file->mpr->current_time_step, file->mpr->open_file_ids[i]);
 		MPR_file_related_metadata_parse(file_name, file, svi);  /* parse file related meta-data */
+
+		FILE * fp = fopen(file_name, "r"); /* Open bounding box meta-data file */
+		if (fp == NULL)
+		{
+			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+			return MPR_err_file;
+		}
+
+		int metadata_size = file->mpr->file_metadata_count * sizeof(int);
+
+		int required_patch_count = file->variable[svi]->local_patch->agg_patch_count;
+		MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
+		local_patch->patch = malloc(sizeof(MPR_patch*)*required_patch_count); /* Local patch array per variable */
+
+		for (int p = 0; p < required_patch_count; p++)
+		{
+			local_patch->patch[p] = (MPR_patch)malloc(sizeof(*local_patch->patch[p]));/* Initialize patch pointer */
+			local_patch->patch[p]->global_id = local_patch->agg_patch_id_array[p];
+			local_patch->patch[p]->size = local_patch->agg_patch_size[p];
+		}
+
+		fclose(fp);
+
+		printf("%d: %d\n", file->comm->simulation_rank, file->variable[svi]->local_patch->agg_patch_count);
 	}
+
+
 
 	return MPR_success;
 }
