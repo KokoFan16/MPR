@@ -67,16 +67,12 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
 
-	MPR_local_patch local_patch = file->variable[svi]->local_patch;
-	local_patch->agg_patch_id_array = malloc(file->mpr->total_patches_num * sizeof(int));
-	local_patch->agg_patch_disps = malloc(file->mpr->total_patches_num  * sizeof(int));
-	local_patch->agg_patch_size = malloc(file->mpr->total_patches_num  * sizeof(int));
+	MPR_check_required_patches(file, svi); /* convert read box to patch ids */
 
-	int required_patch_count = 0; /* the required patch count for each process */
 	for (int i = 0; i < file_num; i++)
 	{
 		sprintf(file_name, "%s/time%09d/%d", file->mpr->filename, file->mpr->current_time_step, file->mpr->open_file_ids[i]);
-		MPR_file_related_metadata_parse(file_name, file, svi, &required_patch_count);  /* parse file related meta-data */
+		MPR_file_related_metadata_parse(file_name, file, svi);  /* parse file related meta-data */
 
 //		FILE * fp = fopen(file_name, "r"); /* Open bounding box meta-data file */
 //		if (fp == NULL)
@@ -103,9 +99,40 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 //		}
 //		fclose(fp);
 	}
-	local_patch->agg_patch_count = required_patch_count;
 
-	printf("%d\n", required_patch_count);
+	return MPR_success;
+}
+
+MPR_return_code MPR_check_required_patches(MPR_file file, int svi)
+{
+	MPR_local_patch local_patch = file->variable[svi]->local_patch;
+	local_patch->agg_patch_id_array = malloc(file->mpr->total_patches_num * sizeof(int));
+
+	int local_offset_xyz[MPR_MAX_DIMENSIONS]; /* The real offset to read in origin dataset */
+	int local_end_xyz[MPR_MAX_DIMENSIONS];    /* The local end coordinate */
+	int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* The patch count in each dimension */
+	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++) /* The current offset plus the global offset to read */
+	{
+		local_offset_xyz[i] = (file->mpr->local_offset[i] + file->mpr->global_offset[i]);
+		local_end_xyz[i] = ceil((local_offset_xyz[i] + file->mpr->local_box[i]) / (float)file->mpr->patch_box[i]);
+		local_offset_xyz[i] /= file->mpr->patch_box[i];
+		patch_count_xyz[i] = ceil((float)file->mpr->origin_global_box[i] / file->mpr->patch_box[i]);
+	}
+
+	int required_patch_count = 0;
+	/* Obtain the required patches' id for each process */
+	for (int k = local_offset_xyz[2]; k < local_end_xyz[2]; k++)
+	{
+		for (int j = local_offset_xyz[1]; j < local_end_xyz[1]; j++)
+		{
+			for (int i = local_offset_xyz[0]; i < local_end_xyz[0]; i++)
+			{
+				int patch_id = k * patch_count_xyz[0] * patch_count_xyz[1] + j * patch_count_xyz[0] + i;
+				local_patch->agg_patch_id_array[required_patch_count++] = patch_id;
+			}
+		}
+	}
+	local_patch->agg_patch_count = required_patch_count;
 
 	return MPR_success;
 }
