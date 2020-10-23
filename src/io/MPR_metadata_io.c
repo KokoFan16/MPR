@@ -580,7 +580,7 @@ MPR_return_code MPR_bounding_box_metatda_parse(char* file_name, MPR_file file)
 }
 
 
-MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, int var_id)
+MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, int var_id, int* required_patch_count)
 {
 	int* buffer = malloc(sizeof(int));  /* buffer for file meta-data */
 
@@ -632,10 +632,7 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 	}
 
 	MPR_local_patch local_patch = file->variable[var_id]->local_patch;
-	int required_patch_count = 0;
-	local_patch->agg_patch_id_array = malloc(patch_count * sizeof(int));
-	local_patch->agg_patch_disps = malloc(patch_count * sizeof(int));
-	local_patch->agg_patch_size = malloc(patch_count * sizeof(int));
+
 	/* Obtain the required patches' id for each process */
 	for (int k = local_offset_xyz[2]; k < local_end_xyz[2]; k++)
 	{
@@ -644,14 +641,14 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 			for (int i = local_offset_xyz[0]; i < local_end_xyz[0]; i++)
 			{
 				int patch_id = k * patch_count_xyz[0] * patch_count_xyz[1] + j * patch_count_xyz[0] + i;
-				local_patch->agg_patch_id_array[required_patch_count] = patch_id;
-				local_patch->agg_patch_disps[required_patch_count] = patch_sizes[patch_id];
-				local_patch->agg_patch_size[required_patch_count] = patch_size;
-				required_patch_count++;
+				printf("%d\n", patch_id);
+				local_patch->agg_patch_id_array[(*required_patch_count)] = patch_id;
+				local_patch->agg_patch_disps[(*required_patch_count)] = patch_sizes[patch_id];
+				local_patch->agg_patch_size[(*required_patch_count)] = patch_size;
+				(*required_patch_count)++;
 			}
 		}
 	}
-	local_patch->agg_patch_count = required_patch_count;
 
 	free(buffer);
 	return MPR_success;
