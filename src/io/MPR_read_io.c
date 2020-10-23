@@ -71,13 +71,26 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 		{
 			local_patch->patch[p] = (MPR_patch)malloc(sizeof(*local_patch->patch[p]));/* Initialize patch pointer */
 			local_patch->patch[p]->global_id = local_patch->agg_patch_id_array[p];
-			local_patch->patch[p]->size = local_patch->agg_patch_size[p];
+			local_patch->patch[p]->patch_buffer_size = local_patch->agg_patch_size[p] * sizeof(int);
+			local_patch->patch[p]->buffer = malloc(local_patch->patch[p]->patch_buffer_size);
+			int offset = local_patch->agg_patch_disps[p] + metadata_size;
+//			printf("%d\n", local_patch->agg_patch_disps[p]);
+			fseek(fp,  offset, SEEK_SET);
+			fread(local_patch->patch[p]->buffer, sizeof(char), local_patch->patch[p]->patch_buffer_size, fp);
 		}
-
 		fclose(fp);
-
-		printf("%d: %d\n", file->comm->simulation_rank, file->variable[svi]->local_patch->agg_patch_count);
 	}
+
+//	if (file->comm->simulation_rank == 0)
+//	{
+////		printf("%d\n", file->variable[svi]->local_patch->patch[0]->global_id);
+//		for (int i = 0; i < 512; i++)
+//		{
+//			float a;
+//			memcpy(&a, &file->variable[svi]->local_patch->patch[0]->buffer[i*sizeof(float)], sizeof(float));
+//			printf("%f\n", a);
+//		}
+//	}
 
 
 
