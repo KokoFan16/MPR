@@ -64,42 +64,54 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 	memset(file_name, 0, PATH_MAX * sizeof(*file_name));
 
 	int file_num = file->mpr->open_file_num; /* the number of files need to be opened for each process */
-
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
 
 	MPR_check_required_patches(file, svi); /* convert read box to patch ids */
 
+	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
+	int required_patch_count = local_patch->agg_patch_count;
+	local_patch->patch = malloc(sizeof(MPR_patch*) * required_patch_count); /* Local patch array per variable */
+
+	int* patches_offset = malloc(file->mpr->total_patches_num * sizeof(int)); /* patch offset array */
+	int* patches_size = malloc(file->mpr->total_patches_num * sizeof(int)); /* patch size array */
+	int* patches_subbands = malloc(file->mpr->total_patches_num * (file->mpr->wavelet_trans_num * 7 + 1) * sizeof(int)); /* patch sub-bands size array */
+
 	for (int i = 0; i < file_num; i++)
 	{
 		sprintf(file_name, "%s/time%09d/%d", file->mpr->filename, file->mpr->current_time_step, file->mpr->open_file_ids[i]);
-		MPR_file_related_metadata_parse(file_name, file, svi);  /* parse file related meta-data */
+		MPR_file_related_metadata_parse(file_name, file, svi, patches_offset, patches_size, patches_subbands);  /* parse file related meta-data */
 
-//		FILE * fp = fopen(file_name, "r"); /* Open bounding box meta-data file */
-//		if (fp == NULL)
-//		{
-//			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//			return MPR_err_file;
-//		}
-//
-//		int metadata_size = file->mpr->file_metadata_count * bytes;
-//
-//		int required_patch_count = file->variable[svi]->local_patch->agg_patch_count;
-//		MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
-//		local_patch->patch = malloc(sizeof(MPR_patch*)*required_patch_count); /* Local patch array per variable */
-//
-//		for (int p = 0; p < required_patch_count; p++)
-//		{
-//			local_patch->patch[p] = (MPR_patch)malloc(sizeof(*local_patch->patch[p]));/* Initialize patch pointer */
-//			local_patch->patch[p]->global_id = local_patch->agg_patch_id_array[p];
-//			local_patch->patch[p]->patch_buffer_size = local_patch->agg_patch_size[p] * bytes;
-//			local_patch->patch[p]->buffer = malloc(local_patch->patch[p]->patch_buffer_size);
-//			int offset = local_patch->agg_patch_disps[p] + metadata_size;
-//			fseek(fp,  offset, SEEK_SET);
-//			fread(local_patch->patch[p]->buffer, sizeof(char), local_patch->patch[p]->patch_buffer_size, fp);
-//		}
-//		fclose(fp);
+		FILE * fp = fopen(file_name, "r"); /* Open bounding box meta-data file */
+		if (fp == NULL)
+		{
+			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+			return MPR_err_file;
+		}
+
+		for (int p = 0; p < required_patch_count; p++)
+		{
+			int global_id = local_patch->agg_patch_id_array[p];
+			if (patches_offset[global_id] != -1)
+			{
+				local_patch->patch[p] = (MPR_patch)malloc(sizeof(*local_patch->patch[p]));/* Initialize patch pointer */
+				local_patch->patch[p]->global_id = global_id;
+				local_patch->patch[p]->patch_buffer_size = patches_size[global_id];
+				local_patch->patch[p]->buffer = malloc(local_patch->patch[p]->patch_buffer_size);
+
+				fseek(fp,  patches_offset[global_id], SEEK_SET);  /* set offset */
+				int read_size = fread(local_patch->patch[p]->buffer, sizeof(char), local_patch->patch[p]->patch_buffer_size, fp);
+				if (read_size != local_patch->patch[p]->patch_buffer_size)
+				{
+					fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+					return MPR_err_file;
+				}
+			}
+		}
+		fclose(fp); /* close file */
 	}
-
+	free(patches_offset);
+	free(patches_size);
+	free(patches_subbands);
 	return MPR_success;
 }
 

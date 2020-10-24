@@ -580,8 +580,11 @@ MPR_return_code MPR_bounding_box_metatda_parse(char* file_name, MPR_file file)
 }
 
 
-MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, int var_id)
+MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, int var_id, int* patches_offset, int* patches_size, int* patches_subbands)
 {
+	memset(patches_offset, -1, file->mpr->total_patches_num * sizeof(int));
+	memset(patches_size, -1, file->mpr->total_patches_num * sizeof(int));
+
 	int* buffer = malloc(sizeof(int));  /* buffer for file meta-data */
 
 	FILE * fp = fopen(file_name, "r"); /* Open bounding box meta-data file */
@@ -603,25 +606,23 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 	}
 	fclose(fp);
 	file->mpr->file_metadata_count = meta_count;
-//
-//	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
-//
-//	int patch_sizes[file->mpr->total_patches_num];
-//	memset(patch_sizes, -1, file->mpr->total_patches_num * sizeof(int));
-//	int patch_count = 0;
-//
-//	int MODE = file->mpr->io_type; /* write IO mode */
-//	if (MODE == MPR_RAW_IO || MODE == MPR_MUL_RES_IO) /* No compression involves */
-//	{
-//		patch_count = meta_count - 1;
-//		int var_size = var_id * patch_count * patch_size * sizeof(int); /* The size of variable */
-//		for (int i = 0; i < patch_count; i++)
-//			patch_sizes[buffer[(i + 1)]] = i * patch_size * sizeof(int) + var_size;
-//	}
 
-//	MPR_local_patch local_patch = file->variable[var_id]->local_patch;
-//
+	int bytes = file->variable[var_id]->vps * file->variable[var_id]->bpv/8; /* bytes per data */
+	int metadata_size = file->mpr->file_metadata_count * bytes; /* the size of meta-data */
 
+	int patch_count = 0; /* patch count of each process */
+	int MODE = file->mpr->io_type; /* write IO mode */
+	if (MODE == MPR_RAW_IO || MODE == MPR_MUL_RES_IO) /* No compression involves */
+	{
+		int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
+		patch_count = meta_count - 1;
+		int var_size = var_id * patch_count * patch_size; /* The size of variable */
+		for (int i = 0; i < patch_count; i++)
+		{
+			patches_offset[buffer[(i + 1)]] = metadata_size + var_size + i * patch_size;
+			patches_size[buffer[(i + 1)]] = patch_size;
+		}
+	}
 
 	free(buffer);
 	return MPR_success;
