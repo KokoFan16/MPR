@@ -274,7 +274,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 		MPI_Irecv(local_buffer, 1, recv_type, file->comm->simulation_rank, i, file->comm->simulation_comm, &req[req_id]);
 		req_id++;
 
-		MPI_Isend(local_patch->patch[i]->buffer, local_patch->patch[i]->patch_buffer_size, MPI_BYTE, file->comm->simulation_rank, i,
+		MPI_Isend(local_patch->patch[i]->buffer, patch_size, MPI_BYTE, file->comm->simulation_rank, i,
 				file->comm->simulation_comm, &req[req_id]);
 		req_id++;
 	}
@@ -296,17 +296,17 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	MPI_Isend(local_buffer, 1, local_div_type, file->comm->simulation_rank, 0, file->comm->simulation_comm, &req2[1]);
 	MPI_Waitall(2, req2, stat2);
 
-	if (file->comm->simulation_rank == 0)
-	{
-		for (int i = 0; i < local_size/bytes; i++)
-		{
-			float a;
-			memcpy(&a, &local_buffer[i*4], 4);
-			printf("%f\n", a);
-		}
-	}
-
 	free(local_buffer);
+
+//	if (file->comm->simulation_rank == 0)
+//	{
+//		for (int i = 0; i < local_size/4; i++)
+//		{
+//			float a;
+//			memcpy(&a, &local_patch->buffer[i*4], 4);
+//			printf("%f\n", a);
+//		}
+//	}
 
 	return MPR_success;
 }

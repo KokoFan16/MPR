@@ -145,5 +145,11 @@ static void MPR_timing_output(MPR_file file, int svi, int evi)
 			if (total_time == max_total_time)
 				fprintf(stderr, "MAX_%d: [%f] >= [meta %f read %f wave %f rst %f]\n", rank, total_time, parse_bound, read_time, rst_time, rst_time);
 		}
+		else if (MODE == MPR_MUL_PRE_IO)
+		{
+			fprintf(stderr,"Rank_%d: [%f] >= [meta %f read %f zfp %f rst %f]\n", rank, total_time, parse_bound, read_time, comp_time, rst_time);
+			if (total_time == max_total_time)
+				fprintf(stderr, "MAX_%d: [%f] >= [meta %f read %f zfp %f rst %f]\n", rank, total_time, parse_bound, read_time, comp_time, rst_time);
+		}
 	}
 }

@@ -137,6 +137,7 @@ MPR_return_code MPR_ZFP_decompression_perform(MPR_file file, int svi)
 
 	for (int p = 0; p < local_patch->patch_count; p++)
 	{
+//		printf("%d %d\n", file->comm->simulation_rank, local_patch->patch[p]->global_id);
 		MPR_patch reg_patch = local_patch->patch[p];
 		MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 		memset(output, 0, sizeof (*output)); /* Initialization */
