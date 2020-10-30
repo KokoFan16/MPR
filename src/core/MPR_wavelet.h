@@ -10,4 +10,6 @@
 
 MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi);
 
+MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi);
+
 #endif /* SRC_CORE_MPR_WAVELET_H_ */

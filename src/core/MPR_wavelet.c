@@ -11,10 +11,11 @@
 #include "../MPR_inc.h"
 
 static void wavelet_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num);
-static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, int* patch_box, char* type_name);
-static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf, int* patch_box, int trans_num, int bytes);
-static void MPR_wavelet_reorg_helper(unsigned char* buf, unsigned char* reg_buf, int step, int* index, int sk, int sj, int si, int* patch_box, int bytes);
+static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, int* patch_box, char* type_name, int mode);
+static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf, int* patch_box, int trans_num, int bytes, int mode);
+static void MPR_wavelet_reorg_helper(unsigned char* buf, unsigned char* reg_buf, int step, int* index, int sk, int sj, int si, int* patch_box, int bytes, int mode);
 
+static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num);
 
 MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 {
@@ -45,7 +46,7 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 //			local_patch->patch[i]->subband_num = subband_num;
 			wavelet_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[v]->type_name, trans_num);
 			unsigned char* reg_buffer = malloc(local_patch->patch[i]->patch_buffer_size);
-			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes);
+			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes, 0);
 			memcpy(local_patch->patch[i]->buffer, reg_buffer, local_patch->patch[i]->patch_buffer_size);
 			free(reg_buffer);
 		}
@@ -55,6 +56,34 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 }
 
 
+
+MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
+{
+	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
+
+	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
+	for (int i = 0; i < local_patch->patch_count; i++)
+	{
+		unsigned char* reg_buffer = malloc(local_patch->patch[i]->patch_buffer_size);
+		MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, file->mpr->wavelet_trans_num, bytes, 1);
+		memcpy(local_patch->patch[i]->buffer, reg_buffer, local_patch->patch[i]->patch_buffer_size);
+		free(reg_buffer);
+		wavelet_decode_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[svi]->type_name, file->mpr->wavelet_trans_num);
+	}
+
+	if (file->comm->simulation_rank == 0)
+	{
+		for (int i = 0; i < 512; i++)
+		{
+			float a;
+			memcpy(&a, &local_patch->patch[0]->buffer[i*sizeof(float)], sizeof(float));
+			printf("%f\n", a);
+		}
+	}
+
+	return MPR_success;
+}
+
 // Wavelet transform
 static void wavelet_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num)
 {
@@ -62,17 +91,32 @@ static void wavelet_transform(unsigned char* buffer, int* patch_box, int bytes, 
 	{
 		int step = pow(2, i+1);
 		// Calculate x-dir
-		wavelet_helper(buffer, step, 0, bytes, patch_box, type_name);
+		wavelet_helper(buffer, step, 0, bytes, patch_box, type_name, 0);
 		// Calculate y-dir
-		wavelet_helper(buffer, step, 1, bytes, patch_box, type_name);
+		wavelet_helper(buffer, step, 1, bytes, patch_box, type_name, 0);
 		// Calculate z-dir
-		wavelet_helper(buffer, step, 2, bytes, patch_box, type_name);
+		wavelet_helper(buffer, step, 2, bytes, patch_box, type_name, 0);
+	}
+}
+
+// Wavelet transform
+static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num)
+{
+	for (int i = 0; i < trans_num; i++)
+	{
+		int step = pow(2, i+1);
+		// Calculate z-dir
+		wavelet_helper(buffer, step, 2, bytes, patch_box, type_name, 1);
+		// Calculate y-dir
+		wavelet_helper(buffer, step, 1, bytes, patch_box, type_name, 1);
+		// Calculate x-dir
+		wavelet_helper(buffer, step, 0, bytes, patch_box, type_name, 1);
 	}
 }
 
 
 // A wavelet helper
-static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, int* patch_box, char* type_name)
+static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, int* patch_box, char* type_name, int mode)
 {
 	int ng_step = step/2;
 	int si = ng_step, sj = ng_step, sk = ng_step;
@@ -157,8 +201,18 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 					memcpy(&f_data, &buf[index * sizeof(float)], sizeof(float));
 					memcpy(&f_neigb, &buf[neighbor_ind * sizeof(float)], sizeof(float));
 					// Calculate wavelet coefficients
-					float avg = (f_data + f_neigb) / 2.0;
-					float dif = avg - f_neigb;
+					float avg = 0;
+					float dif = 0;
+					if (mode == 0)
+					{
+						avg = (f_data + f_neigb) / 2.0;
+						dif = avg - f_neigb;
+					}
+					if (mode == 1)
+					{
+						avg = f_data - f_neigb;
+						dif = f_data + f_neigb;
+					}
 					// Replace buffer
 					memcpy(&buf[index * sizeof(float)], &avg, sizeof(float));
 					memcpy(&buf[neighbor_ind * sizeof(float)], &dif, sizeof(float));
@@ -205,12 +259,12 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 }
 
 
-static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf, int* patch_box, int trans_num, int bytes)
+static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf, int* patch_box, int trans_num, int bytes, int mode)
 {
 	int index = 0;
 
 	int step = pow(2, trans_num);
-	MPR_wavelet_reorg_helper(buf, reg_buf, step, &index, 0, 0, 0, patch_box, bytes);
+	MPR_wavelet_reorg_helper(buf, reg_buf, step, &index, 0, 0, 0, patch_box, bytes, mode);
 
 	for (int i = trans_num; i > 0; i--)
 	{
@@ -226,7 +280,7 @@ static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf,
 					if (i == 0 && j == 0 && k == 0)
 						continue;
 					else
-						MPR_wavelet_reorg_helper(buf, reg_buf, step, &index, n_step[k], n_step[j], n_step[i], patch_box, bytes);
+						MPR_wavelet_reorg_helper(buf, reg_buf, step, &index, n_step[k], n_step[j], n_step[i], patch_box, bytes, mode);
 				}
 			}
 		}
@@ -234,7 +288,7 @@ static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf,
 }
 
 // A organization helper for wavelet inplace buffer
-static void MPR_wavelet_reorg_helper(unsigned char* buf, unsigned char* reg_buf, int step, int* index, int sk, int sj, int si, int* patch_box, int bytes)
+static void MPR_wavelet_reorg_helper(unsigned char* buf, unsigned char* reg_buf, int step, int* index, int sk, int sj, int si, int* patch_box, int bytes, int mode)
 {
 	for (int k = sk; k < patch_box[2]; k += step)
 	{
@@ -243,11 +297,15 @@ static void MPR_wavelet_reorg_helper(unsigned char* buf, unsigned char* reg_buf,
 			for (int i = si; i < patch_box[0]; i += step)
 			{
 				int position = k * patch_box[1] * patch_box[0] + j * patch_box[0] + i;
-				memcpy(&reg_buf[(*index) * bytes], &buf[position * bytes], bytes);
+				if (mode == 0) /* write mode */
+					memcpy(&reg_buf[(*index) * bytes], &buf[position * bytes], bytes);
+				else if (mode == 1) /* read mode*/
+					memcpy(&reg_buf[position * bytes], &buf[(*index) * bytes], bytes);
 				(*index)++;
 			}
 		}
 	}
 }
+
 
 #endif /* SRC_CORE_MPR_WAVELET_C_ */
