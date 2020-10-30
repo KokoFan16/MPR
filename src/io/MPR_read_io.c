@@ -11,18 +11,22 @@
 MPR_return_code MPR_raw_read(MPR_file file, int svi)
 {
 	/* read data */
+	file->time->read_start = MPI_Wtime();
 	if (MPR_read_data(file, svi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->read_end = MPI_Wtime();
 
 	/* get local box for each process */
+	file->time->rst_start =  MPI_Wtime();
 	if (MPR_get_local_read_box(file, svi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->rst_end =  MPI_Wtime();
 
 	return MPR_success;
 }

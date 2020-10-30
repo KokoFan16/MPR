@@ -116,12 +116,12 @@ static void set_mpr_file(int ts)
 
 	MPR_set_global_offset(file, global_offset);
 
-	MPR_check_bouding_box(file); /* check which files need to be opened */
+//	MPR_check_bouding_box(file); /* check which files need to be opened */
 }
 
 static void set_mpr_variable_and_create_buffer()
 {
-	if (variable_index >= variable_count)
+	if (variable_index >= file->mpr->variable_count)
 		terminate_with_error_msg("Variable index more than variable count\n");
 
 	if (MPR_set_current_variable_index(file, variable_index) != MPR_success)

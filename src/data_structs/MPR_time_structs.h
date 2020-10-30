@@ -17,6 +17,9 @@ struct mpr_time_struct
 	double agg_start, agg_end;                       /* the time for aggregation phase */
 	double wrt_data_start, wrt_data_end;             /* the time for write data out */
 	double wrt_metadata_start, wrt_metadata_end;     /* the time for write metadata out */
+
+	double parse_bound_start, parse_bound_end;       /* the time for parsing bounding box time */
+	double read_start, read_end;                     /* the time for reading data */
 };
 
 typedef struct mpr_time_struct* MPR_time;

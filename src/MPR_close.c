@@ -78,49 +78,66 @@ static void MPR_timing_output(MPR_file file, int svi, int evi)
 	double rst_time = file->time->rst_end - file->time->rst_start;
 	double wave_time = file->time->wave_end - file->time->wave_start;
 	double comp_time = file->time->zfp_end - file->time->zfp_start;
-	double agg_time = file->time->agg_end - file->time->agg_start;
-	double wrt_data_time = file->time->wrt_data_end - file->time->wrt_data_start;
-	double wrt_metadata_time = file->time->wrt_metadata_end - file->time->wrt_metadata_start;
 
 	double max_total_time = 0;
 	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, file->comm->simulation_comm);
 
-	if (MODE == MPR_RAW_IO)
+	if (file->flags == MPR_MODE_CREATE)
 	{
-		if (file->mpr->is_aggregator == 1)
-			fprintf(stderr,"AGG_%d: [%f] >= [rst %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, agg_time, wrt_data_time, wrt_metadata_time);
-		if (total_time == max_total_time)
-			fprintf(stderr, "MAX_%d: [%f] >= [rst %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, agg_time, wrt_data_time, wrt_metadata_time);
-	}
-	else if (MODE == MPR_MUL_RES_IO)
-	{
-		if (file->mpr->is_aggregator == 1)
-			fprintf(stderr,"AGG_%d: [%f] >= [rst %f wave %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, agg_time, wrt_data_time, wrt_metadata_time);
-		if (total_time == max_total_time)
-			fprintf(stderr, "MAX_%d: [%f] >= [rst %f wave %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, agg_time, wrt_data_time, wrt_metadata_time);
-	}
-	else if (MODE == MPR_MUL_PRE_IO)
-	{
-		if (rank == 0)
+		double agg_time = file->time->agg_end - file->time->agg_start;
+		double wrt_data_time = file->time->wrt_data_end - file->time->wrt_data_start;
+		double wrt_metadata_time = file->time->wrt_metadata_end - file->time->wrt_metadata_start;
+
+		if (MODE == MPR_RAW_IO)
 		{
-			for (int v = svi; v < evi; v++)
-				printf("The compression ratio for variable %d is %f.\n", v, file->variable[v]->local_patch->compression_ratio);
+			if (file->mpr->is_aggregator == 1)
+				fprintf(stderr,"AGG_%d: [%f] >= [rst %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, agg_time, wrt_data_time, wrt_metadata_time);
+			if (total_time == max_total_time)
+				fprintf(stderr, "MAX_%d: [%f] >= [rst %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, agg_time, wrt_data_time, wrt_metadata_time);
 		}
-		if (file->mpr->is_aggregator == 1)
-			fprintf(stderr,"AGG_%d: [%f] >= [rst %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
-		if (total_time == max_total_time)
-			fprintf(stderr, "MAX_%d: [%f] >= [rst %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
-	}
-	else if (MODE == MPR_MUL_RES_PRE_IO)
-	{
-		if (rank == 0)
+		else if (MODE == MPR_MUL_RES_IO)
 		{
-			for (int v = svi; v < evi; v++)
-				printf("The compression ratio for variable %d is %f.\n", v, file->variable[v]->local_patch->compression_ratio);
+			if (file->mpr->is_aggregator == 1)
+				fprintf(stderr,"AGG_%d: [%f] >= [rst %f wave %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, agg_time, wrt_data_time, wrt_metadata_time);
+			if (total_time == max_total_time)
+				fprintf(stderr, "MAX_%d: [%f] >= [rst %f wave %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, agg_time, wrt_data_time, wrt_metadata_time);
 		}
-		if (file->mpr->is_aggregator == 1)
-			fprintf(stderr,"AGG_%d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
-		if (total_time == max_total_time)
-			fprintf(stderr, "MAX_%d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+		else if (MODE == MPR_MUL_PRE_IO)
+		{
+			if (rank == 0)
+			{
+				for (int v = svi; v < evi; v++)
+					printf("The compression ratio for variable %d is %f.\n", v, file->variable[v]->local_patch->compression_ratio);
+			}
+			if (file->mpr->is_aggregator == 1)
+				fprintf(stderr,"AGG_%d: [%f] >= [rst %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+			if (total_time == max_total_time)
+				fprintf(stderr, "MAX_%d: [%f] >= [rst %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+		}
+		else if (MODE == MPR_MUL_RES_PRE_IO)
+		{
+			if (rank == 0)
+			{
+				for (int v = svi; v < evi; v++)
+					printf("The compression ratio for variable %d is %f.\n", v, file->variable[v]->local_patch->compression_ratio);
+			}
+			if (file->mpr->is_aggregator == 1)
+				fprintf(stderr,"AGG_%d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+			if (total_time == max_total_time)
+				fprintf(stderr, "MAX_%d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+		}
+	}
+
+	if (file->flags == MPR_MODE_RDONLY)
+	{
+		double parse_bound = file->time->parse_bound_end - file->time->parse_bound_start;
+		double read_time = file->time->read_end - file->time->read_start;
+
+		if (MODE == MPR_RAW_IO)
+		{
+			fprintf(stderr,"Rank_%d: [%f] >= [meta %f read %f rst %f]\n", rank, total_time, parse_bound, read_time, rst_time);
+			if (total_time == max_total_time)
+				fprintf(stderr, "MAX_%d: [%f] >= [meta %f read %f rst %f]\n", rank, total_time, parse_bound, read_time, rst_time);
+		}
 	}
 }
