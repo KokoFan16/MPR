@@ -178,8 +178,8 @@ MPR_return_code MPR_check_required_patches(MPR_file file, int svi)
 
 MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 {
-	int local_offset[MPR_MAX_DIMENSIONS] = {INT_MAX, INT_MAX, INT_MAX};
-	int local_end[MPR_MAX_DIMENSIONS] = {0, 0, 0};
+	int local_offset[MPR_MAX_DIMENSIONS] = {INT_MAX, INT_MAX, INT_MAX};  /* current local offset */
+	int local_end[MPR_MAX_DIMENSIONS] = {0, 0, 0}; /* current local end coordinate */
 
 	MPR_local_patch local_patch = file->variable[svi]->local_patch;
 	for (int i = 0; i < local_patch->patch_count; i++)
@@ -193,15 +193,20 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 		if (local_patch->patch[i]->offset[2] > local_end[2]) local_end[2] = local_patch->patch[i]->offset[2];
 	}
 
+	int local_box[MPR_MAX_DIMENSIONS]; /* current local box */
 	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+	{
 		local_end[i] += file->mpr->patch_box[i];
+		local_box[i] = local_end[i] - local_offset[i];
+	}
 
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
-	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
-	local_patch->buffer = malloc(patch_size * local_patch->patch_count);
+	local_box[0] = local_box[0] * bytes;
 
-	int array_size[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0] * bytes, file->mpr->local_box[1], file->mpr->local_box[2]};
+	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
 	int array_subsize[MPR_MAX_DIMENSIONS] = {file->mpr->patch_box[0] * bytes, file->mpr->patch_box[1], file->mpr->patch_box[2]};
+
+	unsigned char* local_buffer =  malloc(patch_size * local_patch->patch_count);
 
 	MPI_Request req[local_patch->patch_count*2];
 	MPI_Status stat[local_patch->patch_count*2];
@@ -211,49 +216,39 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	{
 		for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 			reltive_patch_offset[d] = local_patch->patch[i]->offset[d] - local_offset[d];
+		reltive_patch_offset[0] = reltive_patch_offset[0] * bytes;
 
 		/* Creating patch receive data type */
-		int subarray_offset[MPR_MAX_DIMENSIONS] = {reltive_patch_offset[0] * bytes, reltive_patch_offset[1], reltive_patch_offset[2]};
-		printf("%d %d %dx%dx%d\n",  file->comm->simulation_rank, local_patch->patch[i]->global_id, subarray_offset[0], subarray_offset[1], subarray_offset[2]);
+		MPI_Datatype recv_type;
+		MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, local_box, array_subsize, reltive_patch_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &recv_type);
+		MPI_Type_commit(&recv_type);
 
-//		MPI_Datatype recv_type;
-//		MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, array_size, array_subsize, subarray_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &recv_type);
-//		MPI_Type_commit(&recv_type);
+		MPI_Irecv(local_buffer, 1, recv_type, file->comm->simulation_rank, i, file->comm->simulation_comm, &req[req_id]);
+		req_id++;
 
-//		MPI_Irecv(local_patch->buffer, 1, recv_type, file->comm->simulation_rank, i, file->comm->simulation_comm, &req[req_id]);
-//		req_id++;
-//
-//		MPI_Isend(&local_patch->patch[i]->buffer, local_patch->patch[i]->patch_buffer_size, MPI_CHAR, file->comm->simulation_rank, i,
-//				file->comm->simulation_comm, &req[req_id]);
-//		req_id++;
-
-
-
-//		printf("%d %dx%dx%d\n", file->comm->simulation_rank, reltive_patch_offset[0], reltive_patch_offset[1], reltive_patch_offset[2]);
+		MPI_Isend(local_patch->patch[i]->buffer, local_patch->patch[i]->patch_buffer_size, MPI_BYTE, file->comm->simulation_rank, i,
+				file->comm->simulation_comm, &req[req_id]);
+		req_id++;
 	}
-//	MPI_Waitall(req_id, req, stat);
+	MPI_Waitall(req_id, req, stat);
 
+	int local_size = file->mpr->local_box[0] * file->mpr->local_box[1] * file->mpr->local_box[2] * bytes;
+	local_patch->buffer = malloc(local_size);
 
+	/* Cut of data based on the required bounding box */
+	MPI_Datatype local_div_type;
+	int div_array_subsize[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0] * bytes, file->mpr->local_box[1], file->mpr->local_box[2]};
+	int real_local_offset[MPR_MAX_DIMENSIONS] = {file->mpr->global_offset[0] * bytes, file->mpr->global_offset[1], file->mpr->global_offset[2]};
+	MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, local_box, div_array_subsize, real_local_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &local_div_type);
+	MPI_Type_commit(&local_div_type);
 
+	MPI_Request req2[2];
+	MPI_Status stat2[2];
+	MPI_Irecv(local_patch->buffer, local_size, MPI_BYTE, file->comm->simulation_rank, 0, file->comm->simulation_comm, &req2[0]);
+	MPI_Isend(local_buffer, 1, local_div_type, file->comm->simulation_rank, 0, file->comm->simulation_comm, &req2[1]);
+	MPI_Waitall(2, req2, stat2);
 
-//	int array_size[MPR_MAX_DIMENSIONS] = {local_patch->patch[i]->size[0]*bits, local_patch->patch[i]->size[1], local_patch->patch[i]->size[2]};
-//						int array_subsize[MPR_MAX_DIMENSIONS] = {share_physical_sizes[i][j*MPR_MAX_DIMENSIONS]*bits, share_physical_sizes[i][j*MPR_MAX_DIMENSIONS + 1], share_physical_sizes[i][j*MPR_MAX_DIMENSIONS + 2]};
-//						int subarray_offset[MPR_MAX_DIMENSIONS] = {patch_share_offsets[i][j*MPR_MAX_DIMENSIONS]*bits, patch_share_offsets[i][j*MPR_MAX_DIMENSIONS + 1], patch_share_offsets[i][j*MPR_MAX_DIMENSIONS + 2]};
+	free(local_buffer);
 
-//	MPI_Request req[local_patch->patch_count*2];
-//	int req_id = 0;
-//	for (int i = 0; i < local_patch->patch_count; i++)
-//	{
-//		printf("%d %d %dx%dx%d\n", file->comm->simulation_rank, local_patch->patch[i]->global_id, local_patch->patch[i]->offset[0],  local_patch->patch[i]->offset[1],  local_patch->patch[i]->offset[2]);
-////		MPI_Isend(&local_patch->patch[i]->buffer, local_patch->patch[i]->patch_buffer_size, MPI_CHAR, file->comm->simulation_rank, i,
-////		              file->comm->simulation_comm, &req[req_id]);
-////		req_id++;
-//
-////		MPI_Datatype recv_type;
-////		MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, array_size, array_subsize, subarray_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &recv_type);
-////		MPI_Type_commit(&recv_type);
-//	}
-	printf("%d %dx%dx%d\n", file->comm->simulation_rank, array_size[0], array_size[1], array_size[2]);
-	printf("%d %dx%dx%d\n", file->comm->simulation_rank, array_subsize[0], array_subsize[1], array_subsize[2]);
 	return MPR_success;
 }
