@@ -117,10 +117,46 @@ MPR_return_code MPR_ZFP_compression_perform(MPR_file file, int svi, int evi)
 	return MPR_success;
 }
 
+MPR_return_code MPR_ZFP_decompression_perform(MPR_file file, int svi)
+{
+	int rank = file->comm->simulation_rank; /* The rank of process */
+	int procs_num = file->comm->simulation_nprocs; /* The number of processes */
+	MPI_Comm comm = file->comm->simulation_comm; /* MPI Communicator */
+
+	/* Patch size */
+	int patch_x = file->mpr->patch_box[0];
+	int patch_y = file->mpr->patch_box[1];
+	int patch_z = file->mpr->patch_box[2];
+
+	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
+	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
+
+
+	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
+	char* type_name = file->variable[svi]->type_name;
+
+	for (int p = 0; p < local_patch->patch_count; p++)
+	{
+		MPR_patch reg_patch = local_patch->patch[p];
+		MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
+		memset(output, 0, sizeof (*output)); /* Initialization */
+		output->p = (unsigned char*) malloc(patch_size);
+
+		/* decompression */
+		MPR_decompress_3D_data(reg_patch->buffer, reg_patch->patch_buffer_size, patch_x, patch_y, patch_z,
+				file->mpr->compression_type, file->mpr->compression_param, type_name, &output);
+
+		reg_patch->buffer = (unsigned char*)realloc(reg_patch->buffer, patch_size);
+		memcpy(reg_patch->buffer, output->p, patch_size);
+		free(output->p);
+	}
+
+	return MPR_success;
+}
+
 // ZFP float compression
 MPR_return_code MPR_compress_3D_data(unsigned char* buf, int dim_x, int dim_y, int dim_z, int flag, float param, char* type_name, MPR_zfp_compress* output)
 {
-
 	// ZFP data type according to PIDX data type
 	zfp_type type = zfp_type_none;
 	if (strcmp(type_name, MPR_DType.INT32) == 0 || strcmp(type_name, MPR_DType.INT32_GA) == 0 || strcmp(type_name, MPR_DType.INT32_RGB) == 0)
@@ -143,7 +179,8 @@ MPR_return_code MPR_compress_3D_data(unsigned char* buf, int dim_x, int dim_y, i
 		zfp_stream_set_precision(zfp, param);
 	else
 	{
-		printf("ERROR: 1 means accuracy, and 2 means precision\n");
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
 	}
 	int max_compressed_bytes = zfp_stream_maximum_size(zfp, field);
 	// ZFP pointer structure
@@ -158,4 +195,43 @@ MPR_return_code MPR_compress_3D_data(unsigned char* buf, int dim_x, int dim_y, i
 	zfp_stream_close(zfp);
 	stream_close(stream);
 	return MPR_success;
+}
+
+
+MPR_return_code MPR_decompress_3D_data(unsigned char* buf, int size, int dim_x, int dim_y, int dim_z,
+		int flag, float param, char* type_name, MPR_zfp_compress* output)
+{
+	zfp_type type = zfp_type_none;
+	if (strcmp(type_name, MPR_DType.INT32) == 0 || strcmp(type_name, MPR_DType.INT32_GA) == 0 || strcmp(type_name, MPR_DType.INT32_RGB) == 0)
+		type = zfp_type_int32;
+	else if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
+		type = zfp_type_float;
+	else if (strcmp(type_name, MPR_DType.INT64) == 0 || strcmp(type_name, MPR_DType.INT64_GA) == 0 || strcmp(type_name, MPR_DType.INT64_RGB) == 0)
+		type = zfp_type_int64;
+	else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
+		type = zfp_type_double;
+	else
+		printf("ERROR: ZFP doesn't support this type %s\n", type_name);
+
+    zfp_field* field = zfp_field_3d((*output)->p, type, dim_x, dim_y, dim_z);
+    zfp_stream* zfp = zfp_stream_open(NULL);
+    if (flag == 0)
+        zfp_stream_set_accuracy(zfp, param);
+    else if (flag == 1)
+        zfp_stream_set_precision(zfp, param);
+    else
+    {
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+    }
+    bitstream* stream = stream_open(buf, size);
+    zfp_stream_set_bit_stream(zfp, stream);
+    if (!zfp_decompress(zfp, field)) {
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+    }
+    zfp_field_free(field);
+    zfp_stream_close(zfp);
+    stream_close(stream);
+    return MPR_success;
 }

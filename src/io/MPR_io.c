@@ -87,12 +87,12 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 		fprintf(stderr, "Unsupported MPR Mode.\n");
 
 	/* buffers cleanup */
-	if (MPR_variable_cleanup(file, svi) != MPR_success)
-	{
-
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
+//	if (MPR_variable_cleanup(file, svi) != MPR_success)
+//	{
+//
+//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+//		return MPR_err_file;
+//	}
 
 	return MPR_success;
 }

@@ -69,11 +69,33 @@ MPR_return_code MPR_multi_res_read(MPR_file file, int svi)
 /* Read data with multiple precision mode */
 MPR_return_code MPR_multi_pre_read(MPR_file file, int svi)
 {
+	/* read data */
+	file->time->read_start = MPI_Wtime();
 	if (MPR_read_data(file, svi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->read_end = MPI_Wtime();
+
+	/* decompression */
+	file->time->zfp_start = MPI_Wtime();
+	if (MPR_ZFP_decompression_perform(file, svi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->zfp_end = MPI_Wtime();
+
+	/* get local box for each process */
+	file->time->rst_start =  MPI_Wtime();
+	if (MPR_get_local_read_box(file, svi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->rst_end =  MPI_Wtime();
+
 	return MPR_success;
 }
 
@@ -274,15 +296,15 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	MPI_Isend(local_buffer, 1, local_div_type, file->comm->simulation_rank, 0, file->comm->simulation_comm, &req2[1]);
 	MPI_Waitall(2, req2, stat2);
 
-//	if (file->comm->simulation_rank == 0)
-//	{
-//		for (int i = 0; i < local_size/bytes; i++)
-//		{
-//			float a;
-//			memcpy(&a, &local_patch->buffer[i*bytes], bytes);
-//			printf("%f\n", a);
-//		}
-//	}
+	if (file->comm->simulation_rank == 0)
+	{
+		for (int i = 0; i < local_size/bytes; i++)
+		{
+			float a;
+			memcpy(&a, &local_buffer[i*4], 4);
+			printf("%f\n", a);
+		}
+	}
 
 	free(local_buffer);
 

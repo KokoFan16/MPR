@@ -257,7 +257,7 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 		}
 		else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO) /* Compression involves */
 		{
-			meta_count += file->mpr->variable_count; /* the patch count for aggregator per variable */
+			meta_count += file->mpr->variable_count * 2; /* the patch count for aggregator per variable */
 			meta_buffer = malloc(meta_count * sizeof(int));
 			int meta_id = 1; /* the first one should be the total number of meta-data */
 
@@ -267,9 +267,11 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 				vars_agg_patch_count += file->variable[v]->local_patch->agg_patch_count;
 				/* Meta-data: the patch count per variable */
 				memcpy(&meta_buffer[meta_id*sizeof(int)], &file->variable[v]->local_patch->agg_patch_count, sizeof(int));
+				memcpy(&meta_buffer[(meta_id + file->mpr->variable_count)*sizeof(int)], &file->variable[v]->local_patch->out_file_size, sizeof(int));
 				meta_id++;
 			}
 
+			meta_id += file->mpr->variable_count;
 			meta_count += vars_agg_patch_count * 3; /* Meta-data: patch-id, patch-offset, patch-size */
 			meta_buffer = realloc(meta_buffer, meta_count * sizeof(int));
 
@@ -621,6 +623,37 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 		{
 			patches_offset[buffer[(i + 1)]] = metadata_size + var_size + i * patch_size;
 			patches_size[buffer[(i + 1)]] = patch_size;
+		}
+	}
+	else if (MODE == MPR_MUL_PRE_IO)
+	{
+		int total_var_patch_counts = 0;   /* the number of patch counts per file across all the variables */
+		int var_patch_counts[file->mpr->variable_count];  /* each i is the number of patch count of variable i */
+		int var_sizes[file->mpr->variable_count]; /* each i is the total size of variable i */
+		for (int i = 0; i < file->mpr->variable_count; i++)
+		{
+			var_patch_counts[i] = buffer[i + 1];
+			total_var_patch_counts += buffer[i + 1];
+			var_sizes[i] = buffer[i + 1 + file->mpr->variable_count];
+		}
+
+		int patch_id_meta_offset = file->mpr->variable_count * 2 + 1; /* read offset for patch id */
+		int patch_disp_meta_offset = file->mpr->variable_count * 2 + 1 + total_var_patch_counts; /* read offset for patch disp */
+		int patch_size_meta_offset = file->mpr->variable_count * 2 + 1 + total_var_patch_counts * 2; /* read offset for patch size */
+		int var_size = 0;
+		for (int i = 0; i < var_id; i++)
+		{
+			patch_id_meta_offset += var_patch_counts[i];
+			patch_disp_meta_offset += var_patch_counts[i];
+			patch_size_meta_offset += var_patch_counts[i];
+			var_size += var_sizes[i];
+		}
+
+		for (int i = 0; i < var_patch_counts[var_id]; i++)
+		{
+			int patch_id = buffer[patch_id_meta_offset + i];
+			patches_offset[patch_id] = buffer[patch_disp_meta_offset + i] + metadata_size + var_size;
+			patches_size[patch_id] = buffer[patch_size_meta_offset + i];
 		}
 	}
 
