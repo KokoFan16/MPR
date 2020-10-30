@@ -625,7 +625,7 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 			patches_size[buffer[(i + 1)]] = patch_size;
 		}
 	}
-	else if (MODE == MPR_MUL_PRE_IO)
+	else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO)
 	{
 		int total_var_patch_counts = 0;   /* the number of patch counts per file across all the variables */
 		int var_patch_counts[file->mpr->variable_count];  /* each i is the number of patch count of variable i */
@@ -655,7 +655,43 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 			patches_offset[patch_id] = buffer[patch_disp_meta_offset + i] + metadata_size + var_size;
 			patches_size[patch_id] = buffer[patch_size_meta_offset + i];
 		}
+
+		if (MODE == MPR_MUL_RES_PRE_IO)
+		{
+			int subband_num = file->mpr->wavelet_trans_num * 7 + 1;
+			memset(patches_subbands, -1, file->mpr->total_patches_num * subband_num * sizeof(int));
+
+			 /* read offset for sub-bands */
+			int suband_meta_offset = file->mpr->variable_count * 2 + 1 + total_var_patch_counts * 3;
+			for (int i = 0; i < var_id; i++)
+				suband_meta_offset += var_patch_counts[i];
+
+			for (int i = 0; i < var_patch_counts[var_id]; i++)
+			{
+				int patch_id = buffer[patch_id_meta_offset + i];
+				memcpy(&patches_subbands[patch_id * subband_num], &buffer[suband_meta_offset + i * subband_num], subband_num * sizeof(int));
+
+			}
+
+//			printf("%d %d\n", suband_meta_offset, buffer[suband_meta_offset]);
+
+//			for (int i = 0; i < file->mpr->total_patches_num; i++)
+//			{
+//				printf("%d %d %d\n", i, (patches_offset[i] - metadata_size - var_size), patches_size[i]);
+//			}
+//				printf("%d %d\n", var_patch_counts[0], var_patch_counts[1]);
+		}
 	}
+//	else if ()
+//	{
+//		if (file->comm->simulation_rank == 0)
+//		{
+//			for (int i = 0; i < meta_count; i++)
+//			{
+//				printf("%d\n", buffer[i]);
+//			}
+//		}
+//	}
 
 	free(buffer);
 	return MPR_success;
