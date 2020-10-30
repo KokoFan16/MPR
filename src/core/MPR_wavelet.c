@@ -71,12 +71,12 @@ MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
 		wavelet_decode_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[svi]->type_name, file->mpr->wavelet_trans_num);
 	}
 
-	if (file->comm->simulation_rank == 0)
+	if (file->comm->simulation_rank == 1)
 	{
 		for (int i = 0; i < 512; i++)
 		{
 			float a;
-			memcpy(&a, &local_patch->patch[0]->buffer[i*sizeof(float)], sizeof(float));
+			memcpy(&a, &local_patch->patch[1]->buffer[i*sizeof(float)], sizeof(float));
 			printf("%f\n", a);
 		}
 	}
@@ -210,8 +210,9 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 					}
 					if (mode == 1)
 					{
-						avg = f_data - f_neigb;
-						dif = f_data + f_neigb;
+						avg = f_data + f_neigb;
+						dif = f_data - f_neigb;
+//						printf("%f %f %f, %f\n", f_data, f_neigb, avg, dif);
 					}
 					// Replace buffer
 					memcpy(&buf[index * sizeof(float)], &avg, sizeof(float));
