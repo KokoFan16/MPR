@@ -32,8 +32,6 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 	int trans_num = log2(min) - 2; /* Calculate the the number of transforms */
 	file->mpr->wavelet_trans_num = trans_num;
 
-	int subband_num = file->mpr->wavelet_trans_num * 7 + 1;
-
 	for (int v = svi; v < evi; v++)
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch;
@@ -43,7 +41,6 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 
 		for (int i = 0; i < patch_count; i++)
 		{
-//			local_patch->patch[i]->subband_num = subband_num;
 			wavelet_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[v]->type_name, trans_num);
 			unsigned char* reg_buffer = malloc(local_patch->patch[i]->patch_buffer_size);
 			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes, 0);
@@ -56,7 +53,7 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 }
 
 
-
+/* Decode wavalet transform */
 MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
 {
 	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
@@ -70,17 +67,6 @@ MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
 		free(reg_buffer);
 		wavelet_decode_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[svi]->type_name, file->mpr->wavelet_trans_num);
 	}
-
-	if (file->comm->simulation_rank == 1)
-	{
-		for (int i = 0; i < 512; i++)
-		{
-			float a;
-			memcpy(&a, &local_patch->patch[1]->buffer[i*sizeof(float)], sizeof(float));
-			printf("%f\n", a);
-		}
-	}
-
 	return MPR_success;
 }
 
@@ -168,8 +154,16 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 					c_data = buf[index];
 					c_neigb = buf[neighbor_ind];
 					// Calculate wavelet coefficients and replace in the buffer
-					buf[index] = (c_data + c_neigb) / 2.0;
-					buf[neighbor_ind] = buf[index] - c_neigb;
+					if (mode == 0)
+					{
+						buf[index] = (c_data + c_neigb) / 2.0;
+						buf[neighbor_ind] = buf[index] - c_neigb;
+					}
+					if (mode == 1)
+					{
+						buf[index] = c_data + c_neigb;
+						buf[neighbor_ind] = c_data - c_neigb;
+					}
 				}
 				if (strcmp(type_name, MPR_DType.INT16) == 0 || strcmp(type_name, MPR_DType.INT16_GA) == 0 || strcmp(type_name, MPR_DType.INT16_RGB) == 0)
 				{
@@ -177,8 +171,18 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 					memcpy(&s_data, &buf[index * sizeof(short)], sizeof(short));
 					memcpy(&s_neigb, &buf[neighbor_ind * sizeof(float)], sizeof(short));
 					// Calculate wavelet coefficients
-					short avg = (s_data + s_neigb) / 2.0;
-					short dif = avg - s_neigb;
+					short avg = 0;
+					short dif = 0;
+					if (mode == 0)
+					{
+						avg = (s_data + s_neigb) / 2.0;
+						dif = avg - s_neigb;
+					}
+					if (mode == 1)
+					{
+						avg = s_data + s_neigb;
+						dif = s_data - s_neigb;
+					}
 					// Replace buffer
 					memcpy(&buf[index * sizeof(short)], &avg, sizeof(short));
 					memcpy(&buf[neighbor_ind * sizeof(short)], &dif, sizeof(short));
@@ -189,8 +193,18 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 					memcpy(&i_data, &buf[index * sizeof(int)], sizeof(int));
 					memcpy(&i_neigb, &buf[neighbor_ind * sizeof(int)], sizeof(int));
 					// Calculate wavelet coefficients
-					int avg = (i_data + i_neigb) / 2.0;
-					int dif = avg - i_neigb;
+					int avg = 0;
+					int dif = 0;
+					if (mode == 0)
+					{
+						avg = (i_data + i_neigb) / 2.0;
+						dif = avg - i_neigb;
+					}
+					if (mode == 1)
+					{
+						avg = i_data + i_neigb;
+						dif = i_data - i_neigb;
+					}
 					// Replace buffer
 					memcpy(&buf[index * sizeof(int)], &avg, sizeof(int));
 					memcpy(&buf[neighbor_ind * sizeof(int)], &dif, sizeof(int));
@@ -212,7 +226,6 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 					{
 						avg = f_data + f_neigb;
 						dif = f_data - f_neigb;
-//						printf("%f %f %f, %f\n", f_data, f_neigb, avg, dif);
 					}
 					// Replace buffer
 					memcpy(&buf[index * sizeof(float)], &avg, sizeof(float));
@@ -224,8 +237,18 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 					memcpy(&d_data, &buf[index * sizeof(double)], sizeof(double));
 					memcpy(&d_neigb, &buf[neighbor_ind * sizeof(double)], sizeof(double));
 					// Calculate wavelet coefficients
-					double avg = (d_data + d_neigb) / 2.0;
-					double dif = avg - d_neigb;
+					double avg = 0;
+					double dif = 0;
+					if (mode == 0)
+					{
+						avg = (d_data + d_neigb) / 2.0;
+						dif = avg - d_neigb;
+					}
+					if (mode == 1)
+					{
+						avg = d_data + d_neigb;
+						dif = d_data - d_neigb;
+					}
 					// Replace buffer
 					memcpy(&buf[index * sizeof(double)], &avg, sizeof(double));
 					memcpy(&buf[neighbor_ind * sizeof(double)], &dif, sizeof(double));
@@ -236,8 +259,18 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 					memcpy(&i64_data, &buf[index * sizeof(int64_t)], sizeof(int64_t));
 					memcpy(&i64_neigb, &buf[neighbor_ind * sizeof(int64_t)], sizeof(int64_t));
 					// Calculate wavelet coefficients
-					int64_t avg = (i64_data + i64_neigb) / 2.0;
-					int64_t dif = avg - i64_neigb;
+					int64_t avg = 0;
+					int64_t dif = 0;
+					if (mode == 0)
+					{
+						avg = (i64_data + i64_neigb) / 2.0;
+						dif = avg - i64_neigb;
+					}
+					if (mode == 1)
+					{
+						avg = i64_data + i64_neigb;
+						dif = i64_data - i64_neigb;
+					}
 					// Replace buffer
 					memcpy(&buf[index * sizeof(int64_t)], &avg, sizeof(int64_t));
 					memcpy(&buf[neighbor_ind * sizeof(int64_t)], &dif, sizeof(int64_t));
@@ -248,8 +281,18 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 					memcpy(&u64i_data, &buf[index * sizeof(uint64_t)], sizeof(uint64_t));
 					memcpy(&u64i_neigb, &buf[neighbor_ind * sizeof(uint64_t)], sizeof(uint64_t));
 					// Calculate wavelet coefficients
-					uint64_t avg = (u64i_data + u64i_neigb) / 2.0;
-					uint64_t dif = avg - u64i_neigb;
+					uint64_t avg = 0;
+					uint64_t dif = 0;
+					if (mode == 0)
+					{
+						avg = (u64i_data + u64i_neigb) / 2.0;
+						dif = avg - u64i_neigb;
+					}
+					if (mode == 1)
+					{
+						avg = u64i_data + u64i_neigb;
+						dif = u64i_data - u64i_neigb;
+					}
 					// Replace buffer
 					memcpy(&buf[index * sizeof(uint64_t)], &avg, sizeof(uint64_t));
 					memcpy(&buf[neighbor_ind * sizeof(uint64_t)], &dif, sizeof(uint64_t));
