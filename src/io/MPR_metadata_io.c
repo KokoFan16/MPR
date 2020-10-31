@@ -672,14 +672,6 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 				memcpy(&patches_subbands[patch_id * subband_num], &buffer[suband_meta_offset + i * subband_num], subband_num * sizeof(int));
 
 			}
-
-//			printf("%d %d\n", suband_meta_offset, buffer[suband_meta_offset]);
-
-//			for (int i = 0; i < file->mpr->total_patches_num; i++)
-//			{
-//				printf("%d %d %d\n", i, (patches_offset[i] - metadata_size - var_size), patches_size[i]);
-//			}
-//				printf("%d %d\n", var_patch_counts[0], var_patch_counts[1]);
 		}
 	}
 //	else if ()

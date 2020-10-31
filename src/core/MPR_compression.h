@@ -26,4 +26,6 @@ MPR_return_code MPR_decompress_3D_data(unsigned char* buf, int size, int dim_x, 
 
 MPR_return_code MPR_ZFP_decompression_perform(MPR_file file, int svi);
 
+MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi);
+
 #endif /* SRC_CORE_MPR_COMPRESSION_H_ */

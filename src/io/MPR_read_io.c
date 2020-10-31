@@ -108,6 +108,12 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+
+	if (MPR_ZFP_multi_res_decompression_perform(file, svi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
 	return MPR_success;
 }
 
@@ -132,6 +138,8 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 
 	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
 	int required_patch_count = local_patch->patch_count;
+
+	int subband_num = file->mpr->wavelet_trans_num * 7 + 1;
 
 	int* patches_offset = malloc(file->mpr->total_patches_num * sizeof(int)); /* patch offset array */
 	int* patches_size = malloc(file->mpr->total_patches_num * sizeof(int)); /* patch size array */
@@ -159,6 +167,11 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 			int global_id = local_patch->agg_patch_id_array[p];
 			if (patches_offset[global_id] != -1)
 			{
+				if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+				{
+					local_patch->patch[p]->subbands_comp_size = malloc(subband_num * sizeof(int));
+					memcpy(local_patch->patch[p]->subbands_comp_size, &patches_subbands[global_id * subband_num], subband_num * sizeof(int));
+				}
 				local_patch->patch[p]->patch_buffer_size = patches_size[global_id];
 				local_patch->patch[p]->buffer = malloc(local_patch->patch[p]->patch_buffer_size);
 
