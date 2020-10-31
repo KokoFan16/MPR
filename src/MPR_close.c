@@ -126,6 +126,8 @@ static void MPR_timing_output(MPR_file file, int svi, int evi)
 			if (total_time == max_total_time)
 				fprintf(stderr, "MAX_%d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
 		}
+		else
+			fprintf(stderr,"Unsupported Mode!");
 	}
 
 	if (file->flags == MPR_MODE_RDONLY)
@@ -151,5 +153,13 @@ static void MPR_timing_output(MPR_file file, int svi, int evi)
 			if (total_time == max_total_time)
 				fprintf(stderr, "MAX_%d: [%f] >= [meta %f read %f zfp %f rst %f]\n", rank, total_time, parse_bound, read_time, comp_time, rst_time);
 		}
+		else if (MODE == MPR_MUL_RES_PRE_IO)
+		{
+			fprintf(stderr,"Rank_%d: [%f] >= [meta %f read %f zfp %f wave %f rst %f]\n", rank, total_time, parse_bound, read_time, comp_time, wave_time, rst_time);
+			if (total_time == max_total_time)
+				fprintf(stderr, "MAX_%d: [%f] >= [meta %f read %f zfp %f wave %f rst %f]\n", rank, total_time, parse_bound, read_time, comp_time, wave_time, rst_time);
+		}
+		else
+			fprintf(stderr,"Unsupported Mode!");
 	}
 }

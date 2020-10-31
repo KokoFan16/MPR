@@ -103,17 +103,42 @@ MPR_return_code MPR_multi_pre_read(MPR_file file, int svi)
 /* Read data with multiple resolution and precision mode */
 MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 {
+	/* read data */
+	file->time->read_start = MPI_Wtime();
 	if (MPR_read_data(file, svi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->read_end = MPI_Wtime();
 
+	/* decompression */
+	file->time->zfp_start = MPI_Wtime();
 	if (MPR_ZFP_multi_res_decompression_perform(file, svi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->zfp_end = MPI_Wtime();
+
+	/* decode wavelet transform */
+	file->time->wave_start = MPI_Wtime();
+	if (MPR_wavelet_decode_perform(file, svi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wave_end = MPI_Wtime();
+
+	/* get local box for each process */
+	file->time->rst_start =  MPI_Wtime();
+	if (MPR_get_local_read_box(file, svi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->rst_end =  MPI_Wtime();
+
 	return MPR_success;
 }
 
@@ -310,7 +335,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	MPI_Waitall(2, req2, stat2);
 
 	free(local_buffer);
-
+//
 //	if (file->comm->simulation_rank == 0)
 //	{
 //		for (int i = 0; i < local_size/4; i++)

@@ -109,6 +109,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 		offset += dc_comp_size;
 		decomp_offset += dc_size;
 		free(output->p);
+		free(dc_buf);
 
 		for (int i = file->mpr->wavelet_trans_num; i > 0; i--)
 		{
@@ -132,21 +133,11 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 			free(output->p);
 		}
 
-		if (file->comm->simulation_rank == 0 && p == 0)
-		{
-			for (int i = 0; i < 512; i++)
-			{
-				float a;
-				memcpy(&a, &tmp_buffer[i * sizeof(float)], sizeof(float));
-				printf("%f\n", a);
-			}
-		}
-		free(dc_buf);
+		reg_patch->buffer = realloc(reg_patch->buffer, patch_size);
+		memcpy(reg_patch->buffer, tmp_buffer, patch_size);
+
 		free(tmp_buffer);
 		free(output);
-//		print
-		// Compressed DC component
-
 	}
 
 	return MPR_success;

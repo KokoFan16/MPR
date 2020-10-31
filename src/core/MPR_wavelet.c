@@ -59,11 +59,13 @@ MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
 	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
 
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
+	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
+
 	for (int i = 0; i < local_patch->patch_count; i++)
 	{
-		unsigned char* reg_buffer = malloc(local_patch->patch[i]->patch_buffer_size);
+		unsigned char* reg_buffer = malloc(patch_size);
 		MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, file->mpr->wavelet_trans_num, bytes, 1);
-		memcpy(local_patch->patch[i]->buffer, reg_buffer, local_patch->patch[i]->patch_buffer_size);
+		memcpy(local_patch->patch[i]->buffer, reg_buffer, patch_size);
 		free(reg_buffer);
 		wavelet_decode_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[svi]->type_name, file->mpr->wavelet_trans_num);
 	}

@@ -107,8 +107,6 @@ static void set_mpr_file(int ts)
 	MPR_set_current_time_step(file, ts);   /* Set the current timestep */
 
 	MPR_set_global_offset(file, global_offset);
-
-//	MPR_check_bouding_box(file); /* check which files need to be opened */
 }
 
 static void set_mpr_variable_and_create_buffer()
