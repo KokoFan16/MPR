@@ -41,6 +41,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			memset(local_subband_sizes, 0, max_pcount * subbands_num * sizeof(int));
 		}
 
+		int process_size = 0;  /* print only: the compressed size per process per variable */
+
 		int local_patch_size_id_rank[max_pcount * 3];
 		memset(local_patch_size_id_rank, -1, max_pcount * 3 * sizeof(int));
 		for (int i = 0; i < patch_count; i++)
@@ -49,9 +51,13 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			local_patch_size_id_rank[i * 3 + 1] = local_patch->patch[i]->patch_buffer_size;
 			local_patch_size_id_rank[i * 3 + 2] = rank;
 
+			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
+
 			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 				memcpy(&local_subband_sizes[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
 		}
+
+		printf("The compressed size of process %d of variable %d is %d\n", rank, v, process_size);
 
 		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
 		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
