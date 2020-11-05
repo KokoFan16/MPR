@@ -50,8 +50,6 @@ MPR_return_code MPR_variable_write_data(MPR_variable variable, const void* buffe
 
 MPR_return_code MPR_variable_buffer_cleanup(MPR_file file, int svi, int evi);
 
-MPR_return_code MPR_check_bouding_box(MPR_file file);
-
 MPR_return_code MPR_set_global_offset(MPR_file file, int* offset);
 
 MPR_return_code MPR_variable_cleanup(MPR_file file, int svi);
