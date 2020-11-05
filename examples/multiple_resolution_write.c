@@ -33,7 +33,7 @@ static void create_synthetic_simulation_data();
 static void destroy_data();
 
 char *usage = "Serial Usage: ./multi_res_write -g 32x32x32 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name\n"
-                     "Parallel Usage: mpirun -n 8 ./idx_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -o 4\n"
+                     "Parallel Usage: mpirun -n 8 ./multi_res_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -o 4\n"
                      "  -g: global dimensions\n"
                      "  -l: local (per-process) dimensions\n"
                      "  -p: patch box dimension\n"

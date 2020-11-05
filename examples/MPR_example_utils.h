@@ -87,9 +87,9 @@ static void terminate_with_error_msg(const char *format, ...)
 
 static void calculate_per_process_offsets()
 {
-  sub_div[X] = (global_box_size[X] / local_box_size[X]);
-  sub_div[Y] = (global_box_size[Y] / local_box_size[Y]);
-  sub_div[Z] = (global_box_size[Z] / local_box_size[Z]);
+  sub_div[X] = ceil(global_box_size[X] / local_box_size[X]);
+  sub_div[Y] = ceil(global_box_size[Y] / local_box_size[Y]);
+  sub_div[Z] = ceil(global_box_size[Z] / local_box_size[Z]);
   local_box_offset[Z] = (rank / (sub_div[X] * sub_div[Y])) * local_box_size[Z];
   int slice = rank % (sub_div[X] * sub_div[Y]);
   local_box_offset[Y] = (slice / sub_div[X]) * local_box_size[Y];

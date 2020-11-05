@@ -272,11 +272,6 @@ MPI_Datatype create_subarray()
 	int tmp_local_box[NUM_DIMS] = {local_box_size[0] * bytes, local_box_size[1], local_box_size[2]};
 	int tmp_local_offset[NUM_DIMS] = {local_box_offset[0] * bytes, local_box_offset[1], local_box_offset[2]};
 
-	printf("Bytes: %d\n", bytes);
-	printf("%d global_box: %dx%dx%d\n", rank, tmp_global_box[0], tmp_global_box[1], tmp_global_box[2]);
-	printf("%d local_box: %dx%dx%d\n", rank, tmp_local_box[0], tmp_local_box[1], tmp_local_box[2]);
-	printf("%d local_offset: %dx%dx%d\n", rank, tmp_local_offset[0], tmp_local_offset[1], tmp_local_offset[2]);
-
     MPI_Datatype subarray;
     MPI_Type_create_subarray(3, tmp_global_box, tmp_local_box, tmp_local_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &subarray);
     MPI_Type_commit(&subarray);
@@ -304,6 +299,12 @@ static void read_file_parallel()
     MPI_Get_count(&status, MPI_CHAR, &count);
     if (count != size)
     	terminate_with_error_msg("ERROR: Read file failed!\n");
+    else
+    {
+    	if (rank == 0)
+    		printf("The file %s has been read successful!\n", input_file);
+    }
+
     MPI_File_close(&fh);
 
     // For other variables except first one, just copy the data of first variable.
