@@ -90,7 +90,6 @@ static void calculate_per_process_offsets()
   sub_div[X] = ceil(global_box_size[X] / (float)local_box_size[X]);
   sub_div[Y] = ceil(global_box_size[Y] / (float)local_box_size[Y]);
   sub_div[Z] = ceil(global_box_size[Z] / (float)local_box_size[Z]);
-  printf("%d %d %d\n", sub_div[X], sub_div[Y], sub_div[Z]);
   local_box_offset[Z] = (rank / (sub_div[X] * sub_div[Y])) * local_box_size[Z];
   int slice = rank % (sub_div[X] * sub_div[Y]);
   local_box_offset[Y] = (slice / sub_div[X]) * local_box_size[Y];

@@ -272,6 +272,13 @@ MPI_Datatype create_subarray()
 	int tmp_local_box[NUM_DIMS] = {local_box_size[0] * bytes, local_box_size[1], local_box_size[2]};
 	int tmp_local_offset[NUM_DIMS] = {local_box_offset[0] * bytes, local_box_offset[1], local_box_offset[2]};
 
+	if (local_box_size[0] + local_box_offset[0] > global_box_size[0])
+		tmp_local_offset[0] = (global_box_size[0] - local_box_offset[0]) * bytes;
+	if (local_box_size[1] + local_box_offset[1] > global_box_size[1])
+		tmp_local_offset[1] = global_box_size[1] - local_box_offset[1];
+	if (local_box_size[2] + local_box_offset[2] > global_box_size[2])
+		tmp_local_offset[2] = global_box_size[2] - local_box_offset[2];
+
     MPI_Datatype subarray;
     MPI_Type_create_subarray(3, tmp_global_box, tmp_local_box, tmp_local_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &subarray);
     MPI_Type_commit(&subarray);
