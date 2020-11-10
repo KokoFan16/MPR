@@ -31,6 +31,9 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	}
 	file->time->rst_end = MPI_Wtime();
 
+	if (file->comm->simulation_rank == 0)
+		printf("Restructuring finished!\n");
+
 	/* Write Mode: write data out */
 	int ret = 0;
 	if (MODE == MPR_RAW_IO)
