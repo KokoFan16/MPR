@@ -136,9 +136,6 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 	}
 	file->time->wave_end = MPI_Wtime();
 
-	if (file->comm->simulation_rank == 0)
-		printf("Wavelet transform finished!\n");
-
 	/* compressed each sub-bands after wavelet transform*/
 	file->time->zfp_start = MPI_Wtime();
 	if (MPR_ZFP_multi_res_compression_perform(file, svi, evi))
@@ -147,9 +144,6 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->zfp_end = MPI_Wtime();
-
-	if (file->comm->simulation_rank == 0)
-		printf("ZFP compression finished!\n");
 
 	/* Aggregation phase */
 	file->time->agg_start = MPI_Wtime();
@@ -160,9 +154,6 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 	}
 	file->time->agg_end = MPI_Wtime();
 
-	if (file->comm->simulation_rank == 0)
-		printf("Aggregation finished!\n");
-
 	/* Write metadata out */
 	file->time->wrt_metadata_start = MPI_Wtime();
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
@@ -172,9 +163,6 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 	}
 	file->time->wrt_metadata_end = MPI_Wtime();
 
-	if (file->comm->simulation_rank == 0)
-		printf("Write metadata finished!\n");
-
 	/* write data out */
 	file->time->wrt_data_start = MPI_Wtime();
 	if (MPR_write_data_out(file, svi, evi) != MPR_success)
@@ -183,9 +171,6 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->wrt_data_end = MPI_Wtime();
-
-	if (file->comm->simulation_rank == 0)
-		printf("Write data finished!\n");
 
 	return MPR_success;
 }

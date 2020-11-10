@@ -91,18 +91,23 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		/* Calculate the patch count in each dimension, and its next power 2 value (e.g., 3x3x3 -> 4x4x4)*/
 		int patch_count_xyz[MPR_MAX_DIMENSIONS];
 		int next_2_power_xyz[MPR_MAX_DIMENSIONS];
+		int max_d = 0;
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 		{
 			local_patch->compression_ratio /= file->mpr->global_box[i];
 			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
-			next_2_power_xyz[i] = pow(2, ceil(log2(patch_count_xyz[i])));
+			if (patch_count_xyz[i] > max_d)
+				max_d = patch_count_xyz[i];
+//			next_2_power_xyz[i] = pow(2, ceil(log2(patch_count_xyz[i])));
 		}
+
+		int patch_count_power2 = pow(pow(2, ceil(log2(max_d))), 3);
 
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 		local_patch->compression_ratio /= bytes;
 
 		/* Reorder the patch size array and id array with z-order curve */
-		int patch_count_power2 = next_2_power_xyz[0] * next_2_power_xyz[1] * next_2_power_xyz[2];
+//		int patch_count_power2 = next_2_power_xyz[0] * next_2_power_xyz[1] * next_2_power_xyz[2];
 		int* patch_sizes_zorder = (int*)malloc(patch_count_power2 * sizeof(int)); /* patch size with z-order */
 		memset(patch_sizes_zorder, 0, patch_count_power2 * sizeof(int));
 		int* patch_ids_zorder = (int*)malloc(patch_count_power2 * sizeof(int));  /* patch id with z-order */
