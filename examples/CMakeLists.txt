@@ -8,7 +8,7 @@ add_executable(multi_res_pre_write ./multiple_resolution_precision_write.c)
 add_executable(raw_read ./raw_read.c)
 add_executable(multi_res_read ./multiple_resolution_read.c)
 add_executable(multi_pre_read ./multiple_precision_read.c)
-add_executable(multi_res_pre_read ./multiple_precision_read.c)
+add_executable(multi_res_pre_read ./multiple_resolution_precision_read.c)
 
 include_directories(${ZFP_INCLUDE_DIR})
 

@@ -14,20 +14,22 @@ int values_per_sample = 0;
 int bits_per_sample = 0;
 int global_offset[NUM_DIMS];
 MPR_variable variable;
+int read_level = 0;
 
 static void parse_args(int argc, char **argv);
 static void set_mpr_file(int ts);
 static void set_mpr_variable_and_create_buffer();
 
 
-char *usage = "Serial Usage: ./raw_read -g 16x16x16 -l 16x16x16 -s 0x0x0 -i input_file_name -t 0 -v 0\n"
-                    "Parallel Usage: mpirun -n 8 ./raw_read -g 16x16x16 -l 8x8x8 -s 0x0x0 -i input_file_name -t 0 -v 0\n"
+char *usage = "Serial Usage: ./raw_read -g 16x16x16 -l 16x16x16 -s 0x0x0 -i input_file_name -t 0 -v 0 -r 0\n"
+                    "Parallel Usage: mpirun -n 8 ./raw_read -g 16x16x16 -l 8x8x8 -s 0x0x0 -i input_file_name -t 0 -v 0 -r 0\n"
 					"  -g: the global box to read\n"
 					"  -l: the local chunk per process to read\n"
 					"  -s: the global offset to read\n"
 					"  -i: input file name\n"
 					"  -t: time step index to read\n"
-					"  -v: variable index to read\n";
+					"  -v: variable index to read\n"
+					"  -r: the resolution level to read\n";
 
 int main(int argc, char **argv)
 {
@@ -57,7 +59,7 @@ int main(int argc, char **argv)
 
 static void parse_args(int argc, char **argv)
 {
-	char flags[] = "g:l:s:i:t:v:";
+	char flags[] = "g:l:s:i:t:v:r:";
 	int one_opt = 0;
 
 	while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -90,12 +92,17 @@ static void parse_args(int argc, char **argv)
 
 			case('t'): // number of timesteps
 				if (sscanf(optarg, "%d", &current_ts) < 0)
-					terminate_with_error_msg("Invalid variable file\n%s", usage);
+					terminate_with_error_msg("Invalid timestep to read\n%s", usage);
 				break;
 
 			case('v'): // number of variables
 				if (sscanf(optarg, "%d", &variable_index) < 0)
-					terminate_with_error_msg("Invalid variable file\n%s", usage);
+					terminate_with_error_msg("Invalid variable index to read\n%s", usage);
+				break;
+
+			case('r'): // resolution level to read
+				if (sscanf(optarg, "%d", &read_level) < 0)
+					terminate_with_error_msg("Invalid resolution level to read\n%s", usage);
 				break;
 
 	    default:
@@ -113,6 +120,8 @@ static void set_mpr_file(int ts)
 	MPR_set_current_time_step(file, ts);   /* Set the current timestep */
 
 	MPR_set_global_offset(file, global_offset);
+
+	MPR_set_read_level(file, read_level);
 }
 
 static void set_mpr_variable_and_create_buffer()

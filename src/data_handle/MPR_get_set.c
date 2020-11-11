@@ -109,3 +109,14 @@ MPR_return_code MPR_set_global_offset(MPR_file file, int* offset)
 }
 
 
+MPR_return_code MPR_set_read_level(MPR_file file, int read_level)
+{
+  if (!file)
+    return MPR_err_file;
+
+  file->mpr->read_level = read_level;
+
+  return MPR_success;
+}
+
+
