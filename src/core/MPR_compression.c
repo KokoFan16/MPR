@@ -79,7 +79,10 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
 
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
-	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
+
+	int read_box[MPR_MAX_DIMENSIONS];
+	calculate_res_level_box(read_box, file->mpr->patch_box, file->mpr->read_level);
+	int read_size = read_box[0] * read_box[1] * read_box[2] * bytes;
 
 	char* type_name = file->variable[svi]->type_name;
 
@@ -89,7 +92,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 		MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 		memset(output, 0, sizeof (*output)); /* Initialization */
 
-		unsigned char* tmp_buffer = malloc(patch_size);
+		unsigned char* tmp_buffer = malloc(read_size);
 
 		int offset = 0; /* the offset for each sub-band */
 		int decomp_offset = 0;  /* the decompressed offset for each sub-band*/
@@ -111,7 +114,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 		free(output->p);
 		free(dc_buf);
 
-		for (int i = file->mpr->wavelet_trans_num; i > 0; i--)
+		for (int i = file->mpr->wavelet_trans_num; i > file->mpr->read_level; i--)
 		{
 			calculate_res_level_box(res_box, file->mpr->patch_box, i);
 			int res_size = res_box[0] * res_box[1] * res_box[2] * bytes;
@@ -133,8 +136,8 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 			free(output->p);
 		}
 
-		reg_patch->buffer = realloc(reg_patch->buffer, patch_size);
-		memcpy(reg_patch->buffer, tmp_buffer, patch_size);
+		reg_patch->buffer = realloc(reg_patch->buffer, read_size);
+		memcpy(reg_patch->buffer, tmp_buffer, read_size);
 
 		free(tmp_buffer);
 		free(output);

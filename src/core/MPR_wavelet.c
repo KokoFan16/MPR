@@ -59,27 +59,32 @@ MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
 	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
 
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
-	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
+
+	int trans_level = file->mpr->wavelet_trans_num - file->mpr->read_level;
+	int read_box[MPR_MAX_DIMENSIONS];
+	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+		read_box[i] = file->mpr->patch_box[i]/pow(2, file->mpr->read_level);
+
+	int read_size = read_box[0] * read_box[1] * read_box[2] * bytes;
 
 	for (int i = 0; i < local_patch->patch_count; i++)
 	{
-		unsigned char* reg_buffer = malloc(patch_size);
-		MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, file->mpr->wavelet_trans_num, bytes, 1);
-		memcpy(local_patch->patch[i]->buffer, reg_buffer, patch_size);
+		unsigned char* reg_buffer = malloc(read_size);
+		MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, read_box, trans_level, bytes, 1);
+		memcpy(local_patch->patch[i]->buffer, reg_buffer, read_size);
 		free(reg_buffer);
-		wavelet_decode_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[svi]->type_name, file->mpr->wavelet_trans_num);
+		wavelet_decode_transform(local_patch->patch[i]->buffer, read_box, bytes, file->variable[svi]->type_name, trans_level);
 	}
 
-	int tmp_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
-	if (file->comm->simulation_rank == 0)
-	{
-		for (int i = 0; i < tmp_size; i++)
-		{
-			float a;
-			memcpy(&a, &local_patch->patch[0]->buffer[i*sizeof(float)], sizeof(float));
-			printf("%f\n", a);
-		}
-	}
+//	if (file->comm->simulation_rank == 0)
+//	{
+//		for (int i = 0; i < read_size/bytes; i++)
+//		{
+//			float a;
+//			memcpy(&a, &local_patch->patch[0]->buffer[i*sizeof(float)], sizeof(float));
+//			printf("%f\n", a);
+//		}
+//	}
 
 	return MPR_success;
 }
