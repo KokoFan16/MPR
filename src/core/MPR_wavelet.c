@@ -69,6 +69,18 @@ MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
 		free(reg_buffer);
 		wavelet_decode_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[svi]->type_name, file->mpr->wavelet_trans_num);
 	}
+
+	int tmp_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
+	if (file->comm->simulation_rank == 0)
+	{
+		for (int i = 0; i < tmp_size; i++)
+		{
+			float a;
+			memcpy(&a, &local_patch->patch[0]->buffer[i*sizeof(float)], sizeof(float));
+			printf("%f\n", a);
+		}
+	}
+
 	return MPR_success;
 }
 
@@ -90,9 +102,9 @@ static void wavelet_transform(unsigned char* buffer, int* patch_box, int bytes, 
 // Wavelet transform
 static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num)
 {
-	for (int i = 0; i < trans_num; i++)
+	for (int i = trans_num; i > 0; i--)
 	{
-		int step = pow(2, i+1);
+		int step = pow(2, i);
 		// Calculate z-dir
 		wavelet_helper(buffer, step, 2, bytes, patch_box, type_name, 1);
 		// Calculate y-dir
