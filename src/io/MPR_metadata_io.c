@@ -674,14 +674,12 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 			}
 		}
 	}
-//	else if ()
+
+//	if (file->comm->simulation_rank == 0)
 //	{
-//		if (file->comm->simulation_rank == 0)
+//		for (int i = 0; i < meta_count; i++)
 //		{
-//			for (int i = 0; i < meta_count; i++)
-//			{
-//				printf("%d\n", buffer[i]);
-//			}
+//			printf("%d\n", buffer[i]);
 //		}
 //	}
 

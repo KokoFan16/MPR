@@ -168,7 +168,7 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 
 	int* patches_offset = malloc(file->mpr->total_patches_num * sizeof(int)); /* patch offset array */
 	int* patches_size = malloc(file->mpr->total_patches_num * sizeof(int)); /* patch size array */
-	int* patches_subbands = malloc(file->mpr->total_patches_num * (file->mpr->wavelet_trans_num * 7 + 1) * sizeof(int)); /* patch sub-bands size array */
+	int* patches_subbands = malloc(file->mpr->total_patches_num * subband_num * sizeof(int)); /* patch sub-bands size array */
 
 	for (int i = 0; i < file_num; i++)
 	{
@@ -204,6 +204,8 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 				int read_size = fread(local_patch->patch[p]->buffer, sizeof(char), local_patch->patch[p]->patch_buffer_size, fp);
 				if (read_size != local_patch->patch[p]->patch_buffer_size)
 				{
+					printf("%d %d %d %d %s\n", file->comm->simulation_rank, read_size, local_patch->patch[p]->patch_buffer_size,
+							patches_offset[global_id], file_name);
 					fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 					return MPR_err_file;
 				}
