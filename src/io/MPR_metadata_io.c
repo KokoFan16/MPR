@@ -610,7 +610,7 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 	file->mpr->file_metadata_count = meta_count;
 
 	int bytes = file->variable[var_id]->vps * file->variable[var_id]->bpv/8; /* bytes per data */
-	int metadata_size = file->mpr->file_metadata_count * bytes; /* the size of meta-data */
+	int metadata_size = file->mpr->file_metadata_count * sizeof(int); /* the size of meta-data */
 
 	int patch_count = 0; /* patch count of each process */
 	int MODE = file->mpr->io_type; /* write IO mode */
@@ -675,13 +675,13 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 		}
 	}
 
-	if (file->comm->simulation_rank == 0 && file_name == "raw_1/time000000000/0")
-	{
-		for (int i = 0; i < meta_count; i++)
-		{
-			printf("%d\n", buffer[i]);
-		}
-	}
+//	if (file->comm->simulation_rank == 0 && file_name == "raw_1/time000000000/0")
+//	{
+//		for (int i = 0; i < meta_count; i++)
+//		{
+//			printf("%d\n", buffer[i]);
+//		}
+//	}
 
 	free(buffer);
 	return MPR_success;
