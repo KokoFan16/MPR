@@ -675,13 +675,13 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 		}
 	}
 
-//	if (file->comm->simulation_rank == 0)
-//	{
-//		for (int i = 0; i < meta_count; i++)
-//		{
-//			printf("%d\n", buffer[i]);
-//		}
-//	}
+	if (file->comm->simulation_rank == 0 && file_name == "raw_1/time000000000/0")
+	{
+		for (int i = 0; i < meta_count; i++)
+		{
+			printf("%d\n", buffer[i]);
+		}
+	}
 
 	free(buffer);
 	return MPR_success;
