@@ -267,6 +267,8 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	int local_offset[MPR_MAX_DIMENSIONS] = {INT_MAX, INT_MAX, INT_MAX};  /* current local offset */
 	int local_end[MPR_MAX_DIMENSIONS] = {0, 0, 0}; /* current local end coordinate */
 
+	int level_div = pow(2, file->mpr->read_level);
+
 	MPR_local_patch local_patch = file->variable[svi]->local_patch;
 	for (int i = 0; i < local_patch->patch_count; i++)
 	{
@@ -283,14 +285,19 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 	{
 		local_end[i] += file->mpr->patch_box[i];
-		local_box[i] = local_end[i] - local_offset[i];
+		local_box[i] = (local_end[i] - local_offset[i])/level_div;
 	}
 
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
 	local_box[0] = local_box[0] * bytes;
 
-	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
-	int array_subsize[MPR_MAX_DIMENSIONS] = {file->mpr->patch_box[0] * bytes, file->mpr->patch_box[1], file->mpr->patch_box[2]};
+	int patch_level_box[MPR_MAX_DIMENSIONS];
+	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+		patch_level_box[i] = file->mpr->patch_box[i]/level_div;
+
+
+	int patch_size = patch_level_box[0] * patch_level_box[1] * patch_level_box[2] * bytes;
+	int array_subsize[MPR_MAX_DIMENSIONS] = {patch_level_box[0] * bytes, patch_level_box[1], patch_level_box[2]};
 
 	unsigned char* local_buffer =  malloc(patch_size * local_patch->patch_count);
 
@@ -301,7 +308,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	for (int i = 0; i < local_patch->patch_count; i++)
 	{
 		for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
-			reltive_patch_offset[d] = local_patch->patch[i]->offset[d] - local_offset[d];
+			reltive_patch_offset[d] = (local_patch->patch[i]->offset[d] - local_offset[d])/level_div;
 		reltive_patch_offset[0] = reltive_patch_offset[0] * bytes;
 
 		/* Creating patch receive data type */
@@ -318,13 +325,18 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	}
 	MPI_Waitall(req_id, req, stat);
 
-	int local_size = file->mpr->local_box[0] * file->mpr->local_box[1] * file->mpr->local_box[2] * bytes;
+	int local_size = (file->mpr->local_box[0]/level_div)
+			* (file->mpr->local_box[1]/level_div)
+			* (file->mpr->local_box[2]/level_div) * bytes;
+
 	local_patch->buffer = malloc(local_size);
 
 	/* Cut of data based on the required bounding box */
 	MPI_Datatype local_div_type;
-	int div_array_subsize[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0] * bytes, file->mpr->local_box[1], file->mpr->local_box[2]};
-	int real_local_offset[MPR_MAX_DIMENSIONS] = {file->mpr->global_offset[0] * bytes, file->mpr->global_offset[1], file->mpr->global_offset[2]};
+	int div_array_subsize[MPR_MAX_DIMENSIONS] = {(file->mpr->local_box[0]/level_div) * bytes,
+			file->mpr->local_box[1]/level_div, file->mpr->local_box[2]/level_div};
+	int real_local_offset[MPR_MAX_DIMENSIONS] = {file->mpr->global_offset[0]/level_div * bytes,
+			file->mpr->global_offset[1]/level_div, file->mpr->global_offset[2]/level_div};
 	MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, local_box, div_array_subsize, real_local_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &local_div_type);
 	MPI_Type_commit(&local_div_type);
 
@@ -335,16 +347,16 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	MPI_Waitall(2, req2, stat2);
 
 	free(local_buffer);
-//
-//	if (file->comm->simulation_rank == 0)
-//	{
-//		for (int i = 0; i < local_size/4; i++)
-//		{
-//			float a;
-//			memcpy(&a, &local_patch->buffer[i*4], 4);
-//			printf("%f\n", a);
-//		}
-//	}
+
+	if (file->comm->simulation_rank == 0)
+	{
+		for (int i = 0; i < local_size/4; i++)
+		{
+			float a;
+			memcpy(&a, &local_patch->buffer[i*4], 4);
+			printf("%f\n", a);
+		}
+	}
 
 	return MPR_success;
 }

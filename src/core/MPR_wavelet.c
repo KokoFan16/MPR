@@ -76,16 +76,6 @@ MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
 		wavelet_decode_transform(local_patch->patch[i]->buffer, read_box, bytes, file->variable[svi]->type_name, trans_level);
 	}
 
-//	if (file->comm->simulation_rank == 0)
-//	{
-//		for (int i = 0; i < read_size/bytes; i++)
-//		{
-//			float a;
-//			memcpy(&a, &local_patch->patch[0]->buffer[i*sizeof(float)], sizeof(float));
-//			printf("%f\n", a);
-//		}
-//	}
-
 	return MPR_success;
 }
 
