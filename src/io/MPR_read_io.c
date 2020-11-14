@@ -103,6 +103,8 @@ MPR_return_code MPR_multi_pre_read(MPR_file file, int svi)
 /* Read data with multiple resolution and precision mode */
 MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 {
+	if (file->comm->simulation_rank == 0)
+		printf("MPR_multi_pre_res_read\n");
 	/* read data */
 	file->time->read_start = MPI_Wtime();
 	if (MPR_read_data(file, svi) != MPR_success)
@@ -111,6 +113,8 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 		return MPR_err_file;
 	}
 	file->time->read_end = MPI_Wtime();
+	if (file->comm->simulation_rank == 0)
+		printf("MPR_read_data\n");
 
 	/* decompression */
 	file->time->zfp_start = MPI_Wtime();
@@ -121,6 +125,9 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 	}
 	file->time->zfp_end = MPI_Wtime();
 
+	if (file->comm->simulation_rank == 0)
+		printf("MPR_ZFP_multi_res_decompression_perform\n");
+
 	/* decode wavelet transform */
 	file->time->wave_start = MPI_Wtime();
 	if (MPR_wavelet_decode_perform(file, svi) != MPR_success)
@@ -129,6 +136,8 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 		return MPR_err_file;
 	}
 	file->time->wave_end = MPI_Wtime();
+	if (file->comm->simulation_rank == 0)
+		printf("MPR_wavelet_decode_perform\n");
 
 	/* get local box for each process */
 	file->time->rst_start =  MPI_Wtime();
@@ -138,6 +147,8 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 		return MPR_err_file;
 	}
 	file->time->rst_end =  MPI_Wtime();
+	if (file->comm->simulation_rank == 0)
+		printf("MPR_get_local_read_box\n");
 
 	return MPR_success;
 }
@@ -349,16 +360,16 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	MPI_Waitall(2, req2, stat2);
 
 	free(local_buffer);
-
-	if (file->comm->simulation_rank == 0)
-	{
-		for (int i = 0; i < local_size/4; i++)
-		{
-			float a;
-			memcpy(&a, &local_patch->buffer[i*4], 4);
-			printf("%f\n", a);
-		}
-	}
+//
+//	if (file->comm->simulation_rank == 0)
+//	{
+//		for (int i = 0; i < local_size/4; i++)
+//		{
+//			float a;
+//			memcpy(&a, &local_patch->buffer[i*4], 4);
+//			printf("%f\n", a);
+//		}
+//	}
 
 	return MPR_success;
 }
