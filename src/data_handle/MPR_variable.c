@@ -145,8 +145,8 @@ MPR_return_code MPR_variable_cleanup(MPR_file file, int svi)
 	for (int i = 0; i < file->variable[svi]->local_patch->patch_count; i++)
 	{
 		free(file->variable[svi]->local_patch->patch[i]->buffer);
-		free(file->variable[svi]->local_patch->patch[i]);
 		free(file->variable[svi]->local_patch->patch[i]->subbands_comp_size);
+		free(file->variable[svi]->local_patch->patch[i]);
 	}
 	free(file->variable[svi]->local_patch->buffer);
 	free(file->variable[svi]->local_patch->patch);
