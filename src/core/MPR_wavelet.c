@@ -12,10 +12,10 @@
 
 static void wavelet_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num);
 static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, int* patch_box, char* type_name, int mode);
-static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf, int* patch_box, int trans_num, int bytes, int mode);
+static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf, int* patch_box, int trans_num, int bytes, int mode, int end_level);
 static void MPR_wavelet_reorg_helper(unsigned char* buf, unsigned char* reg_buf, int step, int* index, int sk, int sj, int si, int* patch_box, int bytes, int mode);
 
-static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num);
+static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num, int end_level);
 
 MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 {
@@ -43,7 +43,7 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 		{
 			wavelet_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[v]->type_name, trans_num);
 			unsigned char* reg_buffer = malloc(local_patch->patch[i]->patch_buffer_size);
-			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes, 0);
+			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes, 0, 0);
 			memcpy(local_patch->patch[i]->buffer, reg_buffer, local_patch->patch[i]->patch_buffer_size);
 			free(reg_buffer);
 		}
@@ -59,23 +59,16 @@ MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
 	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
 
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
-
-	int trans_level = file->mpr->wavelet_trans_num - file->mpr->read_level;
-	int read_box[MPR_MAX_DIMENSIONS];
-	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
-		read_box[i] = file->mpr->patch_box[i]/pow(2, file->mpr->read_level);
-
-	int read_size = read_box[0] * read_box[1] * read_box[2] * bytes;
+	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
 
 	for (int i = 0; i < local_patch->patch_count; i++)
 	{
-		unsigned char* reg_buffer = malloc(read_size);
-		MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, read_box, trans_level, bytes, 1);
-		memcpy(local_patch->patch[i]->buffer, reg_buffer, read_size);
+		unsigned char* reg_buffer = malloc(patch_size);
+		MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, file->mpr->wavelet_trans_num, bytes, 1, file->mpr->read_level);
+		memcpy(local_patch->patch[i]->buffer, reg_buffer, patch_size);
 		free(reg_buffer);
-		wavelet_decode_transform(local_patch->patch[i]->buffer, read_box, bytes, file->variable[svi]->type_name, trans_level);
+		wavelet_decode_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, bytes, file->variable[svi]->type_name, file->mpr->wavelet_trans_num, file->mpr->read_level);
 	}
-
 	return MPR_success;
 }
 
@@ -95,9 +88,9 @@ static void wavelet_transform(unsigned char* buffer, int* patch_box, int bytes, 
 }
 
 // Wavelet transform
-static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num)
+static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, int bytes, char* type_name, int trans_num, int end_level)
 {
-	for (int i = trans_num; i > 0; i--)
+	for (int i = trans_num; i > end_level; i--)
 	{
 		int step = pow(2, i);
 		// Calculate z-dir
@@ -312,14 +305,14 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int bytes, in
 }
 
 
-static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf, int* patch_box, int trans_num, int bytes, int mode)
+static void MPR_wavelet_organization(unsigned char* buf, unsigned char* reg_buf, int* patch_box, int trans_num, int bytes, int mode, int end_level)
 {
 	int index = 0;
 
 	int step = pow(2, trans_num);
 	MPR_wavelet_reorg_helper(buf, reg_buf, step, &index, 0, 0, 0, patch_box, bytes, mode);
 
-	for (int i = trans_num; i > 0; i--)
+	for (int i = trans_num; i > end_level; i--)
 	{
 		step = pow(2, i);
 		int n_step[2] = {0, step/2};

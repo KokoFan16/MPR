@@ -136,7 +136,8 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 			free(output->p);
 		}
 
-		reg_patch->buffer = realloc(reg_patch->buffer, read_size);
+		int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
+		reg_patch->buffer = realloc(reg_patch->buffer, patch_size);
 		memcpy(reg_patch->buffer, tmp_buffer, read_size);
 
 		free(tmp_buffer);
