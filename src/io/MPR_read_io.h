@@ -22,4 +22,6 @@ MPR_return_code MPR_check_required_patches(MPR_file file, int svi);
 
 MPR_return_code MPR_get_local_read_box(MPR_file file, int svi);
 
+MPR_return_code MPR_read_level_samples(MPR_file file, int svi);
+
 #endif /* SRC_IO_MPR_READ_IO_H_ */

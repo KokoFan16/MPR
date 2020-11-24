@@ -19,15 +19,6 @@ MPR_return_code MPR_raw_read(MPR_file file, int svi)
 	}
 	file->time->read_end = MPI_Wtime();
 
-	/* get local box for each process */
-	file->time->rst_start =  MPI_Wtime();
-	if (MPR_get_local_read_box(file, svi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->rst_end =  MPI_Wtime();
-
 	return MPR_success;
 }
 
@@ -52,15 +43,6 @@ MPR_return_code MPR_multi_res_read(MPR_file file, int svi)
 		return MPR_err_file;
 	}
 	file->time->wave_end = MPI_Wtime();
-
-	/* get local box for each process */
-	file->time->rst_start =  MPI_Wtime();
-	if (MPR_get_local_read_box(file, svi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->rst_end =  MPI_Wtime();
 
 	return MPR_success;
 }
@@ -87,15 +69,6 @@ MPR_return_code MPR_multi_pre_read(MPR_file file, int svi)
 	}
 	file->time->zfp_end = MPI_Wtime();
 
-	/* get local box for each process */
-	file->time->rst_start =  MPI_Wtime();
-	if (MPR_get_local_read_box(file, svi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->rst_end =  MPI_Wtime();
-
 	return MPR_success;
 }
 
@@ -103,8 +76,8 @@ MPR_return_code MPR_multi_pre_read(MPR_file file, int svi)
 /* Read data with multiple resolution and precision mode */
 MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 {
-	if (file->comm->simulation_rank == 0)
-		printf("MPR_multi_pre_res_read\n");
+//	if (file->comm->simulation_rank == 0)
+//		printf("MPR_multi_pre_res_read\n");
 	/* read data */
 	file->time->read_start = MPI_Wtime();
 	if (MPR_read_data(file, svi) != MPR_success)
@@ -113,8 +86,8 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 		return MPR_err_file;
 	}
 	file->time->read_end = MPI_Wtime();
-	if (file->comm->simulation_rank == 0)
-		printf("MPR_read_data\n");
+//	if (file->comm->simulation_rank == 0)
+//		printf("MPR_read_data\n");
 
 	/* decompression */
 	file->time->zfp_start = MPI_Wtime();
@@ -125,8 +98,8 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 	}
 	file->time->zfp_end = MPI_Wtime();
 
-	if (file->comm->simulation_rank == 0)
-		printf("MPR_ZFP_multi_res_decompression_perform\n");
+//	if (file->comm->simulation_rank == 0)
+//		printf("MPR_ZFP_multi_res_decompression_perform\n");
 
 	/* decode wavelet transform */
 	file->time->wave_start = MPI_Wtime();
@@ -136,19 +109,8 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 		return MPR_err_file;
 	}
 	file->time->wave_end = MPI_Wtime();
-	if (file->comm->simulation_rank == 0)
-		printf("MPR_wavelet_decode_perform\n");
-
-	/* get local box for each process */
-	file->time->rst_start =  MPI_Wtime();
-	if (MPR_get_local_read_box(file, svi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->rst_end =  MPI_Wtime();
-	if (file->comm->simulation_rank == 0)
-		printf("MPR_get_local_read_box\n");
+//	if (file->comm->simulation_rank == 0)
+//		printf("MPR_wavelet_decode_perform\n");
 
 	return MPR_success;
 }
@@ -173,7 +135,6 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 	}
 
 	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
-	int required_patch_count = local_patch->patch_count;
 
 	int subband_num = file->mpr->wavelet_trans_num * 7 + 1;
 
@@ -198,7 +159,7 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 			return MPR_err_file;
 		}
 
-		for (int p = 0; p < required_patch_count; p++)
+		for (int p = 0; p < local_patch->patch_count; p++)
 		{
 			int global_id = local_patch->agg_patch_id_array[p];
 			if (patches_offset[global_id] != -1)
@@ -224,6 +185,7 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 		}
 		fclose(fp); /* close file */
 	}
+	free(file->mpr->open_file_ids);
 
 	free(patches_offset);
 	free(patches_size);
@@ -270,6 +232,7 @@ MPR_return_code MPR_check_required_patches(MPR_file file, int svi)
 	}
 	local_patch->patch_count = required_patch_count;
 	local_patch->patch = realloc(local_patch->patch, sizeof(MPR_patch*) * required_patch_count);
+	local_patch->agg_patch_id_array = realloc(local_patch->agg_patch_id_array, sizeof(int) * required_patch_count);
 
 	return MPR_success;
 }
@@ -279,8 +242,6 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 {
 	int local_offset[MPR_MAX_DIMENSIONS] = {INT_MAX, INT_MAX, INT_MAX};  /* current local offset */
 	int local_end[MPR_MAX_DIMENSIONS] = {0, 0, 0}; /* current local end coordinate */
-
-	int level_div = pow(2, file->mpr->read_level);
 
 	MPR_local_patch local_patch = file->variable[svi]->local_patch;
 	for (int i = 0; i < local_patch->patch_count; i++)
@@ -298,19 +259,14 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 	{
 		local_end[i] += file->mpr->patch_box[i];
-		local_box[i] = (local_end[i] - local_offset[i])/level_div;
+		local_box[i] = local_end[i] - local_offset[i];
 	}
 
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
 	local_box[0] = local_box[0] * bytes;
 
-	int patch_level_box[MPR_MAX_DIMENSIONS];
-	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
-		patch_level_box[i] = file->mpr->patch_box[i]/level_div;
-
-
-	int patch_size = patch_level_box[0] * patch_level_box[1] * patch_level_box[2] * bytes;
-	int array_subsize[MPR_MAX_DIMENSIONS] = {patch_level_box[0] * bytes, patch_level_box[1], patch_level_box[2]};
+	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
+	int array_subsize[MPR_MAX_DIMENSIONS] = {file->mpr->patch_box[0] * bytes, file->mpr->patch_box[1], file->mpr->patch_box[2]};
 
 	unsigned char* local_buffer =  malloc(patch_size * local_patch->patch_count);
 
@@ -321,7 +277,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	for (int i = 0; i < local_patch->patch_count; i++)
 	{
 		for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
-			reltive_patch_offset[d] = (local_patch->patch[i]->offset[d] - local_offset[d])/level_div;
+			reltive_patch_offset[d] = (local_patch->patch[i]->offset[d] - local_offset[d]);
 		reltive_patch_offset[0] = reltive_patch_offset[0] * bytes;
 
 		/* Creating patch receive data type */
@@ -338,38 +294,71 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	}
 	MPI_Waitall(req_id, req, stat);
 
-	int local_size = (file->mpr->local_box[0]/level_div)
-			* (file->mpr->local_box[1]/level_div)
-			* (file->mpr->local_box[2]/level_div) * bytes;
-
+	int local_size = file->mpr->local_box[0] * file->mpr->local_box[1] * file->mpr->local_box[2] * bytes;
 	local_patch->buffer = malloc(local_size);
+
+	int relative_local_offset[MPR_MAX_DIMENSIONS];
+	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+		relative_local_offset[i] = file->mpr->local_offset[i] + file->mpr->global_offset[i];
+	relative_local_offset[0] = relative_local_offset[0] * bytes;
 
 	/* Cut of data based on the required bounding box */
 	MPI_Datatype local_div_type;
-	int div_array_subsize[MPR_MAX_DIMENSIONS] = {(file->mpr->local_box[0]/level_div) * bytes,
-			file->mpr->local_box[1]/level_div, file->mpr->local_box[2]/level_div};
-	int real_local_offset[MPR_MAX_DIMENSIONS] = {file->mpr->global_offset[0]/level_div * bytes,
-			file->mpr->global_offset[1]/level_div, file->mpr->global_offset[2]/level_div};
-	MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, local_box, div_array_subsize, real_local_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &local_div_type);
+	int div_array_subsize[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0] * bytes, file->mpr->local_box[1], file->mpr->local_box[2]};
+
+	MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, local_box, div_array_subsize, relative_local_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &local_div_type);
 	MPI_Type_commit(&local_div_type);
 
 	MPI_Request req2[2];
 	MPI_Status stat2[2];
-	MPI_Irecv(local_patch->buffer, local_size, MPI_BYTE, file->comm->simulation_rank, 0, file->comm->simulation_comm, &req2[0]);
-	MPI_Isend(local_buffer, 1, local_div_type, file->comm->simulation_rank, 0, file->comm->simulation_comm, &req2[1]);
+	MPI_Irecv(local_patch->buffer, local_size, MPI_BYTE, file->comm->simulation_rank, file->comm->simulation_rank, file->comm->simulation_comm, &req2[0]);
+	MPI_Isend(local_buffer, 1, local_div_type, file->comm->simulation_rank, file->comm->simulation_rank, file->comm->simulation_comm, &req2[1]);
 	MPI_Waitall(2, req2, stat2);
 
 	free(local_buffer);
-//
-//	if (file->comm->simulation_rank == 0)
-//	{
-//		for (int i = 0; i < local_size/4; i++)
-//		{
-//			float a;
-//			memcpy(&a, &local_patch->buffer[i*4], 4);
-//			printf("%f\n", a);
-//		}
-//	}
 
+	if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+	{
+		if (MPR_read_level_samples(file, svi) != MPR_success)
+		{
+			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+			return MPR_err_file;
+		}
+	}
+	return MPR_success;
+}
+
+MPR_return_code MPR_read_level_samples(MPR_file file, int svi)
+{
+	MPR_local_patch local_patch = file->variable[svi]->local_patch;
+	int sample_step = pow(2, file->mpr->read_level);
+
+	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
+	int local_size = ((file->mpr->local_box[2] + 1)/sample_step) * ((file->mpr->local_box[1] + 1)/sample_step) * ((file->mpr->local_box[0] + 1)/sample_step) * bytes;
+
+	unsigned char* local_level_buffer = malloc(local_size);
+
+	int x = sample_step - (file->mpr->global_offset[0] % sample_step);
+	int y = sample_step - (file->mpr->global_offset[1] % sample_step);
+	int z = sample_step - (file->mpr->global_offset[2] % sample_step);
+
+	int temp = 0;
+	for (int k = z; k < file->mpr->local_box[2]; k += sample_step)
+	{
+		for (int j = y; j < file->mpr->local_box[1]; j += sample_step)
+		{
+			for (int i = x; i < file->mpr->local_box[0]; i += sample_step)
+			{
+				int index = k * (file->mpr->local_box[1] * file->mpr->local_box[0]) + j * file->mpr->local_box[0] + i;
+				memcpy(&local_level_buffer[temp * bytes], &local_patch->buffer[index * bytes], bytes);
+				temp++;
+			}
+		}
+	}
+
+	local_patch->buffer = realloc(local_patch->buffer, local_size);
+	memcpy(local_patch->buffer, local_level_buffer, local_size);
+
+	free(local_level_buffer);
 	return MPR_success;
 }

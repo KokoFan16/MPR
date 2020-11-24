@@ -86,6 +86,17 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 	else
 		fprintf(stderr, "Unsupported MPR Mode.\n");
 
+	/* get local box for each process */
+	file->time->rst_start =  MPI_Wtime();
+	if (MPR_get_local_read_box(file, svi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->rst_end =  MPI_Wtime();
+//	if (file->comm->simulation_rank == 0)
+//		printf("MPR_get_local_read_box\n");
+
 	/* buffers cleanup */
 	if (MPR_variable_cleanup(file, svi) != MPR_success)
 	{
