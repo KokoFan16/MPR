@@ -282,7 +282,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 
 		/* Creating patch receive data type */
 		MPI_Datatype recv_type;
-		MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, local_box, array_subsize, reltive_patch_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &recv_type);
+		MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, local_box, array_subsize, reltive_patch_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &recv_type);
 		MPI_Type_commit(&recv_type);
 
 		MPI_Irecv(local_buffer, 1, recv_type, file->comm->simulation_rank, i, file->comm->simulation_comm, &req[req_id]);
@@ -291,6 +291,8 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 		MPI_Isend(local_patch->patch[i]->buffer, patch_size, MPI_BYTE, file->comm->simulation_rank, i,
 				file->comm->simulation_comm, &req[req_id]);
 		req_id++;
+
+		MPI_Type_free(&recv_type);
 	}
 	MPI_Waitall(req_id, req, stat);
 
@@ -299,14 +301,14 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 
 	int relative_local_offset[MPR_MAX_DIMENSIONS];
 	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
-		relative_local_offset[i] = file->mpr->local_offset[i] + file->mpr->global_offset[i];
+		relative_local_offset[i] = (file->mpr->local_offset[i] + file->mpr->global_offset[i]) - local_offset[i];
 	relative_local_offset[0] = relative_local_offset[0] * bytes;
 
 	/* Cut of data based on the required bounding box */
 	MPI_Datatype local_div_type;
 	int div_array_subsize[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0] * bytes, file->mpr->local_box[1], file->mpr->local_box[2]};
 
-	MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, local_box, div_array_subsize, relative_local_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &local_div_type);
+	MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, local_box, div_array_subsize, relative_local_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &local_div_type);
 	MPI_Type_commit(&local_div_type);
 
 	MPI_Request req2[2];
@@ -314,6 +316,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	MPI_Irecv(local_patch->buffer, local_size, MPI_BYTE, file->comm->simulation_rank, file->comm->simulation_rank, file->comm->simulation_comm, &req2[0]);
 	MPI_Isend(local_buffer, 1, local_div_type, file->comm->simulation_rank, file->comm->simulation_rank, file->comm->simulation_comm, &req2[1]);
 	MPI_Waitall(2, req2, stat2);
+	MPI_Type_free(&local_div_type);
 
 	free(local_buffer);
 
