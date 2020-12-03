@@ -14,5 +14,6 @@ MPR_return_code MPR_read(MPR_file file, int svi);
 
 MPR_return_code MPR_check_bouding_box(MPR_file file);
 
+MPR_return_code MPR_check_local_box(MPR_file file);
 
 #endif /* SRC_IO_MPR_IO_H_ */

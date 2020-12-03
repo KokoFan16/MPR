@@ -65,6 +65,12 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 {
 	int MODE = file->mpr->io_type;
 
+	if (MPR_check_local_box(file) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
 	/* check which files need to be opened */
 	file->time->parse_bound_start = MPI_Wtime();
 	if (MPR_check_bouding_box(file) != MPR_success)
@@ -94,8 +100,6 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 		return MPR_err_file;
 	}
 	file->time->rst_end =  MPI_Wtime();
-//	if (file->comm->simulation_rank == 0)
-//		printf("MPR_get_local_read_box\n");
 
 	/* buffers cleanup */
 	if (MPR_variable_cleanup(file, svi) != MPR_success)
@@ -104,6 +108,18 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 		return MPR_err_file;
 	}
 
+	return MPR_success;
+}
+
+
+MPR_return_code MPR_check_local_box(MPR_file file)
+{
+	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+	{
+		if (file->mpr->local_offset[i] + file->mpr->local_box[i] > file->mpr->origin_global_box[i])
+			file->mpr->local_box[i] = (file->mpr->origin_global_box[i] - file->mpr->local_offset[i]);
+	}
+s
 	return MPR_success;
 }
 
