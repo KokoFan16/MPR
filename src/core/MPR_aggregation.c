@@ -203,8 +203,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		for (int i = 0; i < recv_num; i++)
 		{
 			int z = recv_array[i] / (patch_count_xyz[0] * patch_count_xyz[1]);
-			int y = (recv_array[i] - (z * patch_count_xyz[0] * patch_count_xyz[1])) / patch_count_xyz[1];
-			int x = recv_array[i] - z * patch_count_xyz[0] * patch_count_xyz[1] - y * patch_count_xyz[1];
+			int y = (recv_array[i] - (z * patch_count_xyz[0] * patch_count_xyz[1])) / patch_count_xyz[0];
+			int x = recv_array[i] - z * patch_count_xyz[0] * patch_count_xyz[1] - y * patch_count_xyz[0];
 
 			if (z < min_xyz[2]) min_xyz[2] = z;
 			if (z > max_xyz[2]) max_xyz[2] = z;
