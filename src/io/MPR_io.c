@@ -119,7 +119,6 @@ MPR_return_code MPR_check_local_box(MPR_file file)
 		if (file->mpr->local_offset[i] + file->mpr->local_box[i] > file->mpr->origin_global_box[i])
 			file->mpr->local_box[i] = (file->mpr->origin_global_box[i] - file->mpr->local_offset[i]);
 	}
-s
 	return MPR_success;
 }
 
