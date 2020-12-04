@@ -25,8 +25,8 @@ static void set_mpr_variable(int var);
 static void create_synthetic_simulation_data();
 static void destroy_data();
 
-char *usage = "Serial Usage: ./multi_res_pre_write -g 32x32x32 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name\n"
-                     "Parallel Usage: mpirun -n 8 ./idx_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -o 4\n"
+char *usage = "Serial Usage: ./multi_res_pre_write -g 32x32x32 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -o 4 -z 1 -c 0\n"
+                     "Parallel Usage: mpirun -n 8 ./idx_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -o 4 -z 1 -c 0 \n"
                      "  -g: global dimensions\n"
                      "  -l: local (per-process) dimensions\n"
                      "  -p: patch box dimension\n"
@@ -35,7 +35,9 @@ char *usage = "Serial Usage: ./multi_res_pre_write -g 32x32x32 -l 32x32x32 -p 40
                      "  -t: number of timesteps\n"
                      "  -v: number of variables (or file containing a list of variables)\n"
 					 "  -n: the number of processes per node\n"
-					 "  -o: the number of out files\n";
+					 "  -o: the number of out files\n"
+					 "  -z: compression mode: (1: accuracy, 2: precision)\n"
+		             "  -c: compression parameter(double)\n";
 
 int main(int argc, char **argv)
 {
@@ -95,7 +97,7 @@ int main(int argc, char **argv)
 /* Parse arguments */
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:l:p:i:f:t:v:n:m:o:";
+  char flags[] = "g:l:p:i:f:t:v:n:m:o:z:c:";
   int one_opt = 0;
 
   while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -159,6 +161,16 @@ static void parse_args(int argc, char **argv)
     case('o'): // The number of out files
       if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > process_count)
         terminate_with_error_msg("Invalid number of out files\n%s", usage);
+      break;
+
+    case('z'): // The number of out files
+      if (sscanf(optarg, "%d", &compress_mode) < 1)
+        terminate_with_error_msg("Invalid compression mode\n%s", usage);
+      break;
+
+    case('c'): // The number of out files
+      if (sscanf(optarg, "%d", &compress_param) < 0)
+        terminate_with_error_msg("Invalid compression parameter\n%s", usage);
       break;
 
     default:
@@ -336,6 +348,8 @@ static void set_mpr_file(int ts)
   MPR_set_io_mode(file, MPR_MUL_RES_PRE_IO);   /* Select I/O mode */
   MPR_set_out_file_num(file, out_file_num);
   MPR_set_procs_num_per_node(file, proc_num_per_node);
+  MPR_set_compression_mode(file, compress_mode);
+  MPR_set_compression_parameter(file, compress_param);
 
   return;
 }

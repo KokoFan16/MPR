@@ -7,9 +7,6 @@ static void calculate_res_level_box(int* res_box, int* patch_box, int level);
 
 MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, int evi)
 {
-	file->mpr->compression_type = 1; /* compression type (1: accuracy, 2: precision)*/
-	file->mpr->compression_param = 0; /* compression parameter */
-
 	int subband_num = file->mpr->wavelet_trans_num * 7 + 1;
 
 	for (int v = svi; v < evi; v++)
@@ -167,9 +164,6 @@ MPR_return_code MPR_ZFP_compression_perform(MPR_file file, int svi, int evi)
 	int patch_z = file->mpr->patch_box[2];
 
 	int patch_size = patch_x * patch_y * patch_z;
-
-	file->mpr->compression_type = 1; /* compression type (1: accuracy, 2: precision)*/
-	file->mpr->compression_param = 0; /* compression parameter */
 
 	for (int v = svi; v < evi; v++)
 	{

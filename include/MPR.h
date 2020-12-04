@@ -52,6 +52,10 @@ MPR_return_code MPR_variable_buffer_cleanup(MPR_file file, int svi, int evi);
 
 MPR_return_code MPR_set_global_offset(MPR_file file, int* offset);
 
+MPR_return_code MPR_set_compression_mode(MPR_file file, int mode);
+
+MPR_return_code MPR_set_compression_parameter(MPR_file file, int param);
+
 MPR_return_code MPR_variable_cleanup(MPR_file file, int svi);
 
 MPR_return_code MPR_set_read_level(MPR_file file, int read_level);

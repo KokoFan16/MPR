@@ -76,6 +76,28 @@ MPR_return_code MPR_set_procs_num_per_node(MPR_file file, int npro)
 }
 
 
+MPR_return_code MPR_set_compression_mode(MPR_file file, int mode)
+{
+	if (!file)
+      return MPR_err_file;
+
+	file->mpr->compression_type = mode;
+
+    return MPR_success;
+}
+
+
+MPR_return_code MPR_set_compression_parameter(MPR_file file, int param)
+{
+	if (!file)
+      return MPR_err_file;
+
+	file->mpr->compression_param = param;
+
+    return MPR_success;
+}
+
+
 MPR_return_code MPR_set_io_mode(MPR_file file, enum MPR_io_type io_type)
 {
   if (!file)
