@@ -54,7 +54,7 @@ MPR_return_code MPR_set_global_offset(MPR_file file, int* offset);
 
 MPR_return_code MPR_set_compression_mode(MPR_file file, int mode);
 
-MPR_return_code MPR_set_compression_parameter(MPR_file file, int param);
+MPR_return_code MPR_set_compression_parameter(MPR_file file, float param);
 
 MPR_return_code MPR_variable_cleanup(MPR_file file, int svi);
 

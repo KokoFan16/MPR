@@ -87,7 +87,7 @@ MPR_return_code MPR_set_compression_mode(MPR_file file, int mode)
 }
 
 
-MPR_return_code MPR_set_compression_parameter(MPR_file file, int param)
+MPR_return_code MPR_set_compression_parameter(MPR_file file, float param)
 {
 	if (!file)
       return MPR_err_file;

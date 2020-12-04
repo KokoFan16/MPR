@@ -169,7 +169,7 @@ static void parse_args(int argc, char **argv)
       break;
 
     case('c'): // The number of out files
-      if (sscanf(optarg, "%d", &compress_param) < 0)
+      if (sscanf(optarg, "%f", &compress_param) < 0)
         terminate_with_error_msg("Invalid compression parameter\n%s", usage);
       break;
 

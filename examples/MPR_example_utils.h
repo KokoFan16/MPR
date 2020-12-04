@@ -22,7 +22,7 @@ int sub_div[NUM_DIMS];
 static int time_step_count = 1;
 static int variable_count = 1;
 static int compress_mode = 1;
-static int compress_param = 0;
+static float compress_param = 0;
 
 static MPR_point global_size, local_offset, local_size;
 static MPR_access p_access;
