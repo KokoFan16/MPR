@@ -56,7 +56,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
 		}
 
-//		printf("The compressed size of process %d of variable %d is %d\n", rank, v, process_size);
+		printf("The compressed size of process %d of variable %d is %d\n", rank, v, process_size);
 
 		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
 		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
@@ -85,9 +85,18 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		int agg_ranks[out_file_num]; /* AGG Array */
 		decide_aggregator(file, agg_ranks); /* Decide AGG */
 
+		unsigned long long total_size = 0; /* The total size of all the patches across all the processes */
+		for (int i = 0; i < total_patch_num; i++)
+			total_size += patch_sizes[i];
+
+		local_patch->compression_ratio = total_size;
+
 		int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* patch count in each dimension */
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+		{
 			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
+			local_patch->compression_ratio /= file->mpr->global_box[i];
+		}
 
 		/****************** Convert to z-order ********************/
 		int patch_count_power2 = 0;  /* z-order count */
@@ -172,9 +181,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		}
 		else
 		{
-			unsigned long long total_size = 0; /* The total size of all the patches across all the processes */
-			for (int i = 0; i < total_patch_num; i++)
-				total_size += patch_sizes[i];
 			double average_file_size = total_size / (double)out_file_num; /* The idea average file size*/
 
 			int pcount = 0;
