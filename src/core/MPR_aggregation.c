@@ -12,9 +12,6 @@ static int calZOrder(int x, int y, int z);
 
 MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 {
-	int is_fixed_file_size = 0; /* whether is fixed file size mode, otherwise, fixed number of patches per file */
-	int is_z_order = 1; /* whether to use z-order, otherwise, use row-order */
-
 	int proc_num = file->comm->simulation_nprocs;  /* The number of processes */
 	int rank = file->comm->simulation_rank; /* The rank of each process */
 	MPI_Comm comm = file->comm->simulation_comm; /* The MPI communicator */
@@ -96,7 +93,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		int patch_count_power2 = 0;  /* z-order count */
 		int* patch_sizes_zorder = NULL;
 		int* patch_ids_zorder = NULL;
-		if (is_z_order == 1)
+		if (file->mpr->is_z_order == 1)
 		{
 			int next_2_power_xyz[MPR_MAX_DIMENSIONS]; /* (e.g., 3x3x3 -> 4x4x4)*/
 			int max_d = 0;
@@ -139,11 +136,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		int agg_sizes[out_file_num]; /* the current size of aggregators */
 		memset(agg_sizes, 0, out_file_num * sizeof(int));
 
-		if (is_fixed_file_size == 0) /* fixed number of patches per file mode */
+		if (file->mpr->is_fixed_file_size == 0) /* fixed number of patches per file mode */
 		{
 			int avg_patch_num = ceil((float)total_patch_num / out_file_num); /* average patches count per file */
 			int agg_id = 0; /* aggregator id */
-			if (is_z_order == 0)  /* row order */
+			if (file->mpr->is_z_order == 0)  /* row order */
 			{
 				for (int i = 0; i < total_patch_num; i++)
 				{
@@ -181,7 +178,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			double average_file_size = total_size / (double)out_file_num; /* The idea average file size*/
 
 			int pcount = 0;
-			if (is_z_order == 0) /* row-order */
+			if (file->mpr->is_z_order == 0) /* row-order */
 			{
 				for (int a = 0; a < out_file_num; a++)
 				{

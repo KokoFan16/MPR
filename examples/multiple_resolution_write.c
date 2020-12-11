@@ -20,8 +20,6 @@ char var_list[512];
 char output_file_name[512];
 unsigned char **data;
 static MPR_point patch_box;
-int out_file_num = 0;
-int proc_num_per_node = 0;
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -33,7 +31,7 @@ static void create_synthetic_simulation_data();
 static void destroy_data();
 
 char *usage = "Serial Usage: ./multi_res_write -g 32x32x32 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name\n"
-                     "Parallel Usage: mpirun -n 8 ./multi_res_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -o 4\n"
+                     "Parallel Usage: mpirun -n 8 ./multi_res_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -o 4 -m 1 -e 1\n"
                      "  -g: global dimensions\n"
                      "  -l: local (per-process) dimensions\n"
                      "  -p: patch box dimension\n"
@@ -42,7 +40,9 @@ char *usage = "Serial Usage: ./multi_res_write -g 32x32x32 -l 32x32x32 -p 40x40x
                      "  -t: number of timesteps\n"
                      "  -v: number of variables (or file containing a list of variables)\n"
 					 "  -n: the number of processes per node\n"
-					 "  -o: the number of out files\n";
+					 "  -o: the number of out files\n"
+					 "  -m: aggregation mode (0: fixed-patch-count, 0: fixed-size)\n"
+					 "  -e: aggregation order (0: row-order, 1: z-order)\n";
 
 int main(int argc, char **argv)
 {
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
 /* Parse arguments */
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:l:p:i:f:t:v:n:m:o:";
+  char flags[] = "g:l:p:i:f:t:v:n:o:m:e:";
   int one_opt = 0;
 
   while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -165,6 +165,16 @@ static void parse_args(int argc, char **argv)
     case('o'): // The number of out files
       if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > process_count)
         terminate_with_error_msg("Invalid number of out files\n%s", usage);
+      break;
+
+    case('m'): // The number of out files
+      if (sscanf(optarg, "%d", &is_fixed_file_size) < 0 || is_fixed_file_size > 1)
+        terminate_with_error_msg("Invalid aggregation mode\n%s", usage);
+      break;
+
+    case('e'): // The number of out files
+      if (sscanf(optarg, "%d", &is_z_order) < 0 || is_z_order > 1)
+        terminate_with_error_msg("Invalid aggregation order (z-order or row-order)\n%s", usage);
       break;
 
     default:
@@ -328,6 +338,8 @@ static void set_mpr_file(int ts)
   MPR_set_io_mode(file, MPR_MUL_RES_IO);   /* Select I/O mode */
   MPR_set_out_file_num(file, out_file_num);
   MPR_set_procs_num_per_node(file, proc_num_per_node);
+  MPR_set_aggregation_mode(file, is_fixed_file_size);
+  MPR_set_aggregation_order(file, is_z_order);
 
   return;
 }

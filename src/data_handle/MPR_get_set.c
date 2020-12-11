@@ -142,3 +142,25 @@ MPR_return_code MPR_set_read_level(MPR_file file, int read_level)
 }
 
 
+MPR_return_code MPR_set_aggregation_mode(MPR_file file, float mode)
+{
+	if (!file)
+      return MPR_err_file;
+
+	file->mpr->is_fixed_file_size = mode;
+
+    return MPR_success;
+}
+
+
+MPR_return_code MPR_set_aggregation_order(MPR_file file, float order)
+{
+	if (!file)
+      return MPR_err_file;
+
+	file->mpr->is_z_order = order;
+
+    return MPR_success;
+}
+
+
