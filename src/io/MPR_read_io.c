@@ -76,8 +76,6 @@ MPR_return_code MPR_multi_pre_read(MPR_file file, int svi)
 /* Read data with multiple resolution and precision mode */
 MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 {
-//	if (file->comm->simulation_rank == 0)
-//		printf("MPR_multi_pre_res_read\n");
 	/* read data */
 	file->time->read_start = MPI_Wtime();
 	if (MPR_read_data(file, svi) != MPR_success)
@@ -86,8 +84,6 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 		return MPR_err_file;
 	}
 	file->time->read_end = MPI_Wtime();
-//	if (file->comm->simulation_rank == 0)
-//		printf("MPR_read_data\n");
 
 	/* decompression */
 	file->time->zfp_start = MPI_Wtime();
@@ -98,9 +94,6 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 	}
 	file->time->zfp_end = MPI_Wtime();
 
-//	if (file->comm->simulation_rank == 0)
-//		printf("MPR_ZFP_multi_res_decompression_perform\n");
-
 	/* decode wavelet transform */
 	file->time->wave_start = MPI_Wtime();
 	if (MPR_wavelet_decode_perform(file, svi) != MPR_success)
@@ -109,8 +102,6 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 		return MPR_err_file;
 	}
 	file->time->wave_end = MPI_Wtime();
-//	if (file->comm->simulation_rank == 0)
-//		printf("MPR_wavelet_decode_perform\n");
 
 	return MPR_success;
 }
@@ -320,7 +311,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 
 	free(local_buffer);
 
-	if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+	if (file->mpr->io_type == MPR_MUL_RES_PRE_IO && file->mpr->read_level > 0)
 	{
 		if (MPR_read_level_samples(file, svi) != MPR_success)
 		{
