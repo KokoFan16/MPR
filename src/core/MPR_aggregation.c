@@ -12,6 +12,9 @@ static int calZOrder(int x, int y, int z);
 
 MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 {
+	int is_fixed_file_size = 0; /* whether is fixed file size mode, otherwise, fixed number of patches per file */
+	int is_z_order = 1; /* whether to use z-order, otherwise, use row-order */
+
 	int proc_num = file->comm->simulation_nprocs;  /* The number of processes */
 	int rank = file->comm->simulation_rank; /* The rank of each process */
 	MPI_Comm comm = file->comm->simulation_comm; /* The MPI communicator */
@@ -27,23 +30,22 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		MPR_local_patch local_patch = file->variable[v]->local_patch;
 		int patch_count = local_patch->patch_count; /* the number of patches per process */
 
-		/* gather the size all the sub-bands per patch */
+		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+
+		/*************************** Gather required information *************************/
 		int* global_subband_sizes = NULL;
-		int* subband_sizes = NULL;
 		int* local_subband_sizes = NULL;
+		int* subband_sizes = NULL;
 		int subbands_num = 0;
 		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 		{
 			subbands_num = file->mpr->wavelet_trans_num * 7 + 1;
 			global_subband_sizes = malloc(max_pcount * proc_num * subbands_num * sizeof(int));
-			subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
 			local_subband_sizes = malloc(max_pcount * subbands_num * sizeof(int));
-			memset(local_subband_sizes, 0, max_pcount * subbands_num * sizeof(int));
+			subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
 		}
-
-		int process_size = 0;  /* print only: the compressed size per process per variable */
-
-		int local_patch_size_id_rank[max_pcount * 3];
+		int process_size = 0;
+		int local_patch_size_id_rank[max_pcount * 3]; /* local information: size, id, own_rank per patch */
 		memset(local_patch_size_id_rank, -1, max_pcount * 3 * sizeof(int));
 		for (int i = 0; i < patch_count; i++)
 		{
@@ -51,13 +53,13 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			local_patch_size_id_rank[i * 3 + 1] = local_patch->patch[i]->patch_buffer_size;
 			local_patch_size_id_rank[i * 3 + 2] = rank;
 
-			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
-
 			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 				memcpy(&local_subband_sizes[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
+
+			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
 		}
 
-		printf("The compressed size of process %d of variable %d is %d\n", rank, v, process_size);
+//		printf("The compressed size of process %d of variable %d is %d\n", rank, v, process_size);
 
 		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
 		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
@@ -81,82 +83,144 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		}
 		free(patch_size_id);
 		free(global_subband_sizes);
-
-		unsigned long long total_size = 0; /* The total size of all the patches across all the processes */
-		for (int i = 0; i < total_patch_num; i++)
-			total_size += patch_sizes[i];
-		double average_file_size = total_size / (double)out_file_num; /* The idea average file size*/
-		local_patch->compression_ratio = total_size;
-
-		/* Calculate the patch count in each dimension, and its next power 2 value (e.g., 3x3x3 -> 4x4x4)*/
-		int patch_count_xyz[MPR_MAX_DIMENSIONS];
-		int next_2_power_xyz[MPR_MAX_DIMENSIONS];
-		int max_d = 0;
-		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
-		{
-			local_patch->compression_ratio /= file->mpr->global_box[i];
-			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
-			if (patch_count_xyz[i] > max_d)
-				max_d = patch_count_xyz[i];
-//			next_2_power_xyz[i] = pow(2, ceil(log2(patch_count_xyz[i])));
-		}
-
-		int patch_count_power2 = pow(pow(2, ceil(log2(max_d))), 3);
-
-		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
-		local_patch->compression_ratio /= bytes;
-
-		/* Reorder the patch size array and id array with z-order curve */
-//		int patch_count_power2 = next_2_power_xyz[0] * next_2_power_xyz[1] * next_2_power_xyz[2];
-		int* patch_sizes_zorder = (int*)malloc(patch_count_power2 * sizeof(int)); /* patch size with z-order */
-		memset(patch_sizes_zorder, 0, patch_count_power2 * sizeof(int));
-		int* patch_ids_zorder = (int*)malloc(patch_count_power2 * sizeof(int));  /* patch id with z-order */
-		memset(patch_ids_zorder, -1, patch_count_power2 * sizeof(int));
-		for (int z = 0; z < patch_count_xyz[2]; z++)
-		{
-			for (int y = 0; y < patch_count_xyz[1]; y++)
-			{
-				for (int x = 0; x < patch_count_xyz[0]; x++)
-				{
-					int zorder = calZOrder(x, y, z);  /* Calculate the index with z-order */
-					int index = z * patch_count_xyz[1] * patch_count_xyz[0] + y * patch_count_xyz[0] + x;
-					patch_sizes_zorder[zorder] = patch_sizes[index];
-					patch_ids_zorder[zorder] = index;
-				}
-			}
-		}
+		/******************************************************************************/
 
 		int agg_ranks[out_file_num]; /* AGG Array */
 		decide_aggregator(file, agg_ranks); /* Decide AGG */
+
+		int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* patch count in each dimension */
+		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
+
+		/****************** Convert to z-order ********************/
+		int patch_count_power2 = 0;  /* z-order count */
+		int* patch_sizes_zorder = NULL;
+		int* patch_ids_zorder = NULL;
+		if (is_z_order == 1)
+		{
+			int next_2_power_xyz[MPR_MAX_DIMENSIONS]; /* (e.g., 3x3x3 -> 4x4x4)*/
+			int max_d = 0;
+			for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+			{
+				if (patch_count_xyz[i] > max_d)
+					max_d = patch_count_xyz[i];
+			}
+			patch_count_power2 = pow(pow(2, ceil(log2(max_d))), 3); /* 27 -> 64 */
+
+			/* Reorder the patch size array and id array with z-order curve */
+			patch_sizes_zorder = (int*)malloc(patch_count_power2 * sizeof(int)); /* patch size with z-order */
+			memset(patch_sizes_zorder, 0, patch_count_power2 * sizeof(int));
+			patch_ids_zorder = (int*)malloc(patch_count_power2 * sizeof(int));  /* patch id with z-order */
+			memset(patch_ids_zorder, -1, patch_count_power2 * sizeof(int));
+			for (int z = 0; z < patch_count_xyz[2]; z++)
+			{
+				for (int y = 0; y < patch_count_xyz[1]; y++)
+				{
+					for (int x = 0; x < patch_count_xyz[0]; x++)
+					{
+						int zorder = calZOrder(x, y, z);  /* Calculate the index with z-order */
+						int index = z * patch_count_xyz[1] * patch_count_xyz[0] + y * patch_count_xyz[0] + x;
+						patch_sizes_zorder[zorder] = patch_sizes[index];
+						patch_ids_zorder[zorder] = index;
+					}
+				}
+			}
+		}
+		/**********************************************************/
 
 		/************************* Assign patches **************************/
 		int patch_assign_array[total_patch_num];
 		memset(patch_assign_array, -1, total_patch_num * sizeof(int));
 
+		int recv_array[total_patch_num]; /* Local receive array per process */
+		int recv_num = 0;  /* number of received number of patches per aggregator */
+
+		int agg_size = 0; /* the size of aggregator */
 		int agg_sizes[out_file_num]; /* the current size of aggregators */
 		memset(agg_sizes, 0, out_file_num * sizeof(int));
 
-		int recv_array[total_patch_num]; /* Local receive array per process */
-		int recv_num = 0;
-
-		int p = 0;
-		for (int a = 0; a < out_file_num; a++)
+		if (is_fixed_file_size == 0) /* fixed number of patches per file mode */
 		{
-			while (p < patch_count_power2)
+			int avg_patch_num = ceil((float)total_patch_num / out_file_num); /* average patches count per file */
+			int agg_id = 0; /* aggregator id */
+			if (is_z_order == 0)  /* row order */
 			{
-				if (agg_sizes[a] < average_file_size)
+				for (int i = 0; i < total_patch_num; i++)
 				{
-					if (patch_ids_zorder[p] > -1)
-					{
-						patch_assign_array[patch_ids_zorder[p]] = agg_ranks[a];
-						if (rank == agg_ranks[a])
-							recv_array[recv_num++] = patch_ids_zorder[p];
-					}
-					agg_sizes[a] += patch_sizes_zorder[p];
-					p++;
+					if (i == ((agg_id + 1) * avg_patch_num))
+						agg_id++;
+					patch_assign_array[i] = agg_ranks[agg_id];
+					agg_sizes[agg_id] += patch_sizes[i];
+					if (rank == agg_ranks[agg_id])
+						recv_array[recv_num++] = i;
 				}
-				else
-					break;
+			}
+			else /* z-order */
+			{
+				int pcount = 0;
+				for (int i = 0; i < patch_count_power2; i++)
+				{
+					if (patch_ids_zorder[i] > -1)
+					{
+						if (pcount == ((agg_id + 1) * avg_patch_num))
+							agg_id++;
+						patch_assign_array[patch_ids_zorder[i]] = agg_ranks[agg_id];
+						agg_sizes[agg_id] += patch_sizes_zorder[i];
+						if (rank == agg_ranks[agg_id])
+							recv_array[recv_num++] = patch_ids_zorder[i];
+						pcount++;
+					}
+				}
+			}
+		}
+		else
+		{
+			unsigned long long total_size = 0; /* The total size of all the patches across all the processes */
+			for (int i = 0; i < total_patch_num; i++)
+				total_size += patch_sizes[i];
+			double average_file_size = total_size / (double)out_file_num; /* The idea average file size*/
+
+			int pcount = 0;
+			if (is_z_order == 0) /* row-order */
+			{
+				for (int a = 0; a < out_file_num; a++)
+				{
+					while (pcount < total_patch_num)
+					{
+						if (agg_sizes[a] < average_file_size)
+						{
+							patch_assign_array[pcount] = agg_ranks[a];
+							if (rank == agg_ranks[a])
+								recv_array[recv_num++] = pcount;
+							agg_sizes[a] += patch_sizes[pcount];
+							pcount++;
+						}
+						else
+							break;
+					}
+				}
+			}
+			else /* z-order */
+			{
+				for (int a = 0; a < out_file_num; a++)
+				{
+					while (pcount < patch_count_power2)
+					{
+						if (agg_sizes[a] < average_file_size)
+						{
+							if (patch_ids_zorder[pcount] > -1)
+							{
+								patch_assign_array[patch_ids_zorder[pcount]] = agg_ranks[a];
+								if (rank == agg_ranks[a])
+									recv_array[recv_num++] = patch_ids_zorder[pcount];
+							}
+							agg_sizes[a] += patch_sizes_zorder[pcount];
+							pcount++;
+						}
+						else
+							break;
+					}
+				}
 			}
 		}
 		free(patch_sizes_zorder);
@@ -164,7 +228,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		local_patch->agg_patch_count = recv_num;
 		/**********************************************************************/
 
-		int agg_size = 0;
+		/* calculate total size per aggregator */
 		for (int i = 0; i < out_file_num; i++)
 		{
 			if (rank == agg_ranks[i])
@@ -223,6 +287,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			req_id++;
 		}
 		MPI_Waitall(req_id, req, stat);
+		/**********************************************************************/
+
 		free(patch_ranks);
 		free(patch_sizes);
 		free(subband_sizes);
