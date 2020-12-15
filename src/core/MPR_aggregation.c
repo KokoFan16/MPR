@@ -89,7 +89,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		for (int i = 0; i < total_patch_num; i++)
 			total_size += patch_sizes[i];
 
-		local_patch->compression_ratio = total_size;
+		local_patch->compression_ratio = total_size / bytes;
 
 		int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* patch count in each dimension */
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
