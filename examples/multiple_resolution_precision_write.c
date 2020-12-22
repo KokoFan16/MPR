@@ -116,7 +116,7 @@ static void parse_args(int argc, char **argv)
         terminate_with_error_msg("Invalid local dimension\n%s", usage);
       break;
 
-    case('p'): // local dimension
+    case('p'): // patch dimension
       if ((sscanf(optarg, "%dx%dx%d", &patch_box_size[0], &patch_box_size[1], &patch_box_size[2]) == EOF) ||
           (patch_box_size[0] < 1 || patch_box_size[1] < 1 || patch_box_size[2] < 1))
         terminate_with_error_msg("Invalid restructuring box dimension\n%s", usage);
@@ -163,22 +163,22 @@ static void parse_args(int argc, char **argv)
         terminate_with_error_msg("Invalid number of out files\n%s", usage);
       break;
 
-    case('z'): // The number of out files
+    case('z'): // zfp mode
       if (sscanf(optarg, "%d", &compress_mode) < 1)
         terminate_with_error_msg("Invalid compression mode\n%s", usage);
       break;
 
-    case('c'): // The number of out files
+    case('c'): // zfp para
       if (sscanf(optarg, "%f", &compress_param) < 0)
         terminate_with_error_msg("Invalid compression parameter\n%s", usage);
       break;
 
-    case('m'): // The number of out files
+    case('m'): // is_fixed_file_size
       if (sscanf(optarg, "%d", &is_fixed_file_size) < 0 || is_fixed_file_size > 1)
         terminate_with_error_msg("Invalid aggregation mode\n%s", usage);
       break;
 
-    case('e'): // The number of out files
+    case('e'): // is_z_orde
       if (sscanf(optarg, "%d", &is_z_order) < 0 || is_z_order > 1)
         terminate_with_error_msg("Invalid aggregation order (z-order or row-order)\n%s", usage);
       break;

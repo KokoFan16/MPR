@@ -132,9 +132,6 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 	      else
 	    	fprintf(fp, "\n");
 	    }
-	    /* Write number of process per node */
-	    fprintf(fp, "(Pnum per node)\n%d\n", file->mpr->proc_num_per_node);
-	    fprintf(fp, "(Pnum last)\n%d\n", file->mpr->proc_num_last_node);
 	    /* Write compression rate and mode */
 	    fprintf(fp, "(Compression)\n%d %f \n", file->mpr->compression_type, file->mpr->compression_param);
 
