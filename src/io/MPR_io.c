@@ -9,6 +9,8 @@
 
 MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 {
+//	write_data_out(file, svi);
+
 	int MODE = file->mpr->io_type;
 	/* Set the default restructuring box (32x32x32) */
 	if (MPR_set_patch_box_size(file, svi) != MPR_success)
@@ -22,6 +24,7 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+
 	/* Perform restructure phase */
 	file->time->rst_start = MPI_Wtime();
 	if (MPR_restructure_perform(file, svi, evi))
@@ -30,6 +33,7 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->rst_end = MPI_Wtime();
+
 
 	/* Write Mode: write data out */
 	int ret = 0;
@@ -101,12 +105,47 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 	}
 	file->time->rst_end =  MPI_Wtime();
 
+	write_data_out(file, svi);
+
 	/* buffers cleanup */
 	if (MPR_variable_cleanup(file, svi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+
+	return MPR_success;
+}
+
+
+MPR_return_code write_data_out(MPR_file file, int svi)
+{
+	char file_name[512] = "./out_data.raw";
+	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
+
+	int div = pow(2, file->mpr->read_level);
+
+	int tmp_global_box[MPR_MAX_DIMENSIONS] = {file->mpr->global_box[0]/div * bytes, file->mpr->global_box[1]/div, file->mpr->global_box[2]/div};
+	int tmp_local_box[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0]/div * bytes, file->mpr->local_box[1]/div, file->mpr->local_box[2]/div};
+	int tmp_local_offset[MPR_MAX_DIMENSIONS] = {file->mpr->local_offset[0]/div * bytes, file->mpr->local_offset[1]/div, file->mpr->local_offset[2]/div};
+
+	int size = tmp_local_box[0] * tmp_local_box[1] * tmp_local_box[2];
+
+	printf("%d: %dx%dx%d, %dx%dx%d\n", file->comm->simulation_rank, file->mpr->local_offset[0], file->mpr->local_offset[1], file->mpr->local_offset[2],
+			file->mpr->local_box[0], file->mpr->local_box[1], file->mpr->local_box[2]);
+
+	MPI_Datatype out_type;
+	MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, tmp_global_box, tmp_local_box, tmp_local_offset, MPI_ORDER_C, MPI_BYTE, &out_type);
+	MPI_Type_commit(&out_type);
+
+	MPI_File fh;
+	MPI_Status status;
+	MPI_File_open(file->comm->simulation_comm, file_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+	MPI_File_set_view(fh, 0, MPI_CHAR, out_type, "native", MPI_INFO_NULL);
+	MPI_File_write(fh, file->variable[svi]->local_patch->buffer, size, MPI_BYTE, &status);
+	MPI_File_close(&fh);
+
+	MPI_Type_free(&out_type);
 
 	return MPR_success;
 }

@@ -328,7 +328,7 @@ MPR_return_code MPR_read_level_samples(MPR_file file, int svi)
 	int sample_step = pow(2, file->mpr->read_level);
 
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
-	int local_size = ((file->mpr->local_box[2] + 1)/sample_step) * ((file->mpr->local_box[1] + 1)/sample_step) * ((file->mpr->local_box[0] + 1)/sample_step) * bytes;
+	int local_size = ((file->mpr->local_box[0] + 1)/sample_step) * ((file->mpr->local_box[1] + 1)/sample_step) * ((file->mpr->local_box[2] + 1)/sample_step) * bytes;
 
 	unsigned char* local_level_buffer = malloc(local_size);
 
