@@ -100,7 +100,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 		/****************** Convert to z-order ********************/
 		int patch_count_power2 = 0;  /* z-order count */
-//		int* patch_sizes_zorder = NULL;
+		int* patch_sizes_zorder = NULL;
 		int* patch_ids_zorder = NULL;
 		if (file->mpr->is_z_order == 1)
 		{
@@ -114,6 +114,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			patch_count_power2 = pow(pow(2, ceil(log2(max_d))), 3); /* 27 -> 64 */
 
 			/* Reorder the patch id array with z-order curve */
+			patch_sizes_zorder = (int*)malloc(patch_count_power2 * sizeof(int)); /* patch size with z-order */
+			memset(patch_sizes_zorder, 0, patch_count_power2 * sizeof(int));
 			patch_ids_zorder = (int*)malloc(patch_count_power2 * sizeof(int));  /* patch id with z-order */
 			memset(patch_ids_zorder, -1, patch_count_power2 * sizeof(int));
 			for (int z = 0; z < patch_count_xyz[2]; z++)
@@ -124,6 +126,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					{
 						int zorder = calZOrder(x, y, z);  /* Calculate the index with z-order */
 						int index = z * patch_count_xyz[1] * patch_count_xyz[0] + y * patch_count_xyz[0] + x;
+						patch_sizes_zorder[zorder] = patch_sizes[index];
 						patch_ids_zorder[zorder] = index;
 					}
 				}
@@ -168,7 +171,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 						if (pcount == ((agg_id + 1) * avg_patch_num))
 							agg_id++;
 						patch_assign_array[patch_ids_zorder[i]] = agg_ranks[agg_id];
-						agg_sizes[agg_id] += patch_sizes[patch_ids_zorder[i]];
+						agg_sizes[agg_id] += patch_sizes_zorder[i];
 						if (rank == agg_ranks[agg_id])
 							recv_array[recv_num++] = patch_ids_zorder[i];
 						pcount++;
@@ -214,7 +217,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 								if (rank == agg_ranks[a])
 									recv_array[recv_num++] = patch_ids_zorder[pcount];
 							}
-							agg_sizes[a] += patch_sizes[patch_ids_zorder[pcount]];
+							agg_sizes[a] += patch_sizes_zorder[pcount];
 							pcount++;
 						}
 						else
@@ -223,6 +226,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				}
 			}
 		}
+		free(patch_sizes_zorder);
 		free(patch_ids_zorder);
 		local_patch->agg_patch_count = recv_num;
 		/**********************************************************************/

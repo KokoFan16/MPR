@@ -131,11 +131,8 @@ MPR_return_code write_data_out(MPR_file file, int svi)
 
 	int size = tmp_local_box[0] * tmp_local_box[1] * tmp_local_box[2];
 
-	printf("%d: %dx%dx%d, %dx%dx%d\n", file->comm->simulation_rank, file->mpr->local_offset[0], file->mpr->local_offset[1], file->mpr->local_offset[2],
-			file->mpr->local_box[0], file->mpr->local_box[1], file->mpr->local_box[2]);
-
 	MPI_Datatype out_type;
-	MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, tmp_global_box, tmp_local_box, tmp_local_offset, MPI_ORDER_C, MPI_BYTE, &out_type);
+	MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, tmp_global_box, tmp_local_box, tmp_local_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &out_type);
 	MPI_Type_commit(&out_type);
 
 	MPI_File fh;

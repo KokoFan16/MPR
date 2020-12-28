@@ -302,7 +302,7 @@ MPI_Datatype create_subarray()
 		tmp_local_offset[2] = global_box_size[2] - local_box_offset[2];
 
     MPI_Datatype subarray;
-    MPI_Type_create_subarray(3, tmp_global_box, tmp_local_box, tmp_local_offset, MPI_ORDER_C, MPI_CHAR, &subarray);
+    MPI_Type_create_subarray(3, tmp_global_box, tmp_local_box, tmp_local_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &subarray);
     MPI_Type_commit(&subarray);
     return subarray;
 }
