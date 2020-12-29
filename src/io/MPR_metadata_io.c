@@ -252,7 +252,7 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 			for (int i = 1; i < meta_count; i++) /* the patch id */
 				memcpy(&meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->agg_patch_id_array[i-1], sizeof(int));
 		}
-		else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO) /* Compression involves */
+		else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO || MODE == MPR_Benchmark) /* Compression involves */
 		{
 			meta_count += file->mpr->variable_count * 2; /* the patch count for aggregator per variable */
 			meta_buffer = malloc(meta_count * sizeof(int));
@@ -305,6 +305,11 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 				}
 			}
 			memcpy(&meta_buffer[0], &meta_count, sizeof(int)); /* the first metadata should be the total number of metadata*/
+		}
+		else
+		{
+			fprintf(stderr,"Unsupported Mode!\n");
+			MPI_Abort(MPI_COMM_WORLD, -1);
 		}
 
 		/* The file name for out files */

@@ -42,7 +42,7 @@ MPR_return_code MPR_variable_create(char* variable_name, unsigned int bits_per_s
   (*variable)->local_patch->agg_patch_count = 0;
 
   (*variable)->local_patch->out_file_size = 0;
-  (*variable)->local_patch->patch_count = 0;
+  (*variable)->local_patch->patch_count = 1;
 
   return MPR_success;
 }
@@ -125,8 +125,9 @@ MPR_return_code MPR_variable_buffer_cleanup(MPR_file file, int svi, int evi)
 		for (int i = 0; i < file->variable[v]->local_patch->patch_count; i++)
 		{
 			free(file->variable[v]->local_patch->patch[i]->buffer);
+			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+				free(file->variable[v]->local_patch->patch[i]->subbands_comp_size);
 			free(file->variable[v]->local_patch->patch[i]);
-			free(file->variable[v]->local_patch->patch[i]->subbands_comp_size);
 		}
 		free(file->variable[v]->local_patch->buffer);
 		free(file->variable[v]->local_patch->patch);
@@ -145,7 +146,8 @@ MPR_return_code MPR_variable_cleanup(MPR_file file, int svi)
 	for (int i = 0; i < file->variable[svi]->local_patch->patch_count; i++)
 	{
 		free(file->variable[svi]->local_patch->patch[i]->buffer);
-		free(file->variable[svi]->local_patch->patch[i]->subbands_comp_size);
+		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+			free(file->variable[svi]->local_patch->patch[i]->subbands_comp_size);
 		free(file->variable[svi]->local_patch->patch[i]);
 	}
 	free(file->variable[svi]->local_patch->buffer);

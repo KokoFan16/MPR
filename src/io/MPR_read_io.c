@@ -311,7 +311,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 
 	free(local_buffer);
 
-	if (file->mpr->io_type == MPR_MUL_RES_PRE_IO && file->mpr->read_level > 0)
+	if ((file->mpr->io_type == MPR_MUL_RES_PRE_IO || file->mpr->io_type == MPR_MUL_RES_IO) && file->mpr->read_level > 0)
 	{
 		if (MPR_read_level_samples(file, svi) != MPR_success)
 		{

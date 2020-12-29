@@ -24,6 +24,34 @@ MPR_return_code MPR_set_patch_box_size(MPR_file file, int svi)
 	return MPR_success;
 }
 
+MPR_return_code MPR_processing(MPR_file file, int svi, int evi)
+{
+	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
+	file->mpr->total_patches_num = file->comm->simulation_nprocs;
+
+	int node_num = ceil((float)file->comm->simulation_nprocs / file->mpr->proc_num_per_node); /* The number of nodes based on the number of processes per node */
+	file->mpr->node_num = node_num;
+
+	int proc_reminder = file->comm->simulation_nprocs % file->mpr->proc_num_per_node;
+	int proc_num_last_node = (proc_reminder == 0)? file->mpr->proc_num_per_node: proc_reminder; /* the number of processes of last node */
+	file->mpr->proc_num_last_node = proc_num_last_node;
+
+	for (int v = svi; v < evi; v++)
+	{
+		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
+		local_patch->patch = malloc(sizeof(MPR_patch*));
+		local_patch->patch_count = 1;
+		local_patch->patch[0] = (MPR_patch)malloc(sizeof(*local_patch->patch[0]));
+		local_patch->patch[0]->global_id = file->comm->simulation_rank;
+
+		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+
+		local_patch->patch[0]->buffer = malloc(patch_size * bytes);
+		memcpy(local_patch->patch[0]->buffer, local_patch->buffer, patch_size*bytes);
+	}
+	return MPR_success;
+}
+
 MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int end_var_index)
 {
 	/************************** Basic information *******************************/

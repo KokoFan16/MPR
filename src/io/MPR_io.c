@@ -25,16 +25,6 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 
-	/* Perform restructure phase */
-	file->time->rst_start = MPI_Wtime();
-	if (MPR_restructure_perform(file, svi, evi))
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->rst_end = MPI_Wtime();
-
-
 	/* Write Mode: write data out */
 	int ret = 0;
 	if (MODE == MPR_RAW_IO)
@@ -45,6 +35,8 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		ret = MPR_multi_pre_write(file, svi, evi);
 	else if (MODE == MPR_MUL_RES_PRE_IO)
 		ret = MPR_multi_pre_res_write(file, svi, evi);
+	else if (MODE == MPR_Benchmark)
+		ret = MPR_benchmark_write(file, svi, evi);
 	else
 		fprintf(stderr, "Unsupported MPR Mode.\n");
 
@@ -53,6 +45,24 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		fprintf(stderr,"File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+
+	/* Write metadata out */
+	file->time->wrt_metadata_start = MPI_Wtime();
+	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_metadata_end = MPI_Wtime();
+
+	/* write data out */
+	file->time->wrt_data_start = MPI_Wtime();
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_data_end = MPI_Wtime();
 
 	/* buffers cleanup */
 	if (MPR_variable_buffer_cleanup(file, svi, evi) != MPR_success)
@@ -105,7 +115,12 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 	}
 	file->time->rst_end =  MPI_Wtime();
 
-	write_data_out(file, svi);
+	/* For check the read result */
+	if (write_data_out(file, svi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
 
 	/* buffers cleanup */
 	if (MPR_variable_cleanup(file, svi) != MPR_success)

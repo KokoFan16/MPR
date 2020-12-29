@@ -30,8 +30,7 @@ static void set_mpr_variable(int var);
 static void create_synthetic_simulation_data();
 static void destroy_data();
 
-char *usage = "Serial Usage: ./multi_res_write -g 32x32x32 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name\n"
-                     "Parallel Usage: mpirun -n 8 ./multi_res_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_idx_file_name -n 4 -o 4 -m 1 -e 1\n"
+char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_file_name -n 4 -o 4 -m 1 -e 1\n"
                      "  -g: global dimensions\n"
                      "  -l: local (per-process) dimensions\n"
                      "  -p: patch box dimension\n"
@@ -41,7 +40,7 @@ char *usage = "Serial Usage: ./multi_res_write -g 32x32x32 -l 32x32x32 -p 40x40x
                      "  -v: number of variables (or file containing a list of variables)\n"
 					 "  -n: the number of processes per node\n"
 					 "  -o: the number of out files\n"
-					 "  -m: aggregation mode (0: fixed-patch-count, 0: fixed-size)\n"
+					 "  -m: aggregation mode (0: fixed-patch-count, 1: fixed-size)\n"
 					 "  -e: aggregation order (0: row-order, 1: z-order)\n";
 
 int main(int argc, char **argv)
@@ -288,6 +287,13 @@ MPI_Datatype create_subarray()
 	int tmp_local_box[NUM_DIMS] = {local_box_size[0] * bytes, local_box_size[1], local_box_size[2]};
 	int tmp_local_offset[NUM_DIMS] = {local_box_offset[0] * bytes, local_box_offset[1], local_box_offset[2]};
 
+	if (local_box_size[0] + local_box_offset[0] > global_box_size[0])
+		tmp_local_offset[0] = (global_box_size[0] - local_box_offset[0]) * bytes;
+	if (local_box_size[1] + local_box_offset[1] > global_box_size[1])
+		tmp_local_offset[1] = global_box_size[1] - local_box_offset[1];
+	if (local_box_size[2] + local_box_offset[2] > global_box_size[2])
+		tmp_local_offset[2] = global_box_size[2] - local_box_offset[2];
+
     MPI_Datatype subarray;
     MPI_Type_create_subarray(3, tmp_global_box, tmp_local_box, tmp_local_offset, MPI_ORDER_FORTRAN, MPI_CHAR, &subarray);
     MPI_Type_commit(&subarray);
@@ -315,6 +321,12 @@ static void read_file_parallel()
     MPI_Get_count(&status, MPI_CHAR, &count);
     if (count != size)
     	terminate_with_error_msg("ERROR: Read file failed!\n");
+    else
+    {
+    	if (rank == 0)
+    		printf("The file %s has been read successful!\n", input_file);
+    }
+
     MPI_File_close(&fh);
 
     // For other variables except first one, just copy the data of first variable.

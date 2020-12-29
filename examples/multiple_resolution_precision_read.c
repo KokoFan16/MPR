@@ -21,8 +21,7 @@ static void set_mpr_file(int ts);
 static void set_mpr_variable_and_create_buffer();
 
 
-char *usage = "Serial Usage: ./raw_read -g 16x16x16 -l 16x16x16 -s 0x0x0 -i input_file_name -t 0 -v 0 -r 0\n"
-                    "Parallel Usage: mpirun -n 8 ./raw_read -g 16x16x16 -l 8x8x8 -s 0x0x0 -i input_file_name -t 0 -v 0 -r 0\n"
+char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_pre_read -g 16x16x16 -l 8x8x8 -s 0x0x0 -i input_file_name -t 0 -v 0 -r 0\n"
 					"  -g: the global box to read\n"
 					"  -l: the local chunk per process to read\n"
 					"  -s: the global offset to read\n"

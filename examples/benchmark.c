@@ -23,7 +23,7 @@ static void set_mpr_variable(int var);
 static void create_synthetic_simulation_data();
 static void destroy_data();
 
-char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_pre_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_file_name -n 4 -o 4 -z 1 -c 0 -m 1 -e 1\n"
+char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_file_name -n 4 -o 4 -z 1 -c 0 -m 1 -e 1\n"
                      "  -g: global dimensions\n"
                      "  -l: local (per-process) dimensions\n"
                      "  -p: patch box dimension\n"
@@ -354,7 +354,7 @@ static void set_mpr_file(int ts)
 
   MPR_set_current_time_step(file, ts);   /* Set the current timestep */
   MPR_set_variable_count(file, variable_count);   /* Set the number of variables */
-  MPR_set_io_mode(file, MPR_MUL_RES_PRE_IO);   /* Select I/O mode */
+  MPR_set_io_mode(file, MPR_Benchmark);   /* Select I/O mode */
   MPR_set_out_file_num(file, out_file_num);
   MPR_set_procs_num_per_node(file, proc_num_per_node);
   MPR_set_compression_mode(file, compress_mode);

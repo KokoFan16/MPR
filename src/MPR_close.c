@@ -126,6 +126,13 @@ static void MPR_timing_output(MPR_file file, int svi, int evi)
 			if (total_time == max_total_time)
 				fprintf(stderr, "MAX_%d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
 		}
+		else if (MODE == MPR_Benchmark)
+		{
+			if (file->mpr->is_aggregator == 1)
+				fprintf(stderr,"AGG_%d: [%f] >= [comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+			if (total_time == max_total_time)
+				fprintf(stderr,"MAX_%d: [%f] >= [comp %f agg %f w_dd %f w_meda %f]\n", rank, total_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+		}
 		else
 			fprintf(stderr,"Unsupported Mode!");
 	}
@@ -160,6 +167,6 @@ static void MPR_timing_output(MPR_file file, int svi, int evi)
 				fprintf(stderr, "MAX_%d: [%f] >= [meta %f read %f zfp %f wave %f rst %f]\n", rank, total_time, parse_bound, read_time, comp_time, wave_time, rst_time);
 		}
 		else
-			fprintf(stderr,"Unsupported Mode!");
+			fprintf(stderr,"Unsupported Mode!\n");
 	}
 }

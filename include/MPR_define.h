@@ -37,10 +37,11 @@ enum IO_READ_WRITE {MPR_READ, MPR_WRITE};
 
 /* Enumerate  all the IO type */
 enum MPR_io_type {
-	MPR_RAW_IO = 0,                 /* Write data in row format */
-	MPR_MUL_RES_IO = 1,           /* Write data with multiple resolution format (wavelet transform) */
-	MPR_MUL_PRE_IO = 2,           /* Write data with multiple precision format (ZFP compression) */
-	MPR_MUL_RES_PRE_IO = 3        /* Write data with multiple resolution and precision format */
+	MPR_RAW_IO = 0,                /* Write data in row format */
+	MPR_MUL_RES_IO = 1,            /* Write data with multiple resolution format (wavelet transform) */
+	MPR_MUL_PRE_IO = 2,            /* Write data with multiple precision format (ZFP compression) */
+	MPR_MUL_RES_PRE_IO = 3,        /* Write data with multiple resolution and precision format */
+	MPR_Benchmark = 4              /* Benchmark format: only apply ZFP + AGG */
 };
 
 typedef unsigned int MPR_data_layout;
