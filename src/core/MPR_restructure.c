@@ -336,6 +336,8 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	}
 	/**********************************************************************************************/
 
+	printf("The number of patches of process %d is %d\n", file->comm->simulation_rank, local_patch_num);
+
 	/* Clean up */
 	for (int i = 0; i < found_reg_patches_count; i++)
 	{

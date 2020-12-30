@@ -116,11 +116,11 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 	file->time->rst_end =  MPI_Wtime();
 
 	/* For check the read result */
-	if (write_data_out(file, svi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
+//	if (write_data_out(file, svi) != MPR_success)
+//	{
+//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+//		return MPR_err_file;
+//	}
 
 	/* buffers cleanup */
 	if (MPR_variable_cleanup(file, svi) != MPR_success)
