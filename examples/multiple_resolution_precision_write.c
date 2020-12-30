@@ -33,7 +33,7 @@ char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_pre_write -g 64x64x64 -l 
                      "  -v: number of variables (or file containing a list of variables)\n"
 					 "  -n: the number of processes per node\n"
 					 "  -o: the number of out files\n"
-					 "  -z: compression mode: (1: accuracy, 2: precision)\n"
+					 "  -z: compression mode: (0: accuracy, 1: precision)\n"
 		             "  -c: compression parameter(double)\n"
 					 "  -m: aggregation mode (0: fixed-patch-count, 1: fixed-size)\n"
 		             "  -e: aggregation order (0: row-order, 1: z-order)\n";
@@ -163,7 +163,7 @@ static void parse_args(int argc, char **argv)
       break;
 
     case('z'): // zfp mode
-      if (sscanf(optarg, "%d", &compress_mode) < 1)
+      if (sscanf(optarg, "%d", &compress_mode) < 0 || compress_mode > 1)
         terminate_with_error_msg("Invalid compression mode\n%s", usage);
       break;
 

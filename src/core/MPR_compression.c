@@ -245,9 +245,9 @@ MPR_return_code MPR_compress_3D_data(unsigned char* buf, int dim_x, int dim_y, i
 	zfp_field* field = zfp_field_3d(buf, type, dim_x, dim_y, dim_z);
 	zfp_stream* zfp = zfp_stream_open(NULL);
 	// Two compression modes
-	if (flag == 1)
+	if (flag == 0)
 		zfp_stream_set_accuracy(zfp, param);
-	else if (flag == 2)
+	else if (flag == 1)
 		zfp_stream_set_precision(zfp, param);
 	else
 	{

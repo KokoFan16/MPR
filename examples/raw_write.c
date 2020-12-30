@@ -163,12 +163,12 @@ static void parse_args(int argc, char **argv)
         terminate_with_error_msg("Invalid number of out files\n%s", usage);
       break;
 
-    case('m'): // The number of out files
+    case('m'): // The aggregation mode
       if (sscanf(optarg, "%d", &is_fixed_file_size) < 0 || is_fixed_file_size > 1)
         terminate_with_error_msg("Invalid aggregation mode\n%s", usage);
       break;
 
-    case('e'): // The number of out files
+    case('e'): // The aggregation order
       if (sscanf(optarg, "%d", &is_z_order) < 0 || is_z_order > 1)
         terminate_with_error_msg("Invalid aggregation order (z-order or row-order)\n%s", usage);
       break;

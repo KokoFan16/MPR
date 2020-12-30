@@ -41,7 +41,7 @@ char *usage = "Parallel Usage: mpirun -n 8 ./multi_pre_write -g 64x64x64 -l 32x3
                      "  -v: number of variables (or file containing a list of variables)\n"
 					 "  -n: the number of processes per node\n"
 					 "  -o: the number of out files\n"
-					 "  -z: compression mode: (1: accuracy, 2: precision)\n"
+					 "  -z: compression mode: (0: accuracy, 1: precision)\n"
         			 "  -c: compression parameter(double)\n"
 					 "  -m: aggregation mode (0: fixed-patch-count, 1: fixed-size)\n"
 		 	 	 	 "  -e: aggregation order (0: row-order, 1: z-order)\n";
@@ -166,22 +166,22 @@ static void parse_args(int argc, char **argv)
         terminate_with_error_msg("Invalid number of out files\n%s", usage);
       break;
 
-    case('z'): // The number of out files
-      if (sscanf(optarg, "%d", &compress_mode) < 1)
+    case('z'): // ZFP mode
+      if (sscanf(optarg, "%d", &compress_mode) < 0 || compress_mode > 1)
         terminate_with_error_msg("Invalid compression mode\n%s", usage);
       break;
 
-    case('c'): // The number of out files
+    case('c'): // ZFP parameter
       if (sscanf(optarg, "%f", &compress_param) < 0)
         terminate_with_error_msg("Invalid compression parameter\n%s", usage);
       break;
 
-    case('m'): // The number of out files
+    case('m'): // Aggregation mode
       if (sscanf(optarg, "%d", &is_fixed_file_size) < 0 || is_fixed_file_size > 1)
         terminate_with_error_msg("Invalid aggregation mode\n%s", usage);
       break;
 
-    case('e'): // The number of out files
+    case('e'): // Aggregation order
       if (sscanf(optarg, "%d", &is_z_order) < 0 || is_z_order > 1)
         terminate_with_error_msg("Invalid aggregation order (z-order or row-order)\n%s", usage);
       break;
