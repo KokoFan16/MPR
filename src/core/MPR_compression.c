@@ -16,6 +16,13 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 		int local_patch_count = local_patch->patch_count;
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
+		int data_type;
+		if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
+			data_type = 0;
+		else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
+			data_type = 1;
+
+
 		for (int p = 0; p < local_patch_count; p++)
 		{
 			int res_box[MPR_MAX_DIMENSIONS]; /* resolution box per each level */
@@ -35,7 +42,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			int size = res_box[0] * res_box[1] * res_box[2]; /* size of resolution box per level */
 			unsigned char* dc_buf = malloc(size * bytes); /* buffer for DC component */
 			memcpy(dc_buf, &reg_patch->buffer[offset], size * bytes);
-			MPR_compress_3D_data(dc_buf, res_box[0], res_box[1], res_box[2], file->mpr->compression_type, file->mpr->compression_param, type_name, &output); /* ZFP Compression */
+			MPR_compress_3D_data(dc_buf, res_box[0], res_box[1], res_box[2], file->mpr->compression_type, file->mpr->compression_param, data_type, &output); /* ZFP Compression */
 			free(dc_buf);
 			memcpy(&reg_patch->buffer[comp_offset], output->p, output->compress_size);
 			free(output->p);
@@ -52,7 +59,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 				{
 					memcpy(sub_buf, &reg_patch->buffer[offset], size * bytes); /* buffer for each sub-band*/
 					offset += size * bytes;
-					MPR_compress_3D_data(sub_buf, res_box[0], res_box[1], res_box[2], file->mpr->compression_type, file->mpr->compression_param, type_name, &output); /* ZFP Compression */
+					MPR_compress_3D_data(sub_buf, res_box[0], res_box[1], res_box[2], file->mpr->compression_type, file->mpr->compression_param, data_type, &output); /* ZFP Compression */
 					memcpy(&reg_patch->buffer[comp_offset], output->p, output->compress_size); /* copy the compresses buffer to patch buffer */
 					free(output->p); /* free compresses buffer */
 					comp_offset += output->compress_size;
@@ -83,6 +90,12 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 
 	char* type_name = file->variable[svi]->type_name;
 
+	int data_type;
+	if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
+		data_type = 0;
+	else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
+		data_type = 1;
+
 	for (int p = 0; p < local_patch->patch_count; p++)
 	{
 		MPR_patch reg_patch = local_patch->patch[p];
@@ -104,7 +117,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 		unsigned char* dc_buf = malloc(dc_comp_size); /* buffer for DC component */
 		memcpy(dc_buf, &reg_patch->buffer[offset], dc_comp_size);
 		MPR_decompress_3D_data(dc_buf, dc_comp_size, res_box[0], res_box[1], res_box[2],
-				file->mpr->compression_type, file->mpr->compression_param, type_name, &output);
+				file->mpr->compression_type, file->mpr->compression_param, data_type, &output);
 		memcpy(&tmp_buffer[decomp_offset], output->p, dc_size);
 		offset += dc_comp_size;
 		decomp_offset += dc_size;
@@ -124,7 +137,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 				unsigned char* sub_buf = malloc(sub_comp_size); /* buffer for DC component */
 				memcpy(sub_buf, &reg_patch->buffer[offset], sub_comp_size);
 				MPR_decompress_3D_data(sub_buf, sub_comp_size, res_box[0], res_box[1], res_box[2],
-						file->mpr->compression_type, file->mpr->compression_param, type_name, &output);
+						file->mpr->compression_type, file->mpr->compression_param, data_type, &output);
 				memcpy(&tmp_buffer[decomp_offset], output->p, res_size);
 				offset += sub_comp_size;
 				decomp_offset += res_size;
@@ -171,13 +184,19 @@ MPR_return_code MPR_ZFP_compression_perform(MPR_file file, int svi, int evi)
 		char* type_name = file->variable[v]->type_name;
 		int local_patch_count = local_patch->patch_count;
 
+		int data_type;
+		if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
+			data_type = 0;
+		else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
+			data_type = 1;
+
 		for (int p = 0; p < local_patch_count; p++)
 		{
 			MPR_patch reg_patch = local_patch->patch[p];
 			MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 			memset(output, 0, sizeof (*output)); /* Initialization */
 
-			MPR_compress_3D_data(reg_patch->buffer, patch_x, patch_y, patch_z, file->mpr->compression_type, file->mpr->compression_param, type_name, &output);
+			MPR_compress_3D_data(reg_patch->buffer, patch_x, patch_y, patch_z, file->mpr->compression_type, file->mpr->compression_param, data_type, &output);
 			reg_patch->patch_buffer_size = output->compress_size;
 			free(reg_patch->buffer);
 			reg_patch->buffer = (unsigned char*)malloc(output->compress_size);
@@ -206,6 +225,12 @@ MPR_return_code MPR_ZFP_decompression_perform(MPR_file file, int svi)
 	MPR_local_patch local_patch = file->variable[svi]->local_patch; /* Local patch pointer */
 	char* type_name = file->variable[svi]->type_name;
 
+	int data_type;
+	if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
+		data_type = 0;
+	else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
+		data_type = 1;
+
 	for (int p = 0; p < local_patch->patch_count; p++)
 	{
 		MPR_patch reg_patch = local_patch->patch[p];
@@ -215,7 +240,7 @@ MPR_return_code MPR_ZFP_decompression_perform(MPR_file file, int svi)
 
 		/* decompression */
 		MPR_decompress_3D_data(reg_patch->buffer, reg_patch->patch_buffer_size, patch_x, patch_y, patch_z,
-				file->mpr->compression_type, file->mpr->compression_param, type_name, &output);
+				file->mpr->compression_type, file->mpr->compression_param, data_type, &output);
 
 		reg_patch->buffer = (unsigned char*)realloc(reg_patch->buffer, patch_size);
 		memcpy(reg_patch->buffer, output->p, patch_size);
@@ -227,20 +252,14 @@ MPR_return_code MPR_ZFP_decompression_perform(MPR_file file, int svi)
 }
 
 // ZFP float compression
-MPR_return_code MPR_compress_3D_data(unsigned char* buf, int dim_x, int dim_y, int dim_z, int flag, float param, char* type_name, MPR_zfp_compress* output)
+MPR_return_code MPR_compress_3D_data(unsigned char* buf, int dim_x, int dim_y, int dim_z, int flag, float param, int data_type, MPR_zfp_compress* output)
 {
 	// ZFP data type according to PIDX data type
 	zfp_type type = zfp_type_none;
-	if (strcmp(type_name, MPR_DType.INT32) == 0 || strcmp(type_name, MPR_DType.INT32_GA) == 0 || strcmp(type_name, MPR_DType.INT32_RGB) == 0)
-		type = zfp_type_int32;
-	else if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
+	if (data_type == 0)
 		type = zfp_type_float;
-	else if (strcmp(type_name, MPR_DType.INT64) == 0 || strcmp(type_name, MPR_DType.INT64_GA) == 0 || strcmp(type_name, MPR_DType.INT64_RGB) == 0)
-		type = zfp_type_int64;
-	else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
-		type = zfp_type_double;
 	else
-		printf("ERROR: ZFP doesn't support this type %s\n", type_name);
+		type = zfp_type_double;
 
 	zfp_field* field = zfp_field_3d(buf, type, dim_x, dim_y, dim_z);
 	zfp_stream* zfp = zfp_stream_open(NULL);
@@ -271,19 +290,25 @@ MPR_return_code MPR_compress_3D_data(unsigned char* buf, int dim_x, int dim_y, i
 
 
 MPR_return_code MPR_decompress_3D_data(unsigned char* buf, int size, int dim_x, int dim_y, int dim_z,
-		int flag, float param, char* type_name, MPR_zfp_compress* output)
+		int flag, float param, int data_type, MPR_zfp_compress* output)
 {
 	zfp_type type = zfp_type_none;
-	if (strcmp(type_name, MPR_DType.INT32) == 0 || strcmp(type_name, MPR_DType.INT32_GA) == 0 || strcmp(type_name, MPR_DType.INT32_RGB) == 0)
-		type = zfp_type_int32;
-	else if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
+	if (data_type == 0)
 		type = zfp_type_float;
-	else if (strcmp(type_name, MPR_DType.INT64) == 0 || strcmp(type_name, MPR_DType.INT64_GA) == 0 || strcmp(type_name, MPR_DType.INT64_RGB) == 0)
-		type = zfp_type_int64;
-	else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
-		type = zfp_type_double;
 	else
-		printf("ERROR: ZFP doesn't support this type %s\n", type_name);
+		type = zfp_type_double;
+
+//	zfp_type type = zfp_type_none;
+//	if (strcmp(type_name, MPR_DType.INT32) == 0 || strcmp(type_name, MPR_DType.INT32_GA) == 0 || strcmp(type_name, MPR_DType.INT32_RGB) == 0)
+//		type = zfp_type_int32;
+//	else if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
+//		type = zfp_type_float;
+//	else if (strcmp(type_name, MPR_DType.INT64) == 0 || strcmp(type_name, MPR_DType.INT64_GA) == 0 || strcmp(type_name, MPR_DType.INT64_RGB) == 0)
+//		type = zfp_type_int64;
+//	else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
+//		type = zfp_type_double;
+//	else
+//		printf("ERROR: ZFP doesn't support this type %s\n", type_name);
 
     zfp_field* field = zfp_field_3d((*output)->p, type, dim_x, dim_y, dim_z);
     zfp_stream* zfp = zfp_stream_open(NULL);

@@ -20,9 +20,9 @@ MPR_return_code MPR_ZFP_compression_perform(MPR_file file, int svi, int evi);
 
 MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, int evi);
 
-MPR_return_code MPR_compress_3D_data(unsigned char* buf, int dim_x, int dim_y, int dim_z, int flag, float param, char* type_name, MPR_zfp_compress* output);
+MPR_return_code MPR_compress_3D_data(unsigned char* buf, int dim_x, int dim_y, int dim_z, int flag, float param, int data_type, MPR_zfp_compress* output);
 
-MPR_return_code MPR_decompress_3D_data(unsigned char* buf, int size, int dim_x, int dim_y, int dim_z, int flag, float param, char* type_name, MPR_zfp_compress* output);
+MPR_return_code MPR_decompress_3D_data(unsigned char* buf, int size, int dim_x, int dim_y, int dim_z, int flag, float param, int data_type, MPR_zfp_compress* output);
 
 MPR_return_code MPR_ZFP_decompression_perform(MPR_file file, int svi);
 

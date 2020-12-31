@@ -75,11 +75,16 @@ MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
 // Wavelet transform
 static void wavelet_transform(unsigned char* buffer, int* patch_box, char* type_name, int trans_num)
 {
-	int data_type = 0;
+	int data_type;
 	if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
-		data_type = 1;
+		data_type = 0;
 	else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
-		data_type = 2;
+		data_type = 1;
+	else
+	{
+		printf("ERROR: Unsupported data type %s\n", type_name);
+		MPI_Abort(MPI_COMM_WORLD, -1);
+	}
 
 	for (int i = 0; i < trans_num; i++)
 	{
@@ -96,11 +101,11 @@ static void wavelet_transform(unsigned char* buffer, int* patch_box, char* type_
 // Wavelet transform
 static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, char* type_name, int trans_num, int end_level)
 {
-	int data_type = 0;
+	int data_type;
 	if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
-		data_type = 1;
+		data_type = 0;
 	else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
-		data_type = 2;
+		data_type = 1;
 
 	for (int i = trans_num; i > end_level; i--)
 	{
@@ -153,7 +158,7 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int data_type
 				if (flag == 2)
 				  neighbor_ind = index + ng_step * patch_box[1] * patch_box[0];
 
-				if (data_type == 1)
+				if (data_type == 0)
 				{
 					// Covert unsigned char to float
 					memcpy(&f_data, &buf[index * 4], 4);
@@ -175,7 +180,7 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int data_type
 					memcpy(&buf[index * 4], &avg, 4);
 					memcpy(&buf[neighbor_ind * 4], &dif, 4);
 				}
-				else if (data_type == 2)
+				else if (data_type == 1)
 				{
 					// Covert unsigned char to double
 					memcpy(&d_data, &buf[index * 8], 8);
@@ -196,11 +201,6 @@ static void wavelet_helper(unsigned char* buf, int step, int flag, int data_type
 					// Replace buffer
 					memcpy(&buf[index * 8], &avg, 8);
 					memcpy(&buf[neighbor_ind * 8], &dif, 8);
-				}
-				else
-				{
-					printf("Unsupported data type!!\n");
-					MPI_Abort(MPI_COMM_WORLD, -1);
 				}
 			}
 		}
