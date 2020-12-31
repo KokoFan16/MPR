@@ -1,0 +1,2 @@
+/Library/Developer/CommandLineTools/usr/bin/ar qc libmpr_core.a  CMakeFiles/mpr_core.dir/MPR_aggregation.c.o CMakeFiles/mpr_core.dir/MPR_compression.c.o CMakeFiles/mpr_core.dir/MPR_restructure.c.o CMakeFiles/mpr_core.dir/MPR_wavelet.c.o
+/Library/Developer/CommandLineTools/usr/bin/ranlib libmpr_core.a
