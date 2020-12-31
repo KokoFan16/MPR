@@ -1,2 +1,0 @@
-/Library/Developer/CommandLineTools/usr/bin/ar qc libmpr_data_handle.a  CMakeFiles/mpr_data_handle.dir/MPR_data_types.c.o CMakeFiles/mpr_data_handle.dir/MPR_get_set.c.o CMakeFiles/mpr_data_handle.dir/MPR_variable.c.o
-/Library/Developer/CommandLineTools/usr/bin/ranlib libmpr_data_handle.a

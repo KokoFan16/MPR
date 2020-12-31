@@ -1,2 +1,0 @@
-/Library/Developer/CommandLineTools/usr/bin/ar qc libmpr_io.a  CMakeFiles/mpr_io.dir/MPR_io.c.o CMakeFiles/mpr_io.dir/MPR_metadata_io.c.o CMakeFiles/mpr_io.dir/MPR_read_io.c.o CMakeFiles/mpr_io.dir/MPR_write_io.c.o
-/Library/Developer/CommandLineTools/usr/bin/ranlib libmpr_io.a
