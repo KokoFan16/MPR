@@ -311,11 +311,15 @@ static void decide_aggregator(MPR_file file, int* agg_ranks)
 	int rank = file->comm->simulation_rank; /* The rank of each process */
 	int out_file_num = file->mpr->out_file_num;  /* The number of out files(aggregators) */
 	int node_num = file->mpr->node_num; /* the number of nodes */
+
 	/* Decide the aggregators */
 	if (node_num == 1)  /* If the all the processes belong to one node */
 	{
 		if (rank < out_file_num)
 			file->mpr->is_aggregator = 1;
+
+		for (int i = 0; i < out_file_num; i++)
+			agg_ranks[i] = i;
 	}
 	else  /* If they belong to multiple nodes */
 	{
