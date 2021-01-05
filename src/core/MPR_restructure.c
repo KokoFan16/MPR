@@ -68,22 +68,24 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	/***************************************************************************/
 
 	/******************** Calculate total number of patches *********************/
-	int max_found_reg_patches = 1; /* The total number of patches for the global data */
+	int patch_dimensional_counts[MPR_MAX_DIMENSIONS];
 	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
-		max_found_reg_patches *= ceil((float)global_box[d]/patch_box[d]);
-	file->mpr->total_patches_num = max_found_reg_patches; /* The global total number of patches */
+		patch_dimensional_counts[d] = ceil((float)global_box[d]/patch_box[d]);
+	/* The total number of patches for the global data */
+	int total_patch_num = patch_dimensional_counts[0] * patch_dimensional_counts[1] * patch_dimensional_counts[2];
+	file->mpr->total_patches_num = total_patch_num; /* The global total number of patches */
 	/***************************************************************************/
 
 	/************************ Gather local patch info **************************/
-	int local_patch_offset_array[procs_num*MPR_MAX_DIMENSIONS];
-	int local_patch_size_array[procs_num*MPR_MAX_DIMENSIONS];
+	int local_patch_offset_array[procs_num * MPR_MAX_DIMENSIONS];
+	int local_patch_size_array[procs_num * MPR_MAX_DIMENSIONS];
 	MPI_Allgather(file->mpr->local_offset, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_offset_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
 	MPI_Allgather(file->mpr->local_box, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_size_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
 	/***************************************************************************/
 
 	/******************** Calculate local number of patches *********************/
-    int local_patch_num = max_found_reg_patches / procs_num; /* The local number of patches per process */
-    int remain_patch_num = max_found_reg_patches % procs_num; /* Remainder */
+    int local_patch_num = total_patch_num / procs_num; /* The local number of patches per process */
+    int remain_patch_num = total_patch_num % procs_num; /* Remainder */
     int node_num = ceil((float)procs_num / file->mpr->proc_num_per_node); /* The number of nodes based on the number of processes per node */
     file->mpr->node_num = node_num;
 
@@ -115,25 +117,18 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
     MPI_Allgather(&local_patch_num, 1, MPI_INT, required_local_patch_num, 1, MPI_INT, comm);
     /***************************************************************************/
 
-	int found_reg_patches_count = 0; /* The local found number of patches */
-	MPR_patch* found_reg_patches = malloc(sizeof(MPR_patch*)*max_found_reg_patches); /* The found patches array for each process */
-	memset(found_reg_patches, 0, sizeof(MPR_patch*)*max_found_reg_patches); /* Initialization */
-
 	MPR_local_patch local_patch_v0 = file->variable[0]->local_patch; /* Local patch pointer */
 	local_patch_v0->patch = malloc(sizeof(MPR_patch*)*local_patch_num); /* Local patch array per variable */
 	/* Initialize all the patch pointer in local patch array and allocate the memory for patch buffer */
 	for (int i = 0; i < local_patch_num; i++)
 		local_patch_v0->patch[i] = (MPR_patch)malloc(sizeof(*local_patch_v0->patch[i]));
 
-    /***************************** Patch assignment *******************************/
-	int local_own_patch_num[procs_num]; /* the array of current number of patches per process */
-	memset(local_own_patch_num, 0, procs_num*sizeof(int)); /* Initialization */
 
-	int patch_shared_ranks[local_patch_num][procs_num];
-	int share_physical_sizes[local_patch_num][procs_num * MPR_MAX_DIMENSIONS];
-	int patch_share_offsets[local_patch_num][procs_num * MPR_MAX_DIMENSIONS];
+	/***************************** Find shared patches and ranks *******************************/
+    int local_own_patch_count = 0;
+	int local_own_patch_ids[total_patch_num]; /* the array of current number of patches per process */
+	memset(local_own_patch_ids, -1, total_patch_num * sizeof(int)); /* Initialization */
 
-	int local_patch_id = 0;
 	int global_id = 0; /* The global id for each patch */
 	for (int k = 0; k < global_box[2]; k += patch_box[2])
 	{
@@ -141,125 +136,164 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		{
 			for (int i = 0; i < global_box[0]; i += patch_box[0])
 			{
-				MPR_patch reg_patch = (MPR_patch)malloc(sizeof (*reg_patch)); /* Patch structure pointer */
-				memset(reg_patch, 0, sizeof (*reg_patch)); /* Initialization */
+				int offset[MPR_MAX_DIMENSIONS] = {i, j, k};
 
-				reg_patch->global_id = global_id; /* The global id for patch */
+				if (intersect_patch(patch_box, offset, file->mpr->local_box, file->mpr->local_offset))
+					local_own_patch_ids[local_own_patch_count++] = global_id;
 
-				/* Interior regular patches */
-				reg_patch->offset[0] = i;
-				reg_patch->offset[1] = j;
-				reg_patch->offset[2] = k;
-				reg_patch->size[0] = patch_box[0];
-				reg_patch->size[1] = patch_box[1];
-				reg_patch->size[2] = patch_box[2];
-
-				/* Find all the processes that intersect with this patch */
-				int physical_sizes[procs_num*MPR_MAX_DIMENSIONS];
-				int physical_offsets[procs_num*MPR_MAX_DIMENSIONS];
-				int patch_share_offset[procs_num*MPR_MAX_DIMENSIONS];
-
-				int own_ranks[procs_num];
-				memset(own_ranks, 0, procs_num*sizeof(int));
-				for (int r = 0; r < procs_num; r++)
-				{
-					memcpy(&physical_sizes[r*MPR_MAX_DIMENSIONS], reg_patch->size, MPR_MAX_DIMENSIONS * sizeof(int));
-					memcpy(&physical_offsets[r*MPR_MAX_DIMENSIONS], reg_patch->offset, MPR_MAX_DIMENSIONS * sizeof(int));
-
-					int local_patch_offset[MPR_MAX_DIMENSIONS];
-					int local_patch_size[MPR_MAX_DIMENSIONS];
-					memcpy(local_patch_offset, &local_patch_offset_array[r*MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
-					memcpy(local_patch_size, &local_patch_size_array[r*MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
-
-					if (intersect_patch(reg_patch->size, reg_patch->offset, local_patch_size, local_patch_offset))
-					{
-						own_ranks[r] = 1;
-						int patch_end[MPR_MAX_DIMENSIONS] = {(reg_patch->offset[0] + reg_patch->size[0]), (reg_patch->offset[1] + reg_patch->size[1]), (reg_patch->offset[2] + reg_patch->size[2])};
-						int local_end[MPR_MAX_DIMENSIONS] = {(local_patch_offset[0] + local_patch_size[0]), (local_patch_offset[1] + local_patch_size[1]), (local_patch_offset[2] + local_patch_size[2])};
-
-						/* Calculate the physical size */
-						if (patch_end[0] > local_end[0] || patch_end[1] > local_end[1] || patch_end[2] > local_end[2])
-						{
-							if (patch_end[0] > local_end[0])
-								physical_sizes[r*MPR_MAX_DIMENSIONS] = local_end[0] - reg_patch->offset[0];
-							if (patch_end[1] > local_end[1])
-								physical_sizes[r*MPR_MAX_DIMENSIONS + 1] = local_end[1] - reg_patch->offset[1];
-							if (patch_end[2] > local_end[2])
-								physical_sizes[r*MPR_MAX_DIMENSIONS + 2] = local_end[2] - reg_patch->offset[2];
-						}
-
-						/* Calculate the physical offset */
-						if (reg_patch->offset[0] < local_patch_offset[0] || reg_patch->offset[1] < local_patch_offset[1] || reg_patch->offset[2] < local_patch_offset[2])
-						{
-							if (reg_patch->offset[0] <local_patch_offset[0])
-							{
-								physical_offsets[r*MPR_MAX_DIMENSIONS] = local_patch_offset[0];
-								physical_sizes[r*MPR_MAX_DIMENSIONS] = patch_end[0] - local_patch_offset[0];
-							}
-							if (reg_patch->offset[1] < local_patch_offset[1])
-							{
-								physical_offsets[r*MPR_MAX_DIMENSIONS + 1] = local_patch_offset[1];
-								physical_sizes[r*MPR_MAX_DIMENSIONS + 1] = patch_end[1] - local_patch_offset[1];
-							}
-							if (reg_patch->offset[2] < local_patch_offset[2])
-							{
-								physical_offsets[r*MPR_MAX_DIMENSIONS + 2] = local_patch_offset[2];
-								physical_sizes[r*MPR_MAX_DIMENSIONS + 2] = patch_end[2] - local_patch_offset[2];
-							}
-						}
-					}
-					patch_share_offset[r*MPR_MAX_DIMENSIONS] = physical_offsets[r*MPR_MAX_DIMENSIONS] - reg_patch->offset[0];
-					patch_share_offset[r*MPR_MAX_DIMENSIONS + 1] = physical_offsets[r*MPR_MAX_DIMENSIONS + 1] - reg_patch->offset[1];
-					patch_share_offset[r*MPR_MAX_DIMENSIONS + 2] = physical_offsets[r*MPR_MAX_DIMENSIONS + 2] - reg_patch->offset[2];
-				}
-				memcpy(reg_patch->physical_offset, &physical_offsets[rank*MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
-				memcpy(reg_patch->physical_size, &physical_sizes[rank*MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
-
-				/************************** Patch Assignment ******************************/
-				int flag = 0; /* If the patch has been assigned to any process */
-				int a = 0;
-				for (a = 0; a < procs_num; a++)
-				{
-					if (own_ranks[a] == 1 && local_own_patch_num[a] < required_local_patch_num[a])
-					{
-						local_own_patch_num[a] += 1; /* the number of patches of rank a add 1 */
-						flag = 1; /* 1 means the current patch is assigned */
-						break;
-					}
-				}
-				if (flag == 0) /* If the current patch didn't be assigned to a process */
-				{
-					for (a = 0; a < procs_num; a++)
-					{
-						if (local_own_patch_num[a] < required_local_patch_num[a])
-						{
-							local_own_patch_num[a] += 1;
-							break;
-						}
-					}
-				}
-				/*********************************************************************************/
-
-				reg_patch->owned_rank = a;
-				if (own_ranks[rank] == 1)
-				{
-					/* Copy current patch to local found patches array */
-					found_reg_patches[found_reg_patches_count] = (MPR_patch)malloc(sizeof (*reg_patch));
-					memcpy(found_reg_patches[found_reg_patches_count], reg_patch, sizeof (*reg_patch));
-					found_reg_patches_count++;
-				}
-				if (rank == a)
-				{
-					memcpy(local_patch_v0->patch[local_patch_id], reg_patch, sizeof (*reg_patch));
-					memcpy(patch_shared_ranks[local_patch_id], own_ranks, procs_num*sizeof(int));
-					memcpy(share_physical_sizes[local_patch_id], physical_sizes, procs_num*MPR_MAX_DIMENSIONS*sizeof(int));
-					memcpy(patch_share_offsets[local_patch_id], patch_share_offset, procs_num*MPR_MAX_DIMENSIONS*sizeof(int));
-					local_patch_id++;
-				}
-				free(reg_patch);
 				global_id++;
 			}
 		}
+	}
+	/********************************************************************************************/
+
+	int max_local_pnum = 0;
+	MPI_Allreduce(&local_own_patch_count, &max_local_pnum, 1, MPI_INT, MPI_MAX, comm);
+
+	int* owned_patches = malloc(procs_num * max_local_pnum * sizeof(int));
+	MPI_Allgather(&local_own_patch_ids, max_local_pnum, MPI_INT, owned_patches, max_local_pnum, MPI_INT, comm);
+
+	int shared_rank_count[total_patch_num];
+	memset(shared_rank_count, 0, total_patch_num * sizeof(int));
+
+	int max_owned_patch_count = pow(2, MPR_MAX_DIMENSIONS);
+	int shared_patch_ranks[total_patch_num][max_owned_patch_count];
+
+	for(int i = 0; i < procs_num; i++)
+	{
+		for (int j = 0; j < max_local_pnum; j++)
+		{
+			int patch_id = owned_patches[i*max_local_pnum + j];
+			if (patch_id != -1)
+			{
+				shared_patch_ranks[patch_id][shared_rank_count[patch_id]] = i;
+				shared_rank_count[patch_id] += 1;
+			}
+		}
+	}
+
+    /***************************** Patch assignment *******************************/
+	int cur_assign_patch_num[procs_num];
+	memset(cur_assign_patch_num, 0, procs_num * sizeof(int));
+
+	int patch_assignment[total_patch_num];
+	memset(patch_assignment, 0, total_patch_num * sizeof(int));
+
+	int local_assigned_patches[local_patch_num];
+	memset(local_assigned_patches, -1, local_patch_num * sizeof(int));
+	int local_assigned_count = 0;
+
+	for (int i = 0; i < total_patch_num; i++)
+	{
+		int flag = 0; /* If the patch has been assigned to any process */
+		int assigned_rank = 0;
+		for (int p = 0; p < shared_rank_count[i]; p++)
+		{
+			int process_id = shared_patch_ranks[i][p];
+			if (cur_assign_patch_num[process_id] < required_local_patch_num[process_id])
+			{
+				assigned_rank = process_id;
+				flag = 1; /* 1 means the current patch is assigned */
+				break;
+			}
+		}
+		if (flag == 0) /* If the current patch didn't be assigned to a process */
+		{
+			for (int p = 0; p < procs_num; p++)
+			{
+				if (cur_assign_patch_num[p] < required_local_patch_num[p])
+				{
+					assigned_rank = p;
+					break;
+				}
+			}
+		}
+		cur_assign_patch_num[assigned_rank] += 1; /* the number of patches of rank a add 1 */
+		patch_assignment[i] = assigned_rank;
+		if (rank == assigned_rank)
+			local_assigned_patches[local_assigned_count++] = i;
+	}
+	/******************************************************************************/
+
+	int share_physical_sizes[local_patch_num][max_owned_patch_count * MPR_MAX_DIMENSIONS];
+	int patch_share_offsets[local_patch_num][max_owned_patch_count * MPR_MAX_DIMENSIONS];
+
+	for (int i = 0; i < local_patch_num; i++)
+	{
+		MPR_patch reg_patch = local_patch_v0->patch[i];
+
+		int patch_id = local_assigned_patches[i];
+		local_patch_v0->patch[i]->global_id = patch_id;
+
+		int z = patch_id / (patch_dimensional_counts[0] * patch_dimensional_counts[1]);
+		int remain = patch_id - z * (patch_dimensional_counts[0] * patch_dimensional_counts[1]);
+		int y = remain / patch_dimensional_counts[0];
+		int x = remain % patch_dimensional_counts[0];
+
+		reg_patch->offset[0] = x * patch_box[0];
+		reg_patch->offset[1] = y * patch_box[1];
+		reg_patch->offset[2] = z * patch_box[2];
+
+		reg_patch->size[0] = patch_box[0];
+		reg_patch->size[1] = patch_box[1];
+		reg_patch->size[2] = patch_box[2];
+
+		int shared_processes_count = shared_rank_count[patch_id];
+
+		/* Find all the processes that intersect with this patch */
+		int physical_sizes[shared_processes_count * MPR_MAX_DIMENSIONS];
+		int physical_offsets[shared_processes_count * MPR_MAX_DIMENSIONS];
+		int patch_share_offset[shared_processes_count * MPR_MAX_DIMENSIONS];
+
+		int patch_end[MPR_MAX_DIMENSIONS] = {((x + 1) * patch_box[0]), (y + 1) * patch_box[1], (z + 1) * patch_box[2]};
+
+		for (int p = 0; p < shared_processes_count; p++)
+		{
+			int process_id = shared_patch_ranks[patch_id][p];
+
+			int local_offset[MPR_MAX_DIMENSIONS];
+			memcpy(local_offset, &local_patch_offset_array[process_id * MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
+			int local_box[MPR_MAX_DIMENSIONS];
+			memcpy(local_box, &local_patch_size_array[process_id * MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
+
+			int local_end[MPR_MAX_DIMENSIONS] = {(local_offset[0] + local_box[0]), (local_offset[1] + local_box[1]), (local_offset[2] + local_box[2])};
+
+			memcpy(&physical_sizes[p*MPR_MAX_DIMENSIONS], reg_patch->size, MPR_MAX_DIMENSIONS * sizeof(int));
+			memcpy(&physical_offsets[p*MPR_MAX_DIMENSIONS], reg_patch->offset, MPR_MAX_DIMENSIONS * sizeof(int));
+
+			/* Calculate the physical size */
+			if (patch_end[0] > local_end[0])
+				physical_sizes[p*MPR_MAX_DIMENSIONS] = local_end[0] - reg_patch->offset[0];
+			if (patch_end[1] > local_end[1])
+				physical_sizes[p*MPR_MAX_DIMENSIONS + 1] = local_end[1] - reg_patch->offset[1];
+			if (patch_end[2] > local_end[2])
+				physical_sizes[p*MPR_MAX_DIMENSIONS + 2] = local_end[2] - reg_patch->offset[2];
+
+
+			/* Calculate the physical offset */
+			if (reg_patch->offset[0] <local_offset[0])
+			{
+				physical_offsets[p*MPR_MAX_DIMENSIONS] = local_offset[0];
+				physical_sizes[p*MPR_MAX_DIMENSIONS] = patch_end[0] - local_offset[0];
+			}
+			if (reg_patch->offset[1] < local_offset[1])
+			{
+				physical_offsets[p*MPR_MAX_DIMENSIONS + 1] = local_offset[1];
+				physical_sizes[p*MPR_MAX_DIMENSIONS + 1] = patch_end[1] - local_offset[1];
+			}
+			if (reg_patch->offset[2] < local_offset[2])
+			{
+				physical_offsets[p*MPR_MAX_DIMENSIONS + 2] = local_offset[2];
+				physical_sizes[p*MPR_MAX_DIMENSIONS + 2] = patch_end[2] - local_offset[2];
+			}
+
+			patch_share_offset[p*MPR_MAX_DIMENSIONS] = physical_offsets[p*MPR_MAX_DIMENSIONS] - reg_patch->offset[0];
+			patch_share_offset[p*MPR_MAX_DIMENSIONS + 1] = physical_offsets[p*MPR_MAX_DIMENSIONS + 1] - reg_patch->offset[1];
+			patch_share_offset[p*MPR_MAX_DIMENSIONS + 2] = physical_offsets[p*MPR_MAX_DIMENSIONS + 2] - reg_patch->offset[2];
+		}
+
+		memcpy(share_physical_sizes[i], physical_sizes, shared_processes_count * MPR_MAX_DIMENSIONS * sizeof(int));
+		memcpy(patch_share_offsets[i], patch_share_offset, shared_processes_count * MPR_MAX_DIMENSIONS * sizeof(int));
 	}
 
 	/*********************************** Data exchange and merge *********************************/
@@ -268,7 +302,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
 		local_patch->patch_count = local_patch_num;
 
-		int bits = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		if (v != 0)
 		{
@@ -281,55 +315,99 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 			}
 		}
 
-		/*********** Send data (non-blocking point-to-point communication) **********/
 		int req_i = 0;
-		MPI_Request req[max_found_reg_patches * procs_num];
-		MPI_Status stat[max_found_reg_patches * procs_num];
+		MPI_Request req[max_local_pnum * max_owned_patch_count];
+		MPI_Status stat[max_local_pnum * max_owned_patch_count];
 
-		for (int i = 0; i < found_reg_patches_count; i++)
+		/*********** Send data (non-blocking point-to-point communication) **********/
+		for (int i = 0; i < local_own_patch_count; i++)
 		{
+			int patch_id = local_own_patch_ids[i];
+
+			int z = patch_id / (patch_dimensional_counts[0] * patch_dimensional_counts[1]);
+			int remain = patch_id - z * (patch_dimensional_counts[0] * patch_dimensional_counts[1]);
+			int y = remain / patch_dimensional_counts[0];
+			int x = remain % patch_dimensional_counts[0];
+
+			int local_end[MPR_MAX_DIMENSIONS] = {(file->mpr->local_offset[0] + file->mpr->local_box[0]),
+					(file->mpr->local_offset[1] + file->mpr->local_box[1]),
+					(file->mpr->local_offset[2] + file->mpr->local_box[2])};
+
+			int offset[MPR_MAX_DIMENSIONS] = {x * patch_box[0], y * patch_box[1], z * patch_box[2]};
+			int patch_end[MPR_MAX_DIMENSIONS] = {((x + 1) * patch_box[0]), (y + 1) * patch_box[1], (z + 1) * patch_box[2]};
+
+			int physical_size[MPR_MAX_DIMENSIONS];
+			int physical_offset[MPR_MAX_DIMENSIONS];
+			memcpy(physical_offset, offset, MPR_MAX_DIMENSIONS * sizeof(int));
+			memcpy(physical_size, patch_box, MPR_MAX_DIMENSIONS * sizeof(int));
+
+
+			if (patch_end[0] > local_end[0])
+				physical_size[0] = local_end[0] - offset[0];
+			if (patch_end[1] > local_end[1])
+				physical_size[1] = local_end[1] - offset[1];
+			if (patch_end[2] > local_end[2])
+				physical_size[2] = local_end[2] - offset[2];
+
+			if (offset[0] < file->mpr->local_offset[0])
+			{
+				physical_offset[0] = file->mpr->local_offset[0];
+				physical_size[0] = patch_end[0] - file->mpr->local_offset[0];
+			}
+			if (offset[1] < file->mpr->local_offset[1])
+			{
+				physical_offset[1] = file->mpr->local_offset[1];
+				physical_size[1] = patch_end[1] - file->mpr->local_offset[1];
+			}
+			if (offset[2] < file->mpr->local_offset[2])
+			{
+				physical_offset[2] = file->mpr->local_offset[2];
+				physical_size[2] = patch_end[2] - file->mpr->local_offset[2];
+			}
+
 			/* Create patch send data type */
-			int array_size[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0]*bits, file->mpr->local_box[1], file->mpr->local_box[2]};
-			int array_subsize[MPR_MAX_DIMENSIONS] = {found_reg_patches[i]->physical_size[0]*bits, found_reg_patches[i]->physical_size[1], found_reg_patches[i]->physical_size[2]};
-			int local_send_off[MPR_MAX_DIMENSIONS] = {(found_reg_patches[i]->physical_offset[0] - file->mpr->local_offset[0])*bits,
-							(found_reg_patches[i]->physical_offset[1] - file->mpr->local_offset[1]),
-							(found_reg_patches[i]->physical_offset[2] - file->mpr->local_offset[2])};
+			int array_size[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0]*bytes, file->mpr->local_box[1], file->mpr->local_box[2]};
+			int send_offset[MPR_MAX_DIMENSIONS] = {(physical_offset[0] - file->mpr->local_offset[0]) * bytes,
+					(physical_offset[1] - file->mpr->local_offset[1]), (physical_offset[2] - file->mpr->local_offset[2])};
+			physical_size[0] *= bytes;
 
 			MPI_Datatype send_type;
-			MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, array_size, array_subsize, local_send_off, MPI_ORDER_FORTRAN, MPI_BYTE, &send_type);
+			MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, array_size, physical_size, send_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &send_type);
 			MPI_Type_commit(&send_type);
 
 			/* MPI Send function */
-			MPI_Isend(local_patch->buffer, 1, send_type, found_reg_patches[i]->owned_rank, rank, comm, &req[req_i]);
+			MPI_Isend(local_patch->buffer, 1, send_type, patch_assignment[patch_id], rank, comm, &req[req_i]);
 			req_i++;
 			MPI_Type_free(&send_type);
 		}
 
 		/*********** Receive data (non-blocking point-to-point communication) **********/
+		int array_size[MPR_MAX_DIMENSIONS] = {patch_box[0]*bytes, patch_box[0], patch_box[0]};
 		for (int i = 0; i < local_patch_num; i++)
 		{
-			local_patch->patch[i]->buffer = malloc(patch_size * bits);
-			memset(local_patch->patch[i]->buffer, 0, patch_size * bits);
-			local_patch->patch[i]->patch_buffer_size = patch_size * bits;
+			local_patch->patch[i]->buffer = malloc(patch_size * bytes);
+			memset(local_patch->patch[i]->buffer, 0, patch_size * bytes);
+			local_patch->patch[i]->patch_buffer_size = patch_size * bytes;
 
-			for (int j = 0; j < procs_num; j++)
+			int patch_id = local_patch->patch[i]->global_id;
+
+			int shared_processes_count = shared_rank_count[patch_id];
+			for (int j = 0; j < shared_processes_count; j++)
 			{
-				if (patch_shared_ranks[i][j] == 1)
-				{
-					/* Creating patch receive data type */
-					int array_size[MPR_MAX_DIMENSIONS] = {local_patch->patch[i]->size[0]*bits, local_patch->patch[i]->size[1], local_patch->patch[i]->size[2]};
-					int array_subsize[MPR_MAX_DIMENSIONS] = {share_physical_sizes[i][j*MPR_MAX_DIMENSIONS]*bits, share_physical_sizes[i][j*MPR_MAX_DIMENSIONS + 1], share_physical_sizes[i][j*MPR_MAX_DIMENSIONS + 2]};
-					int subarray_offset[MPR_MAX_DIMENSIONS] = {patch_share_offsets[i][j*MPR_MAX_DIMENSIONS]*bits, patch_share_offsets[i][j*MPR_MAX_DIMENSIONS + 1], patch_share_offsets[i][j*MPR_MAX_DIMENSIONS + 2]};
+				int process_id = shared_patch_ranks[patch_id][j];
+				int array_subsize[MPR_MAX_DIMENSIONS] = {share_physical_sizes[i][j*MPR_MAX_DIMENSIONS]*bytes,
+						share_physical_sizes[i][j*MPR_MAX_DIMENSIONS + 1], share_physical_sizes[i][j*MPR_MAX_DIMENSIONS + 2]};
+				int subarray_offset[MPR_MAX_DIMENSIONS] = {patch_share_offsets[i][j*MPR_MAX_DIMENSIONS]*bytes,
+						patch_share_offsets[i][j*MPR_MAX_DIMENSIONS + 1], patch_share_offsets[i][j*MPR_MAX_DIMENSIONS + 2]};
 
-					MPI_Datatype recv_type;
-					MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, array_size, array_subsize, subarray_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &recv_type);
-					MPI_Type_commit(&recv_type);
+				MPI_Datatype recv_type;
+				MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, array_size, array_subsize, subarray_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &recv_type);
+				MPI_Type_commit(&recv_type);
 
-					/* MPI Recv function */
-					MPI_Irecv(local_patch->patch[i]->buffer, 1, recv_type, j, j, comm, &req[req_i]);
-					req_i++;
-					MPI_Type_free(&recv_type);
-				}
+				/* MPI Recv function */
+				MPI_Irecv(local_patch->patch[i]->buffer, 1, recv_type, process_id, process_id, comm, &req[req_i]);
+				req_i++;
+				MPI_Type_free(&recv_type);
 			}
 		}
 		MPI_Waitall(req_i, req, stat); /* Wait all the send and receive to be finished */
@@ -338,13 +416,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 
 	printf("The number of patches of process %d is %d\n", file->comm->simulation_rank, local_patch_num);
 
-	/* Clean up */
-	for (int i = 0; i < found_reg_patches_count; i++)
-	{
-		free(found_reg_patches[i]);
-		found_reg_patches[i] = 0;
-	}
-	free(found_reg_patches);
 	return MPR_success;
 }
 
@@ -357,16 +428,6 @@ static int intersect_patch(int* a_size, int* a_offset, int* b_size, int* b_offse
 	}
 	return !(check_bit);
 }
-
-/* Function to check if patch A and B intersects */
-//static int intersect_patch(MPR_patch A, MPR_patch B)
-//{
-//  int d = 0, check_bit = 0;
-//  for (d = 0; d < MPR_MAX_DIMENSIONS; d++)
-//    check_bit = check_bit || (A->offset[d] + A->size[d] - 1) < B->offset[d] || (B->offset[d] + B->size[d] - 1) < A->offset[d];
-//
-//  return !(check_bit);
-//}
 
 /* Check if the current patch has already been included */
 static int contains_patch(MPR_patch reg_patch, MPR_patch* patches, int count)
