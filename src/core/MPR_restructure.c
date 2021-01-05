@@ -123,28 +123,51 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	for (int i = 0; i < local_patch_num; i++)
 		local_patch_v0->patch[i] = (MPR_patch)malloc(sizeof(*local_patch_v0->patch[i]));
 
-
 	/***************************** Find shared patches and ranks *******************************/
     int local_own_patch_count = 0;
 	int local_own_patch_ids[total_patch_num]; /* the array of current number of patches per process */
 	memset(local_own_patch_ids, -1, total_patch_num * sizeof(int)); /* Initialization */
 
-	int global_id = 0; /* The global id for each patch */
-	for (int k = 0; k < global_box[2]; k += patch_box[2])
+	int cur_local_offset[MPR_MAX_DIMENSIONS];
+	int local_end[MPR_MAX_DIMENSIONS];
+	int cur_local_end[MPR_MAX_DIMENSIONS];
+	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 	{
-		for (int j = 0; j < global_box[1]; j += patch_box[1])
+		cur_local_offset[d] = (file->mpr->local_offset[d]/patch_box[d]);
+		local_end[d] = file->mpr->local_offset[d] + file->mpr->local_box[d];
+		cur_local_end[d] = ceil(local_end[d]/(float)patch_box[d]);
+	}
+
+	int local_count = 0;
+	for (int k = cur_local_offset[2]; k < cur_local_end[2]; k++)
+	{
+		for (int j = cur_local_offset[1]; j < cur_local_end[1]; j++)
 		{
-			for (int i = 0; i < global_box[0]; i += patch_box[0])
+			for (int i = cur_local_offset[0]; i < cur_local_end[0]; i++)
 			{
-				int offset[MPR_MAX_DIMENSIONS] = {i, j, k};
-
-				if (intersect_patch(patch_box, offset, file->mpr->local_box, file->mpr->local_offset))
-					local_own_patch_ids[local_own_patch_count++] = global_id;
-
-				global_id++;
+				int patch_id =  k * patch_dimensional_counts[1] * patch_dimensional_counts[0] + j * patch_dimensional_counts[0] + i;
+				local_own_patch_ids[local_own_patch_count++] = patch_id;
 			}
 		}
 	}
+
+//	int global_id = 0; /* The global id for each patch */
+//	for (int k = 0; k < global_box[2]; k += patch_box[2])
+//	{
+//		for (int j = 0; j < global_box[1]; j += patch_box[1])
+//		{
+//			for (int i = 0; i < global_box[0]; i += patch_box[0])
+//			{
+//				int offset[MPR_MAX_DIMENSIONS] = {i, j, k};
+//
+//				if (intersect_patch(patch_box, offset, file->mpr->local_box, file->mpr->local_offset))
+//					local_own_patch_ids[local_own_patch_count++] = global_id;
+//
+//				global_id++;
+//			}
+//		}
+//	}
+//	printf("%d: %d\n", rank, local_own_patch_count);
 	/********************************************************************************************/
 
 	int max_local_pnum = 0;
