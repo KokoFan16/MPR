@@ -326,7 +326,10 @@ static void read_file_parallel()
     MPI_File_read(fh, data[0], size, MPI_CHAR, &status);
     MPI_Get_count(&status, MPI_CHAR, &count);
     if (count != size)
+    {
+    	printf("Read %d, need %d\n", count, size);
     	terminate_with_error_msg("ERROR: Read file failed!\n");
+    }
     else
     {
     	if (rank == 0)
