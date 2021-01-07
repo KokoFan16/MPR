@@ -78,9 +78,9 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 
 	/************************ Gather local patch info **************************/
 	int local_patch_offset_array[procs_num * MPR_MAX_DIMENSIONS];
-	int local_patch_size_array[procs_num * MPR_MAX_DIMENSIONS];
+//	int local_patch_size_array[procs_num * MPR_MAX_DIMENSIONS];
 	MPI_Allgather(file->mpr->local_offset, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_offset_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
-	MPI_Allgather(file->mpr->local_box, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_size_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
+//	MPI_Allgather(file->mpr->local_box, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_size_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
 	/***************************************************************************/
 
 	/******************** Calculate local number of patches *********************/
@@ -273,13 +273,13 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 
 				int local_offset[MPR_MAX_DIMENSIONS];
 				memcpy(local_offset, &local_patch_offset_array[process_id * MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
-				int local_box[MPR_MAX_DIMENSIONS];
-				memcpy(local_box, &local_patch_size_array[process_id * MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
+//				int local_box[MPR_MAX_DIMENSIONS];
+//				memcpy(local_box, &local_patch_size_array[process_id * MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
 
 				/* Calculate the physical size */
 				for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 				{
-					local_end[d] = local_offset[d] + local_box[d];
+					local_end[d] = local_offset[d] + file->mpr->local_box[d];
 					physical_offset[d] = local_patch->patch[i]->offset[d];
 					physical_size[d] = patch_box[d];
 
@@ -357,7 +357,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 			req_i++;
 			MPI_Type_free(&send_type);
 		}
-
 
 		MPI_Waitall(req_i, req, stat); /* Wait all the send and receive to be finished */
 	}
