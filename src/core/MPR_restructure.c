@@ -227,7 +227,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		MPI_Status stat[total_patch_num * max_owned_patch_count];
 
 		/*********** Receive data (non-blocking point-to-point communication) **********/
-		int array_size[MPR_MAX_DIMENSIONS] = {patch_box[0]*bytes, patch_box[0], patch_box[0]};
+		int receive_array[MPR_MAX_DIMENSIONS] = {patch_box[0] * bytes, patch_box[1], patch_box[2]};
 		for (int i = 0; i < local_patch_num; i++)
 		{
 			int patch_id = local_assigned_patches[i];
@@ -280,7 +280,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 				physical_size[0] *= bytes;
 
 				MPI_Datatype recv_type;
-				MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, array_size, physical_size, patch_share_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &recv_type);
+				MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, receive_array, physical_size, patch_share_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &recv_type);
 				MPI_Type_commit(&recv_type);
 
 				/* MPI Recv function */
