@@ -78,9 +78,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 
 	/************************ Gather local patch info **************************/
 	int local_patch_offset_array[procs_num * MPR_MAX_DIMENSIONS];
-//	int local_patch_size_array[procs_num * MPR_MAX_DIMENSIONS];
 	MPI_Allgather(file->mpr->local_offset, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_offset_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
-//	MPI_Allgather(file->mpr->local_box, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_size_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
 	/***************************************************************************/
 
 	/******************** Calculate local number of patches *********************/
@@ -308,6 +306,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		}
 
 		/*********** Send data (non-blocking point-to-point communication) **********/
+		int sent_array[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0] * bytes, file->mpr->local_box[1], file->mpr->local_box[2]};
 		for (int i = 0; i < local_own_patch_count; i++)
 		{
 			int patch_id = local_own_patch_ids[i];
@@ -326,6 +325,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 
 			int physical_size[MPR_MAX_DIMENSIONS];
 			int physical_offset[MPR_MAX_DIMENSIONS];
+			int send_offset[MPR_MAX_DIMENSIONS];
 
 			for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 			{
@@ -340,16 +340,13 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 					physical_offset[d] = file->mpr->local_offset[d];
 					physical_size[d] = patch_end[d] - file->mpr->local_offset[d];
 				}
+				send_offset[d] = physical_offset[d] - file->mpr->local_offset[d];
 			}
-
-			/* Create patch send data type */
-			int array_size[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0]*bytes, file->mpr->local_box[1], file->mpr->local_box[2]};
-			int send_offset[MPR_MAX_DIMENSIONS] = {(physical_offset[0] - file->mpr->local_offset[0]) * bytes,
-					(physical_offset[1] - file->mpr->local_offset[1]), (physical_offset[2] - file->mpr->local_offset[2])};
 			physical_size[0] *= bytes;
+			send_offset[0] *= bytes;
 
 			MPI_Datatype send_type;
-			MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, array_size, physical_size, send_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &send_type);
+			MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, sent_array, physical_size, send_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &send_type);
 			MPI_Type_commit(&send_type);
 
 			/* MPI Send function */
