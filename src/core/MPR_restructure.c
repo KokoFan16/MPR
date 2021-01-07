@@ -59,10 +59,10 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	int procs_num = file->comm->simulation_nprocs; /* The number of processes */
 	MPI_Comm comm = file->comm->simulation_comm; /* MPI Communicator */
 
-	int global_box[MPR_MAX_DIMENSIONS]; /* The size of global dataset */
-	int patch_box[MPR_MAX_DIMENSIONS]; /* The size of patch */
-	memcpy(global_box, file->mpr->global_box, MPR_MAX_DIMENSIONS * sizeof(int)); /* Initialization */
-	memcpy(patch_box, file->mpr->patch_box, MPR_MAX_DIMENSIONS * sizeof(int)); /* Initialization */
+	int* global_box = file->mpr->global_box;
+	int* patch_box = file->mpr->patch_box;
+	int* local_box = file->mpr->local_box;
+	int* local_offset = file->mpr->local_offset;
 
 	int patch_size = patch_box[0] * patch_box[1] * patch_box[2]; /* The size of regular patch */
 	/***************************************************************************/
@@ -78,7 +78,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 
 	/************************ Gather local patch info **************************/
 	int local_patch_offset_array[procs_num * MPR_MAX_DIMENSIONS];
-	MPI_Allgather(file->mpr->local_offset, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_offset_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
+	MPI_Allgather(local_offset, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_offset_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
 	/***************************************************************************/
 
 	/******************** Calculate local number of patches *********************/
@@ -115,12 +115,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
     MPI_Allgather(&local_patch_num, 1, MPI_INT, required_local_patch_num, 1, MPI_INT, comm);
     /***************************************************************************/
 
-	MPR_local_patch local_patch_v0 = file->variable[0]->local_patch; /* Local patch pointer */
-	local_patch_v0->patch = malloc(sizeof(MPR_patch*)*local_patch_num); /* Local patch array per variable */
-	/* Initialize all the patch pointer in local patch array and allocate the memory for patch buffer */
-	for (int i = 0; i < local_patch_num; i++)
-		local_patch_v0->patch[i] = (MPR_patch)malloc(sizeof(*local_patch_v0->patch[i]));
-
 	/***************************** Find shared patches and ranks *******************************/
     int local_own_patch_count = 0;
 	int local_own_patch_ids[total_patch_num]; /* the array of current number of patches per process */
@@ -131,8 +125,8 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	int cur_local_end[MPR_MAX_DIMENSIONS];
 	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 	{
-		cur_local_offset[d] = (file->mpr->local_offset[d]/patch_box[d]);
-		local_end[d] = file->mpr->local_offset[d] + file->mpr->local_box[d];
+		cur_local_offset[d] = (local_offset[d]/patch_box[d]);
+		local_end[d] = local_offset[d] + local_box[d];
 		cur_local_end[d] = ceil(local_end[d]/(float)patch_box[d]);
 	}
 
@@ -237,7 +231,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		{
 			int patch_id = local_assigned_patches[i];
 			local_patch->patch[i] = (MPR_patch)malloc(sizeof(*local_patch->patch[i]));
-			local_patch_v0->patch[i]->global_id = patch_id;
+			local_patch->patch[i]->global_id = patch_id;
 
 			local_patch->patch[i]->buffer = malloc(patch_size * bytes);
 			memset(local_patch->patch[i]->buffer, 0, patch_size * bytes);
@@ -271,13 +265,11 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 
 				int local_offset[MPR_MAX_DIMENSIONS];
 				memcpy(local_offset, &local_patch_offset_array[process_id * MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
-//				int local_box[MPR_MAX_DIMENSIONS];
-//				memcpy(local_box, &local_patch_size_array[process_id * MPR_MAX_DIMENSIONS], MPR_MAX_DIMENSIONS * sizeof(int));
 
 				/* Calculate the physical size */
 				for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 				{
-					local_end[d] = local_offset[d] + file->mpr->local_box[d];
+					local_end[d] = local_offset[d] + local_box[d];
 					physical_offset[d] = local_patch->patch[i]->offset[d];
 					physical_size[d] = patch_box[d];
 
@@ -306,7 +298,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		}
 
 		/*********** Send data (non-blocking point-to-point communication) **********/
-		int sent_array[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0] * bytes, file->mpr->local_box[1], file->mpr->local_box[2]};
+		int sent_array[MPR_MAX_DIMENSIONS] = {local_box[0] * bytes, local_box[1], local_box[2]};
 		for (int i = 0; i < local_own_patch_count; i++)
 		{
 			int patch_id = local_own_patch_ids[i];
@@ -315,10 +307,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 			int remain = patch_id - z * (patch_dimensional_counts[0] * patch_dimensional_counts[1]);
 			int y = remain / patch_dimensional_counts[0];
 			int x = remain % patch_dimensional_counts[0];
-
-			int local_end[MPR_MAX_DIMENSIONS] = {(file->mpr->local_offset[0] + file->mpr->local_box[0]),
-					(file->mpr->local_offset[1] + file->mpr->local_box[1]),
-					(file->mpr->local_offset[2] + file->mpr->local_box[2])};
 
 			int offset[MPR_MAX_DIMENSIONS] = {x * patch_box[0], y * patch_box[1], z * patch_box[2]};
 			int patch_end[MPR_MAX_DIMENSIONS] = {((x + 1) * patch_box[0]), (y + 1) * patch_box[1], (z + 1) * patch_box[2]};
@@ -335,12 +323,12 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 				if (patch_end[d] > local_end[d])
 					physical_size[d] = local_end[d] - offset[d];
 
-				if (offset[d] < file->mpr->local_offset[d])
+				if (offset[d] < local_offset[d])
 				{
-					physical_offset[d] = file->mpr->local_offset[d];
-					physical_size[d] = patch_end[d] - file->mpr->local_offset[d];
+					physical_offset[d] = local_offset[d];
+					physical_size[d] = patch_end[d] - local_offset[d];
 				}
-				send_offset[d] = physical_offset[d] - file->mpr->local_offset[d];
+				send_offset[d] = physical_offset[d] - local_offset[d];
 			}
 			physical_size[0] *= bytes;
 			send_offset[0] *= bytes;
@@ -354,7 +342,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 			req_i++;
 			MPI_Type_free(&send_type);
 		}
-
 		MPI_Waitall(req_i, req, stat); /* Wait all the send and receive to be finished */
 	}
 	/**********************************************************************************************/
