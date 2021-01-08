@@ -48,10 +48,6 @@ MPR_return_code MPR_file_open(const char* filename, int flags, MPR_access access
 
 	(*file)->mpr->total_patches_num = 0;
 
-//	(*file)->mpr->proc_num_per_node = 0;
-//	(*file)->mpr->node_num = 0;
-//	(*file)->mpr->proc_num_last_node = 0;
-
 	(*file)->mpr->compression_type = MPR_NO_COMPRESSION;
 	(*file)->mpr->compression_param = 0;
 
@@ -86,8 +82,6 @@ MPR_return_code MPR_file_open(const char* filename, int flags, MPR_access access
 	MPI_Bcast(&((*file)->mpr->out_file_num), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
 	MPI_Bcast(&((*file)->mpr->total_patches_num), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
 	MPI_Bcast(&((*file)->mpr->variable_count), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
-//	MPI_Bcast(&((*file)->mpr->proc_num_per_node), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
-//	MPI_Bcast(&((*file)->mpr->proc_num_last_node), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
 	MPI_Bcast(&((*file)->mpr->compression_type), 1, MPI_INT, 0, (*file)->comm->simulation_comm);
 	MPI_Bcast(&((*file)->mpr->compression_param), 1, MPI_FLOAT, 0, (*file)->comm->simulation_comm);
 	MPI_Bcast(&((*file)->mpr->wavelet_trans_num), 1, MPI_INT, 0, (*file)->comm->simulation_comm);

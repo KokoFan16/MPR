@@ -298,18 +298,6 @@ MPR_return_code MPR_decompress_3D_data(unsigned char* buf, int size, int dim_x, 
 	else
 		type = zfp_type_double;
 
-//	zfp_type type = zfp_type_none;
-//	if (strcmp(type_name, MPR_DType.INT32) == 0 || strcmp(type_name, MPR_DType.INT32_GA) == 0 || strcmp(type_name, MPR_DType.INT32_RGB) == 0)
-//		type = zfp_type_int32;
-//	else if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
-//		type = zfp_type_float;
-//	else if (strcmp(type_name, MPR_DType.INT64) == 0 || strcmp(type_name, MPR_DType.INT64_GA) == 0 || strcmp(type_name, MPR_DType.INT64_RGB) == 0)
-//		type = zfp_type_int64;
-//	else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
-//		type = zfp_type_double;
-//	else
-//		printf("ERROR: ZFP doesn't support this type %s\n", type_name);
-
     zfp_field* field = zfp_field_3d((*output)->p, type, dim_x, dim_y, dim_z);
     zfp_stream* zfp = zfp_stream_open(NULL);
     if (flag == 0)

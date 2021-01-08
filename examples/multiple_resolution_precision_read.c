@@ -116,11 +116,24 @@ static void set_mpr_file(int ts)
 	if (MPR_file_open(input_file, MPR_MODE_RDONLY, p_access, global_size, local_size, local_offset, &file) != MPR_success)
 		terminate_with_error_msg("MPR file open failed.\n");
 
-	MPR_set_current_time_step(file, ts);   /* Set the current timestep */
+	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
+	{
+		if (global_size[d] > file->mpr->origin_global_box[d] || (global_offset[d] + global_size[d]) > file->mpr->origin_global_box[d])
+			terminate_with_error_msg("Read global box cannot exceed the original global box.\n");
+	}
+
+	if (ts < file->mpr->first_tstep || ts > file->mpr->last_tstep)
+		terminate_with_error_msg("Invalid time-step.\n");
+
+	if (read_level > file->mpr->wavelet_trans_num)
+		terminate_with_error_msg("Resolution level cannot exceed maximum level.\n");
 
 	MPR_set_global_offset(file, global_offset);
 
+	MPR_set_current_time_step(file, ts);   /* Set the current timestep */
+
 	MPR_set_read_level(file, read_level);
+
 }
 
 static void set_mpr_variable_and_create_buffer()

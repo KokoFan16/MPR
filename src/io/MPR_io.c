@@ -135,16 +135,6 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 
 MPR_return_code write_data_out(MPR_file file, int svi)
 {
-//	if (file->comm->simulation_rank == 0)
-//	{
-//		for (int i = 0; i < 4096; i++)
-//		{
-//			float a;
-//			memcpy(&a, &file->variable[svi]->local_patch->buffer[i*4], 4);
-//			printf("%f\n", a);
-//		}
-//	}
-
 	char file_name[512] = "./out_data.raw";
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
 
@@ -177,8 +167,8 @@ MPR_return_code MPR_check_local_box(MPR_file file)
 {
 	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 	{
-		if (file->mpr->local_offset[i] + file->mpr->local_box[i] > file->mpr->origin_global_box[i])
-			file->mpr->local_box[i] = (file->mpr->origin_global_box[i] - file->mpr->local_offset[i]);
+		if (file->mpr->local_offset[i] + file->mpr->local_box[i] > file->mpr->global_box[i])
+			file->mpr->local_box[i] = (file->mpr->global_box[i] - file->mpr->local_offset[i]);
 	}
 	return MPR_success;
 }
