@@ -131,8 +131,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	int shared_rank_count[total_patch_num];
 	memset(shared_rank_count, 0, total_patch_num * sizeof(int));
 
-	int max_owned_patch_count = pow(2, MPR_MAX_DIMENSIONS);
-	int shared_patch_ranks[total_patch_num][max_owned_patch_count];
+	int shared_patch_ranks[total_patch_num][procs_num];
 
 	int global_id = 0; /* The global id for each patch */
 	for (int k = 0; k < global_box[2]; k += patch_box[2])
@@ -175,41 +174,53 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	memset(cur_assign_patch_num, 0, procs_num * sizeof(int));
 
 	int patch_assignment[total_patch_num];
-	memset(patch_assignment, 0, total_patch_num * sizeof(int));
+	memset(patch_assignment, -1, total_patch_num * sizeof(int));
 
 	int local_assigned_patches[local_patch_num];
 	memset(local_assigned_patches, -1, local_patch_num * sizeof(int));
 	int local_assigned_count = 0;
 
+	int unassigned_count = 0;
+	int unassigned_patches[total_patch_num];
+
 	for (int i = 0; i < total_patch_num; i++)
 	{
 		int flag = 0; /* If the patch has been assigned to any process */
-		int assigned_rank = 0;
 		for (int p = 0; p < shared_rank_count[i]; p++)
 		{
 			int process_id = shared_patch_ranks[i][p];
 			if (cur_assign_patch_num[process_id] < required_local_patch_num[process_id])
 			{
-				assigned_rank = process_id;
 				flag = 1; /* 1 means the current patch is assigned */
+				cur_assign_patch_num[process_id] += 1;
+				patch_assignment[i] = process_id;
+				if (rank == process_id)
+					local_assigned_patches[local_assigned_count++] = i;
 				break;
 			}
 		}
-		if (flag == 0) /* If the current patch didn't be assigned to a process */
+
+		if (flag == 0)
+			unassigned_patches[unassigned_count++] = i;
+	}
+
+	if (unassigned_count > 0)
+	{
+		for (int i = 0; i < unassigned_count; i++)
 		{
+			int patch_id = unassigned_patches[i];
 			for (int p = 0; p < procs_num; p++)
 			{
 				if (cur_assign_patch_num[p] < required_local_patch_num[p])
 				{
-					assigned_rank = p;
+					cur_assign_patch_num[p] += 1;
+					patch_assignment[patch_id] = p;
+					if (rank == p)
+						local_assigned_patches[local_assigned_count++] = patch_id;
 					break;
 				}
 			}
 		}
-		cur_assign_patch_num[assigned_rank] += 1; /* the number of patches of rank a add 1 */
-		patch_assignment[i] = assigned_rank;
-		if (rank == assigned_rank)
-			local_assigned_patches[local_assigned_count++] = i;
 	}
 	/******************************************************************************/
 
@@ -223,8 +234,8 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		int req_i = 0;
-		MPI_Request req[total_patch_num * max_owned_patch_count];
-		MPI_Status stat[total_patch_num * max_owned_patch_count];
+		MPI_Request req[local_patch_num * procs_num + local_own_patch_count];
+		MPI_Status stat[local_patch_num * procs_num + local_own_patch_count];
 
 		/*********** Receive data (non-blocking point-to-point communication) **********/
 		int receive_array[MPR_MAX_DIMENSIONS] = {patch_box[0] * bytes, patch_box[1], patch_box[2]};
@@ -284,7 +295,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 				MPI_Type_commit(&recv_type);
 
 				/* MPI Recv function */
-				MPI_Irecv(local_patch->patch[i]->buffer, 1, recv_type, process_id, process_id, comm, &req[req_i]);
+				MPI_Irecv(local_patch->patch[i]->buffer, 1, recv_type, process_id, patch_id, comm, &req[req_i]);
 				req_i++;
 				MPI_Type_free(&recv_type);
 			}
@@ -325,7 +336,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 			MPI_Type_commit(&send_type);
 
 			/* MPI Send function */
-			MPI_Isend(local_patch->buffer, 1, send_type, patch_assignment[patch_id], rank, comm, &req[req_i]);
+			MPI_Isend(local_patch->buffer, 1, send_type, patch_assignment[patch_id], patch_id, comm, &req[req_i]);
 			req_i++;
 			MPI_Type_free(&send_type);
 		}
