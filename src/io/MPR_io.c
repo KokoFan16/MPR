@@ -138,13 +138,38 @@ MPR_return_code write_data_out(MPR_file file, int svi)
 	char file_name[512] = "./out_data.raw";
 	int bytes = file->variable[svi]->vps * file->variable[svi]->bpv/8; /* bytes per data */
 
-	int div = pow(2, file->mpr->read_level);
+	int div = 1;
+	int tmp_global_box[MPR_MAX_DIMENSIONS];
+	int tmp_local_box[MPR_MAX_DIMENSIONS];
+	int tmp_local_offset[MPR_MAX_DIMENSIONS];
 
-	int tmp_global_box[MPR_MAX_DIMENSIONS] = {file->mpr->global_box[0]/div * bytes, file->mpr->global_box[1]/div, file->mpr->global_box[2]/div};
-	int tmp_local_box[MPR_MAX_DIMENSIONS] = {file->mpr->local_box[0]/div * bytes, file->mpr->local_box[1]/div, file->mpr->local_box[2]/div};
-	int tmp_local_offset[MPR_MAX_DIMENSIONS] = {file->mpr->local_offset[0]/div * bytes, file->mpr->local_offset[1]/div, file->mpr->local_offset[2]/div};
+	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
+	{
+		tmp_global_box[d] = file->mpr->global_box[d] / div;
+		tmp_local_box[d] = file->mpr->local_box[d] / div;
+		tmp_local_offset[d] = file->mpr->local_offset[d] / div;
+
+		if (file->mpr->read_level > 0)
+		{
+			div = pow(2, file->mpr->read_level);
+			tmp_global_box[d] = (file->mpr->global_box[d] + 1) / div;
+			tmp_local_box[d] = (file->mpr->local_box[d] + 1) / div;
+			tmp_local_offset[d] = (file->mpr->local_offset[d] + 1) / div;
+		}
+
+		if ((tmp_local_offset[d] + tmp_local_box[d]) >  tmp_global_box[d])
+			tmp_local_box[d] = tmp_global_box[d] - tmp_local_offset[d];
+	}
+	if (file->comm->simulation_rank == 0)
+		printf("Dimensions of output data at level %d is %dx%dx%d.\n",
+				file->mpr->read_level, tmp_global_box[0], tmp_global_box[1], tmp_global_box[2]);
+
+	tmp_global_box[0] *= bytes;
+	tmp_local_box[0] *= bytes;
+	tmp_local_offset[0] *= bytes;
 
 	int size = tmp_local_box[0] * tmp_local_box[1] * tmp_local_box[2];
+
 
 	MPI_Datatype out_type;
 	MPI_Type_create_subarray(MPR_MAX_DIMENSIONS, tmp_global_box, tmp_local_box, tmp_local_offset, MPI_ORDER_FORTRAN, MPI_BYTE, &out_type);
