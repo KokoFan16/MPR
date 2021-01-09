@@ -131,8 +131,10 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	int shared_rank_count[total_patch_num];
 	memset(shared_rank_count, 0, total_patch_num * sizeof(int));
 
-	int max_owned_patch_count = pow(2, MPR_MAX_DIMENSIONS);
-	int shared_patch_ranks[total_patch_num][max_owned_patch_count];
+//	int max_owned_patch_count = pow(2, MPR_MAX_DIMENSIONS);
+//	int shared_patch_ranks[total_patch_num][max_owned_patch_count];
+	int** shared_patch_ranks =  malloc(sizeof(*shared_patch_ranks) * total_patch_num);
+	memset(shared_patch_ranks, 0, sizeof(*shared_patch_ranks) * total_patch_num);
 
 	int global_id = 0; /* The global id for each patch */
 	for (int k = 0; k < global_box[2]; k += patch_box[2])
@@ -141,6 +143,8 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		{
 			for (int i = 0; i < global_box[0]; i += patch_box[0])
 			{
+				shared_patch_ranks[global_id] = malloc(procs_num * sizeof(int));
+
 				int start[MPR_MAX_DIMENSIONS] = {i, j, k};
 				int end[MPR_MAX_DIMENSIONS] = {i + patch_box[0], j + patch_box[1], k + patch_box[2]};
 
@@ -333,6 +337,9 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	}
 	/**********************************************************************************************/
 
+	for (int i = 0; i < total_patch_num; i++)
+		free(shared_patch_ranks[i]);
+	free(shared_patch_ranks);
 //	printf("The number of patches of process %d is %d\n", file->comm->simulation_rank, local_patch_num);
 
 	return MPR_success;
