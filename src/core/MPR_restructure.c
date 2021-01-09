@@ -132,7 +132,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	memset(shared_rank_count, 0, total_patch_num * sizeof(int));
 
 	int max_owned_patch_count = pow(2, MPR_MAX_DIMENSIONS);
-	int shared_patch_ranks[total_patch_num][procs_num];
+	int shared_patch_ranks[total_patch_num][max_owned_patch_count];
 
 	int global_id = 0; /* The global id for each patch */
 	for (int k = 0; k < global_box[2]; k += patch_box[2])
@@ -223,8 +223,8 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		int req_i = 0;
-		MPI_Request req[total_patch_num * max_owned_patch_count];
-		MPI_Status stat[total_patch_num * max_owned_patch_count];
+		MPI_Request req[local_own_patch_count + local_patch_num * max_owned_patch_count];
+		MPI_Status stat[local_own_patch_count + local_patch_num * max_owned_patch_count];
 
 		/*********** Receive data (non-blocking point-to-point communication) **********/
 		int receive_array[MPR_MAX_DIMENSIONS] = {patch_box[0] * bytes, patch_box[1], patch_box[2]};
