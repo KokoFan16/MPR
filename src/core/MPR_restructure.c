@@ -128,11 +128,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	int local_own_patch_ids[total_patch_num]; /* the array of current number of patches per process */
 	memset(local_own_patch_ids, -1, total_patch_num * sizeof(int)); /* Initialization */
 
-	int shared_rank_count[total_patch_num];
-	memset(shared_rank_count, 0, total_patch_num * sizeof(int));
-
-	int max_owned_patch_count = pow(2, MPR_MAX_DIMENSIONS);
-	int shared_patch_ranks[total_patch_num][max_owned_patch_count];
+	int max_owned_patch_count = 0;
 
 	int global_id = 0; /* The global id for each patch */
 	for (int k = 0; k < global_box[2]; k += patch_box[2])
@@ -144,26 +140,35 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 				int start[MPR_MAX_DIMENSIONS] = {i, j, k};
 				int end[MPR_MAX_DIMENSIONS] = {i + patch_box[0], j + patch_box[1], k + patch_box[2]};
 
-				int start_dimensions[MPR_MAX_DIMENSIONS];
-				int end_dimensions[MPR_MAX_DIMENSIONS];
+//				int start_dimensions[MPR_MAX_DIMENSIONS];
+//				int end_dimensions[MPR_MAX_DIMENSIONS];
+
+				int process_count = 1;
 				for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 				{
 					if (end[d] > global_box[d])
 						end[d] = global_box[d];
-					start_dimensions[d] = start[d] / local_box[d];
-					end_dimensions[d] = (end[d] - 1) / local_box[d];
+					int start_dimensions = start[d] / local_box[d];
+					int end_dimensions = (end[d] - 1) / local_box[d];
+					process_count *= (end_dimensions - start_dimensions + 1);
 				}
 
-				for (int z = start_dimensions[2]; z < end_dimensions[2] + 1; z++)
-					for (int y = start_dimensions[1]; y < end_dimensions[1] + 1; y++)
-						for (int x = start_dimensions[0]; x < end_dimensions[0] + 1; x++)
-						{
-							int process_id = z * process_dimensional_counts[1] * process_dimensional_counts[0] + y * process_dimensional_counts[0] + x;
-							shared_patch_ranks[global_id][shared_rank_count[global_id]++] = process_id;
-							if (rank == process_id)
-								local_own_patch_ids[local_own_patch_count++] = global_id;
-						}
+				if (process_count > max_owned_patch_count)
+					max_owned_patch_count = process_count;
+//
+//				if (rank == 0)
+//					printf("%d: %d\n", global_id, process_count);
 
+//				for (int z = start_dimensions[2]; z < end_dimensions[2] + 1; z++)
+//					for (int y = start_dimensions[1]; y < end_dimensions[1] + 1; y++)
+//						for (int x = start_dimensions[0]; x < end_dimensions[0] + 1; x++)
+//						{
+//							int process_id = z * process_dimensional_counts[1] * process_dimensional_counts[0] + y * process_dimensional_counts[0] + x;
+//							shared_patch_ranks[global_id][shared_rank_count[global_id]++] = process_id;
+//							if (rank == process_id)
+//								local_own_patch_ids[local_own_patch_count++] = global_id;
+//						}
+//
 				memcpy(patch_offsets[global_id], start, MPR_MAX_DIMENSIONS * sizeof(int));
 				global_id++;
 			}
@@ -181,8 +186,40 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	memset(local_assigned_patches, -1, local_patch_num * sizeof(int));
 	int local_assigned_count = 0;
 
+	int shared_rank_count[total_patch_num];
+	memset(shared_rank_count, 0, total_patch_num * sizeof(int));
+
+//	printf("%d\n", max_owned_patch_count);
+//	int max_owned_patch_count = pow(2, MPR_MAX_DIMENSIONS);
+	int shared_patch_ranks[total_patch_num][max_owned_patch_count];
+
 	for (int i = 0; i < total_patch_num; i++)
 	{
+
+		int start_dimensions[MPR_MAX_DIMENSIONS];
+		int end_dimensions[MPR_MAX_DIMENSIONS];
+		int end[MPR_MAX_DIMENSIONS];
+
+		for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
+		{
+			end[d] = patch_offsets[i][d] + patch_box[d];
+			if (end[d] > global_box[d])
+				end[d] = global_box[d];
+			start_dimensions[d] = patch_offsets[i][d] / local_box[d];
+			end_dimensions[d] = (end[d] - 1) / local_box[d];
+		}
+
+		for (int z = start_dimensions[2]; z < end_dimensions[2] + 1; z++)
+			for (int y = start_dimensions[1]; y < end_dimensions[1] + 1; y++)
+				for (int x = start_dimensions[0]; x < end_dimensions[0] + 1; x++)
+				{
+					int process_id = z * process_dimensional_counts[1] * process_dimensional_counts[0] + y * process_dimensional_counts[0] + x;
+					shared_patch_ranks[i][shared_rank_count[i]++] = process_id;
+					if (rank == process_id)
+						local_own_patch_ids[local_own_patch_count++] = i;
+				}
+
+
 		int flag = 0; /* If the patch has been assigned to any process */
 		int assigned_rank = 0;
 		for (int p = 0; p < shared_rank_count[i]; p++)
@@ -223,8 +260,8 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		int req_i = 0;
-		MPI_Request req[local_own_patch_count + local_patch_num * procs_num];
-		MPI_Status stat[local_own_patch_count + local_patch_num * procs_num];
+		MPI_Request req[local_own_patch_count + local_patch_num * max_owned_patch_count];
+		MPI_Status stat[local_own_patch_count + local_patch_num * max_owned_patch_count];
 
 		/*********** Receive data (non-blocking point-to-point communication) **********/
 		int receive_array[MPR_MAX_DIMENSIONS] = {patch_box[0] * bytes, patch_box[1], patch_box[2]};
