@@ -121,7 +121,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
     MPI_Allgather(&local_patch_num, 1, MPI_INT, required_local_patch_num, 1, MPI_INT, comm);
     /***************************************************************************/
 
-	/***************************** Find shared patches and ranks *******************************/
+	/***************************** Find max shared patches count *******************************/
     int patch_offsets[total_patch_num][MPR_MAX_DIMENSIONS];
 
 	int max_owned_patch_count = 0;
