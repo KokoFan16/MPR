@@ -56,8 +56,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
 		}
 
-		printf("The compressed size of process %d of variable %d is %d\n", rank, v, process_size);
-
 		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
 		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
 
@@ -237,6 +235,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			if (rank == agg_ranks[i])
 				agg_size = agg_sizes[i];
 		}
+
+		if (file->mpr->is_aggregator == 1)
+			printf("The compressed size of aggregation %d of variable %d is %d\n", rank, v, agg_size);
 
 		local_patch->agg_patch_id_array = malloc(recv_num * sizeof(int));
 		local_patch->agg_patch_disps = malloc(recv_num * sizeof(int));
