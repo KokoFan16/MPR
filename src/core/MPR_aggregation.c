@@ -182,45 +182,35 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			double average_file_size = total_size / (double)out_file_num; /* The idea average file size*/
 
 			int pcount = 0;
+			int agg_id = 0;
 			if (file->mpr->is_z_order == 0) /* row-order */
 			{
-				for (int a = 0; a < out_file_num; a++)
+				while (pcount < total_patch_num)
 				{
-					while (pcount < total_patch_num)
-					{
-						if (agg_sizes[a] < average_file_size)
-						{
-							patch_assign_array[pcount] = agg_ranks[a];
-							if (rank == agg_ranks[a])
-								recv_array[recv_num++] = pcount;
-							agg_sizes[a] += patch_sizes[pcount];
-							pcount++;
-						}
-						else
-							break;
-					}
+					if (agg_sizes[agg_id] >= average_file_size)
+						agg_id++;
+					patch_assign_array[pcount] = agg_ranks[agg_id];
+					if (rank == agg_ranks[agg_id])
+						recv_array[recv_num++] = pcount;
+					agg_sizes[agg_id] += patch_sizes[pcount];
+					pcount++;
 				}
 			}
 			else /* z-order */
 			{
-				for (int a = 0; a < out_file_num; a++)
+				while (pcount < patch_count_power2)
 				{
-					while (pcount < patch_count_power2)
+					if (agg_sizes[agg_id] >= average_file_size)
+						agg_id++;
+
+					if (patch_ids_zorder[pcount] > -1)
 					{
-						if (agg_sizes[a] < average_file_size)
-						{
-							if (patch_ids_zorder[pcount] > -1)
-							{
-								patch_assign_array[patch_ids_zorder[pcount]] = agg_ranks[a];
-								if (rank == agg_ranks[a])
-									recv_array[recv_num++] = patch_ids_zorder[pcount];
-							}
-							agg_sizes[a] += patch_sizes_zorder[pcount];
-							pcount++;
-						}
-						else
-							break;
+						patch_assign_array[patch_ids_zorder[pcount]] = agg_ranks[agg_id];
+						if (rank == agg_ranks[agg_id])
+							recv_array[recv_num++] = patch_ids_zorder[pcount];
 					}
+					agg_sizes[agg_id] += patch_sizes_zorder[pcount];
+					pcount++;
 				}
 			}
 		}
