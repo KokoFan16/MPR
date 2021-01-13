@@ -99,7 +99,7 @@ MPR_return_code MPR_multi_pre_write(MPR_file file, int svi, int evi)
 }
 
 
-MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
+MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi, int ite)
 {
 	/* Perform restructure phase */
 	file->time->rst_start = MPI_Wtime();
@@ -172,7 +172,7 @@ MPR_return_code MPR_benchmark_write(MPR_file file, int svi, int evi)
 }
 
 /* Write data out */
-MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)
+MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi, int ite)
 {
 	/* the directory patch for out files */
 	char *directory_path;
@@ -184,7 +184,7 @@ MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)
 	char *file_name;
 	file_name = malloc(PATH_MAX * sizeof(*file_name));
 	memset(file_name, 0, PATH_MAX * sizeof(*file_name));
-	sprintf(file_name, "%s/time%09d/%d", directory_path, file->mpr->current_time_step, file->comm->simulation_rank);
+	sprintf(file_name, "%s/time%09d/%d", directory_path, ite, file->comm->simulation_rank);
 
 	/* Write file */
 	if (file->mpr->is_aggregator == 1)

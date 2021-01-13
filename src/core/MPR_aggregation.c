@@ -226,8 +226,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				agg_size = agg_sizes[i];
 		}
 
-		if (file->mpr->is_aggregator == 1)
-			printf("The compressed size of aggregation %d of variable %d is %d\n", rank, v, agg_size);
+//		if (file->mpr->is_aggregator == 1)
+//			printf("The compressed size of aggregation %d of variable %d is %d\n", rank, v, agg_size);
 
 		local_patch->agg_patch_id_array = malloc(recv_num * sizeof(int));
 		local_patch->agg_patch_disps = malloc(recv_num * sizeof(int));

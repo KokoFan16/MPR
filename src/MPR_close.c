@@ -6,10 +6,12 @@
  */
 
 #include "MPR.h"
+#include <errno.h>
 
 static void MPR_timing_output(MPR_file file, int svi, int evi);
+static void MPR_timing_logs(MPR_file file, int svi, int evi, int ite);
 
-MPR_return_code MPR_flush(MPR_file file)
+MPR_return_code MPR_flush(MPR_file file, int ite)
 {
 	/* making sure that variables are added to the dataset */
 	if (file->mpr->variable_count <= 0)
@@ -24,7 +26,8 @@ MPR_return_code MPR_flush(MPR_file file)
 
 	if (file->flags == MPR_MODE_CREATE)
 	{
-		if (MPR_write(file, lvi, (lvi + lvc)) != MPR_success)
+		/* write 10 time-steps */
+		if (MPR_write(file, lvi, (lvi + lvc), ite) != MPR_success)
 		{
 			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 			return MPR_err_io;
@@ -41,14 +44,15 @@ MPR_return_code MPR_flush(MPR_file file)
 	}
 	file->time->total_end = MPI_Wtime(); /* the end time for the program */
 
-	MPR_timing_output(file, lvi, (lvi + lvc));
+	MPR_timing_logs(file, lvi, (lvi + lvc), ite);
+//	MPR_timing_output(file, lvi, (lvi + lvc));
 
 	return MPR_success;
 }
 
-MPR_return_code MPR_close(MPR_file file)
+MPR_return_code MPR_close(MPR_file file, int ite)
 {
-	if (MPR_flush(file) != MPR_success)
+	if (MPR_flush(file, ite) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_flush;
@@ -67,6 +71,72 @@ MPR_return_code MPR_close(MPR_file file)
 	free(file);
 
 	return MPR_success;
+}
+
+
+static void MPR_timing_logs(MPR_file file, int svi, int evi, int ite)
+{
+	int rank = file->comm->simulation_rank;
+	int MODE = file->mpr->io_type;
+
+	char directory_path[512];
+	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
+
+	char time_folder[512];
+	sprintf(time_folder, "time_%s", directory_path);
+
+	if (ite == 0)
+	{
+		int file_size = 0;
+		for (int v = svi; v < evi; v++)
+		{
+			MPR_local_patch local_patch = file->variable[v]->local_patch;
+			file_size += local_patch->out_file_size;
+
+			if (rank == 0)
+				printf("The compression ratio for variable %d is %f.\n", v, file->variable[v]->local_patch->compression_ratio);
+		}
+
+		if (file->mpr->is_aggregator == 1)
+			printf("%d: %d\n", rank, file_size);
+
+		if (rank == 0)
+		{
+			int ret = mkdir(time_folder, S_IRWXU | S_IRWXG | S_IRWXO);
+			if (ret != 0 && errno != EEXIST)
+			{
+				fprintf(stderr, "Error: failed to mkdir %s\n", time_folder);
+			}
+		}
+	}
+
+	double total_time = file->time->total_end - file->time->total_start;
+	double rst_time = file->time->rst_end - file->time->rst_start;
+	double wave_time = file->time->wave_end - file->time->wave_start;
+	double comp_time = file->time->zfp_end - file->time->zfp_start;
+
+	double max_total_time = 0;
+	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, file->comm->simulation_comm);
+
+	if (file->flags == MPR_MODE_CREATE)
+	{
+		double agg_time = file->time->agg_end - file->time->agg_start;
+		double wrt_data_time = file->time->wrt_data_end - file->time->wrt_data_start;
+		double wrt_metadata_time = file->time->wrt_metadata_end - file->time->wrt_metadata_start;
+
+		char time_log[512];
+		sprintf(time_log, "%s/time_%d", time_folder, rank);
+
+		if (file->mpr->is_aggregator == 1)
+		{
+			FILE* fp = fopen(time_log, "a"); /* open file */
+		    if (!fp) /* Check file handle */
+				fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
+		    fprintf(fp,"%d %d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", ite, rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+		    fclose(fp);
+		}
+	}
+
 }
 
 static void MPR_timing_output(MPR_file file, int svi, int evi)

@@ -11,7 +11,7 @@
 
 static int intersect_patch(int* a_size, int* a_offset, int* b_size, int* b_offset);
 
-MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
+MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi, int ite)
 {
 	char* file_name = file->mpr->filename;
 
@@ -27,7 +27,7 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 
 	char time_template[512];
 	sprintf(time_template, "%%s/%s", file->mpr->filename_time_template);
-	sprintf(data_set_path, time_template, directory_path, file->mpr->current_time_step);
+	sprintf(data_set_path, time_template, directory_path, ite);
 	free(directory_path);
 
 	char last_path[PATH_MAX] = {0};
@@ -68,7 +68,7 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 }
 
 /* Write meta-data out */
-MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
+MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi, int ite)
 {
 	/* Write basic information out */
 	if (MPR_basic_info_metadata_write_out(file) != MPR_success)
@@ -85,7 +85,7 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 	}
 
 	/* Write file related metadata out */
-	if (MPR_file_metadata_write_out(file, svi, evi) != MPR_success)
+	if (MPR_file_metadata_write_out(file, svi, evi, ite) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
@@ -213,7 +213,7 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 	/* Write bounding box metadata out */
 	if (file->comm->simulation_rank == 0)
 	{
-		int fp = open(bounding_meta_path, O_CREAT | O_EXCL | O_WRONLY, 0664);
+		int fp = open(bounding_meta_path, O_CREAT | O_WRONLY, 0664);
 		if (fp == -1)
 		{
 			fprintf(stderr, "File %s is existed, please delete it.\n", bounding_meta_path);
@@ -232,7 +232,7 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 	return MPR_success;
 }
 
-MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
+MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi, int ite)
 {
 	char directory_path[PATH_MAX]; /* file template */
 	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
@@ -315,7 +315,7 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 		/* The file name for out files */
 		char file_name[PATH_MAX];
 		memset(file_name, 0, PATH_MAX * sizeof(*file_name));
-		sprintf(file_name, "%s/time%09d/%d", directory_path, file->mpr->current_time_step, file->comm->simulation_rank);
+		sprintf(file_name, "%s/time%09d/%d", directory_path, ite, file->comm->simulation_rank);
 
 		/* write meta-data out */
 		int fp = open(file_name, O_CREAT | O_EXCL | O_WRONLY, 0664);

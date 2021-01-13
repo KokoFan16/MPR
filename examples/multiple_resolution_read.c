@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 
 	set_mpr_variable_and_create_buffer();
 
-	MPR_close(file);
+	MPR_close(file, 0);
 
 	if (MPR_close_access(p_access) != MPR_success) /* close access */
 		terminate_with_error_msg("MPR_close_access");
