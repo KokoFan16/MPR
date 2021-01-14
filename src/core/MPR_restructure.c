@@ -268,6 +268,9 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 				local_patch->patch[i]->offset[d] = patch_offsets[patch_id][d];
 				local_patch->patch[i]->size[d] = patch_box[d];
 				patch_end[d] = local_patch->patch[i]->offset[d] + patch_box[d];
+
+				if (patch_end[d] > global_box[d])
+					patch_end[d] = global_box[d];
 			}
 
 			int physical_size[MPR_MAX_DIMENSIONS];
@@ -287,8 +290,9 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 				for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 				{
 					local_end[d] = local_offset[d] + local_box[d];
+
 					physical_offset[d] = patch_offsets[patch_id][d];
-					physical_size[d] = patch_box[d];
+					physical_size[d] = patch_end[d] - physical_offset[d];
 
 					if (patch_end[d] > local_end[d])
 						physical_size[d] = local_end[d] - patch_offsets[patch_id][d];
@@ -328,8 +332,14 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 			for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 			{
 				patch_end[d] = patch_offsets[patch_id][d] + patch_box[d];
-				physical_offset[d] = patch_offsets[patch_id][d];
 				physical_size[d] = patch_box[d];
+				physical_offset[d] = patch_offsets[patch_id][d];
+
+				if (patch_end[d] > global_box[d])
+				{
+					patch_end[d] = global_box[d];
+					physical_size[d] = patch_end[d] - physical_offset[d];
+				}
 
 				if (patch_end[d] > local_end[d])
 					physical_size[d] = local_end[d] - patch_offsets[patch_id][d];
@@ -339,6 +349,7 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 					physical_offset[d] = local_offset[d];
 					physical_size[d] = patch_end[d] - local_offset[d];
 				}
+
 				send_offset[d] = physical_offset[d] - local_offset[d];
 			}
 			physical_size[0] *= bytes;
