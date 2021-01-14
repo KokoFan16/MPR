@@ -193,7 +193,7 @@ MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi, int ite)
 		{
 			MPR_local_patch local_patch = file->variable[v]->local_patch;
 			int fp = open(file_name, O_CREAT | O_WRONLY | O_APPEND, 0664);
-			int write_count = write(fp, local_patch->buffer, local_patch->out_file_size);
+			long long int write_count = write(fp, local_patch->buffer, local_patch->out_file_size);
 			if (write_count != local_patch->out_file_size)
 			{
 			  fprintf(stderr, "[%s] [%d] pwrite() failed.\n", __FILE__, __LINE__);

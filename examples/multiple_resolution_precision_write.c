@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 	/* Initialize per-process local domain */
 	calculate_per_process_offsets();
 
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < 1; i++)
 	{
 		/* If there is input file, read file in parallel, otherwise, create local simulation sdata */
 		if (strcmp(input_file, "") == 0)
