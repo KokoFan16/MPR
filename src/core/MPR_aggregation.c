@@ -29,18 +29,20 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
-		/*************************** Gather required information *************************/
-		int* global_subband_sizes = NULL;
-		int* local_subband_sizes = NULL;
-		int* subband_sizes = NULL;
-		int subbands_num = 0;
-		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-		{
-			subbands_num = file->mpr->wavelet_trans_num * 7 + 1;
-			global_subband_sizes = malloc(max_pcount * proc_num * subbands_num * sizeof(int));
-			local_subband_sizes = malloc(max_pcount * subbands_num * sizeof(int));
-			subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
-		}
+//		/*************************** Gather required information *************************/
+//		int* global_subband_sizes = NULL;
+//		int* local_subband_sizes = NULL;
+//		int* subband_sizes = NULL;
+//		int subbands_num = 0;
+//		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//		{
+//			subbands_num = file->mpr->wavelet_trans_num * 7 + 1;
+//			global_subband_sizes = malloc(max_pcount * proc_num * subbands_num * sizeof(int));
+//			local_subband_sizes = malloc(max_pcount * subbands_num * sizeof(int));
+//			subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
+//		}
+		double gather_start = MPI_Wtime();
+
 		int process_size = 0;
 		int local_patch_size_id_rank[max_pcount * 3]; /* local information: size, id, own_rank per patch */
 		memset(local_patch_size_id_rank, -1, max_pcount * 3 * sizeof(int));
@@ -50,8 +52,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			local_patch_size_id_rank[i * 3 + 1] = local_patch->patch[i]->patch_buffer_size;
 			local_patch_size_id_rank[i * 3 + 2] = rank;
 
-			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-				memcpy(&local_subband_sizes[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
+//			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//				memcpy(&local_subband_sizes[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
 
 			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
 		}
@@ -59,10 +61,10 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
 		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
 
-		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-			MPI_Allgather(local_subband_sizes, max_pcount * subbands_num, MPI_INT, global_subband_sizes, max_pcount * subbands_num, MPI_INT, comm);
-		free(local_subband_sizes);
-
+//		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//			MPI_Allgather(local_subband_sizes, max_pcount * subbands_num, MPI_INT, global_subband_sizes, max_pcount * subbands_num, MPI_INT, comm);
+//		free(local_subband_sizes);
+//
 		int* patch_sizes = malloc(total_patch_num * sizeof(int)); 	/* A array in which element i is the size of patch i */
 		int* patch_ranks = malloc(total_patch_num * sizeof(int)); 	/* A array in which element i is the owned rank of patch i */
 		for (int i = 0; i < max_pcount * proc_num; i++)
@@ -72,14 +74,19 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			{
 				patch_sizes[id] = patch_size_id[i*3 + 1];
 				patch_ranks[id] = patch_size_id[i*3 + 2];
-				if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-					memcpy(&subband_sizes[id*subbands_num], &global_subband_sizes[i*subbands_num], subbands_num*sizeof(int));
+//				if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//					memcpy(&subband_sizes[id*subbands_num], &global_subband_sizes[i*subbands_num], subbands_num*sizeof(int));
 			}
 		}
 		free(patch_size_id);
-		free(global_subband_sizes);
-		/******************************************************************************/
+//		free(global_subband_sizes);
+		double gather_end = MPI_Wtime();
+		double gather_time = gather_end - gather_start;
+		if (rank == 0)
+			printf("gather time %f\n", gather_time);
+//		/******************************************************************************/
 
+		double decide_start = MPI_Wtime();
 		int agg_ranks[out_file_num]; /* AGG Array */
 		decide_aggregator(file, agg_ranks); /* Decide AGG */
 
@@ -95,8 +102,13 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
 			local_patch->compression_ratio /= file->mpr->global_box[i];
 		}
+		double decide_end = MPI_Wtime();
+		double decide_time = decide_end - decide_start;
+		if (rank == 0)
+			printf("decide time %f\n", decide_time);
 
 		/****************** Convert to z-order ********************/
+		double z_order_start = MPI_Wtime();
 		int patch_count_power2 = 0;  /* z-order count */
 		int* patch_sizes_zorder = NULL;
 		int* patch_ids_zorder = NULL;
@@ -130,9 +142,15 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				}
 			}
 		}
+		double z_order_end = MPI_Wtime();
+		double z_order_time = z_order_end - z_order_start;
+		if (rank == 0)
+			printf("z_order time %f\n", z_order_time);
 		/**********************************************************/
 
 		/************************* Assign patches **************************/
+		double assign_start = MPI_Wtime();
+
 		int patch_assign_array[total_patch_num];
 		memset(patch_assign_array, -1, total_patch_num * sizeof(int));
 
@@ -181,8 +199,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		{
 			long long int average_file_size = total_size / out_file_num; /* The idea average file size*/
 
-//			printf("%lld\n", average_file_size);
-
 			int pcount = 0;
 			int agg_id = 0;
 			if (file->mpr->is_z_order == 0) /* row-order */
@@ -204,10 +220,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				{
 					if (patch_ids_zorder[pcount] > -1)
 					{
-//						if (rank == 0)
-//							printf("%d: %d, %lld, %lld\n", pcount, agg_id, agg_sizes[agg_id], average_file_size);
-//							printf("%d: %d, %d, %d, %llu\n", pcount, agg_id, agg_ranks[agg_id], patch_sizes_zorder[pcount], agg_sizes[agg_id]);
-
 						if (agg_sizes[agg_id] > average_file_size)
 							agg_id++;
 
@@ -224,13 +236,13 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		free(patch_ids_zorder);
 		local_patch->agg_patch_count = recv_num;
 
-//		if (rank == 0)
-//		{
-//			for (int i = 0; i < total_patch_num; i++)
-//				printf("%d, %d\n", i, patch_assign_array[i]);
-//		}
+		double assign_end = MPI_Wtime();
+		double assign_time = assign_end - assign_start;
+		if (rank == 0)
+			printf("assign time %f\n", assign_time);
 		/**********************************************************************/
 
+		double data_exchange_start = MPI_Wtime();
 		/* calculate total size per aggregator */
 		for (int i = 0; i < out_file_num; i++)
 		{
@@ -241,11 +253,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 //		if (file->mpr->is_aggregator == 1)
 //			printf("The compressed size of aggregation %d of variable %d is %d\n", rank, v, agg_size);
 
-		local_patch->agg_patch_id_array = malloc(recv_num * sizeof(int));
-		local_patch->agg_patch_disps = malloc(recv_num * sizeof(int));
-		local_patch->agg_patch_size = malloc(recv_num * sizeof(int));
-		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-			local_patch->agg_subbands_size = malloc(recv_num * subbands_num * sizeof(int));
+//		local_patch->agg_patch_id_array = malloc(recv_num * sizeof(int));
+//		local_patch->agg_patch_disps = malloc(recv_num * sizeof(int));
+//		local_patch->agg_patch_size = malloc(recv_num * sizeof(int));
+//		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//			local_patch->agg_subbands_size = malloc(recv_num * subbands_num * sizeof(int));
 
 		/********************** Point-to-point communication **********************/
 		local_patch->buffer = malloc(agg_size); /* reuse the local buffer per variable */
@@ -272,38 +284,42 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 		for (int i = 0; i < recv_num; i++)
 		{
-			int z = recv_array[i] / (patch_count_xyz[0] * patch_count_xyz[1]);
-			int y = (recv_array[i] - (z * patch_count_xyz[0] * patch_count_xyz[1])) / patch_count_xyz[0];
-			int x = recv_array[i] - z * patch_count_xyz[0] * patch_count_xyz[1] - y * patch_count_xyz[0];
-
-			if (z < min_xyz[2]) min_xyz[2] = z;
-			if (z > max_xyz[2]) max_xyz[2] = z;
-			if (y < min_xyz[1]) min_xyz[1] = y;
-			if (y > max_xyz[1]) max_xyz[1] = y;
-			if (x < min_xyz[0]) min_xyz[0] = x;
-			if (x > max_xyz[0]) max_xyz[0] = x;
+//			int z = recv_array[i] / (patch_count_xyz[0] * patch_count_xyz[1]);
+//			int y = (recv_array[i] - (z * patch_count_xyz[0] * patch_count_xyz[1])) / patch_count_xyz[0];
+//			int x = recv_array[i] - z * patch_count_xyz[0] * patch_count_xyz[1] - y * patch_count_xyz[0];
+//
+//			if (z < min_xyz[2]) min_xyz[2] = z;
+//			if (z > max_xyz[2]) max_xyz[2] = z;
+//			if (y < min_xyz[1]) min_xyz[1] = y;
+//			if (y > max_xyz[1]) max_xyz[1] = y;
+//			if (x < min_xyz[0]) min_xyz[0] = x;
+//			if (x > max_xyz[0]) max_xyz[0] = x;
 
 			MPI_Irecv(&local_patch->buffer[offset], patch_sizes[recv_array[i]], MPI_BYTE, patch_ranks[recv_array[i]], recv_array[i], comm, &req[req_id]);
-			local_patch->agg_patch_id_array[i] = recv_array[i];
-			local_patch->agg_patch_disps[i] = offset;
-			local_patch->agg_patch_size[i] = patch_sizes[recv_array[i]];
-			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-				memcpy(&local_patch->agg_subbands_size[i*subbands_num], &subband_sizes[recv_array[i]*subbands_num], subbands_num*sizeof(int));
+//			local_patch->agg_patch_id_array[i] = recv_array[i];
+//			local_patch->agg_patch_disps[i] = offset;
+//			local_patch->agg_patch_size[i] = patch_sizes[recv_array[i]];
+//			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//				memcpy(&local_patch->agg_subbands_size[i*subbands_num], &subband_sizes[recv_array[i]*subbands_num], subbands_num*sizeof(int));
 			offset += patch_sizes[recv_array[i]];
 			req_id++;
 		}
 		MPI_Waitall(req_id, req, stat);
+		double data_exchange_end = MPI_Wtime();
+		double data_exchange_time = data_exchange_end - data_exchange_start;
+		if (rank == 0)
+			printf("data_exchange time %f\n", data_exchange_time);
 		/**********************************************************************/
 
 		free(patch_ranks);
 		free(patch_sizes);
-		free(subband_sizes);
+//		free(subband_sizes);
 
-		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
-		{
-			local_patch->bounding_box[i] = min_xyz[i];
-			local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = max_xyz[i] + 1;
-		}
+//		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+//		{
+//			local_patch->bounding_box[i] = min_xyz[i];
+//			local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = max_xyz[i] + 1;
+//		}
 	}
 	return MPR_success;
 }

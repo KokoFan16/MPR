@@ -80,9 +80,11 @@ static void MPR_timing_logs(MPR_file file, int svi, int evi, int ite)
 	int MODE = file->mpr->io_type;
 
 	char directory_path[512];
+	memset(directory_path, 0, sizeof(*directory_path) * 512);
 	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
 
 	char time_folder[512];
+	memset(time_folder, 0, sizeof(*time_folder) * 512);
 	sprintf(time_folder, "time_%s", directory_path);
 
 	if (ite == 0)
