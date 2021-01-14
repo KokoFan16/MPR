@@ -342,12 +342,12 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 				}
 
 				if (patch_end[d] > local_end[d])
-					physical_size[d] = local_end[d] - patch_offsets[patch_id][d];
+					physical_size[d] -= (patch_end[d] - local_end[d]);
 
 				if (patch_offsets[patch_id][d] < local_offset[d])
 				{
 					physical_offset[d] = local_offset[d];
-					physical_size[d] = patch_end[d] - local_offset[d];
+					physical_size[d] -= (local_offset[d] - patch_offsets[patch_id][d]);
 				}
 
 				send_offset[d] = physical_offset[d] - local_offset[d];
@@ -355,10 +355,10 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 			physical_size[0] *= bytes;
 			send_offset[0] *= bytes;
 
-			printf("%d: %dx%dx%d, %dx%dx%d, %dx%dx%d, %dx%dx%d, %dx%dx%d\n", patch_id, sent_array[0], sent_array[1], sent_array[2],
-					patch_offsets[patch_id][0], patch_offsets[patch_id][1], patch_offsets[patch_id][2],
-					local_offset[0], local_offset[1], local_offset[2],
-					physical_size[0], physical_size[1], physical_size[2], send_offset[0], send_offset[1], send_offset[2]);
+//			printf("%d: %dx%dx%d, %dx%dx%d, %dx%dx%d, %dx%dx%d, %dx%dx%d\n", patch_id, sent_array[0], sent_array[1], sent_array[2],
+//					patch_offsets[patch_id][0], patch_offsets[patch_id][1], patch_offsets[patch_id][2],
+//					local_offset[0], local_offset[1], local_offset[2],
+//					physical_size[0], physical_size[1], physical_size[2], send_offset[0], send_offset[1], send_offset[2]);
 
 
 			MPI_Datatype send_type;
