@@ -93,7 +93,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 
 		int gap = proc_num / out_file_num;
-		if (rank / gap == 0)
+		if (rank % gap == 0)
 			file->mpr->is_aggregator = 1;
 
 		int r = 0;
