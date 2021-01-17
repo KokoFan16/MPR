@@ -58,28 +58,28 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
 		}
 
-//		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
-//		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
+		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
+		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
 
 //		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 //			MPI_Allgather(local_subband_sizes, max_pcount * subbands_num, MPI_INT, global_subband_sizes, max_pcount * subbands_num, MPI_INT, comm);
 //		free(local_subband_sizes);
-//
-////		int patch_sizes[total_patch_num];
-////		int patch_ranks[total_patch_num];
-//		int* patch_sizes = malloc(total_patch_num * sizeof(int)); 	/* A array in which element i is the size of patch i */
-//		int* patch_ranks = malloc(total_patch_num * sizeof(int)); 	/* A array in which element i is the owned rank of patch i */
-//		for (int i = 0; i < max_pcount * proc_num; i++)
-//		{
-//			int id = patch_size_id[i*3];
-//			if (id > -1)
-//			{
-//				patch_sizes[id] = patch_size_id[i*3 + 1];
-//				patch_ranks[id] = patch_size_id[i*3 + 2];
-//				if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-//					memcpy(&subband_sizes[id*subbands_num], &global_subband_sizes[i*subbands_num], subbands_num*sizeof(int));
-//			}
-//		}
+
+//		int patch_sizes[total_patch_num];
+//		int patch_ranks[total_patch_num];
+		int* patch_sizes = malloc(total_patch_num * sizeof(int)); 	/* A array in which element i is the size of patch i */
+		int* patch_ranks = malloc(total_patch_num * sizeof(int)); 	/* A array in which element i is the owned rank of patch i */
+		for (int i = 0; i < max_pcount * proc_num; i++)
+		{
+			int id = patch_size_id[i*3];
+			if (id > -1)
+			{
+				patch_sizes[id] = patch_size_id[i*3 + 1];
+				patch_ranks[id] = patch_size_id[i*3 + 2];
+				if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+					memcpy(&subband_sizes[id*subbands_num], &global_subband_sizes[i*subbands_num], subbands_num*sizeof(int));
+			}
+		}
 //		free(patch_size_id);
 //		free(global_subband_sizes);
 //		double gather_end = MPI_Wtime();
