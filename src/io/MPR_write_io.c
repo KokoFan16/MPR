@@ -128,6 +128,8 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi, int ite
 	}
 	file->time->zfp_end = MPI_Wtime();
 
+	MPI_Barrier(file->comm->simulation_rank);
+
 	/* Aggregation phase */
 	file->time->agg_start = MPI_Wtime();
 	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)

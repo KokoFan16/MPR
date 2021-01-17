@@ -23,10 +23,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 	int max_pcount = total_patch_num / proc_num + 1;
 
 
-
-	MPI_Barrier(comm);
-
-
 	double gather_start = MPI_Wtime();
 	for (int v  = svi; v < evi; v++)
 	{
