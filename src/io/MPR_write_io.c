@@ -128,7 +128,7 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi, int ite
 	}
 	file->time->zfp_end = MPI_Wtime();
 
-	MPI_Barrier(file->comm->simulation_comm);
+//	MPI_Barrier(file->comm->simulation_comm);
 
 	/* Aggregation phase */
 	file->time->agg_start = MPI_Wtime();
@@ -138,8 +138,6 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi, int ite
 		return MPR_err_file;
 	}
 	file->time->agg_end = MPI_Wtime();
-
-	printf("%d: agg_time %f\n", file->comm->simulation_rank, file->time->agg_end - file->time->agg_start);
 
 	return MPR_success;
 }

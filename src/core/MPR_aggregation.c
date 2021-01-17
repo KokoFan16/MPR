@@ -22,8 +22,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 	int max_pcount = total_patch_num / proc_num + 1;
 
-
-//	double gather_start = MPI_Wtime();
 	for (int v  = svi; v < evi; v++)
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch;
@@ -43,16 +41,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			local_subband_sizes = malloc(max_pcount * subbands_num * sizeof(int));
 			subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
 		}
-
-//
-//		int local_patch_size[max_pcount];
-//		for (int i = 0; i < patch_count; i++)
-//		{
-//			local_patch_size[i] = local_patch->patch[i]->patch_buffer_size;
-//		}
-//
-//		int* patch_size_id = malloc(max_pcount * proc_num * sizeof(int));
-//		MPI_Allgather(local_patch_size, max_pcount, MPI_INT, patch_size_id, max_pcount, MPI_INT, comm);
 
 		int process_size = 0;
 		int local_patch_size_id_rank[max_pcount * 3]; /* local information: size, id, own_rank per patch */
@@ -76,8 +64,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			MPI_Allgather(local_subband_sizes, max_pcount * subbands_num, MPI_INT, global_subband_sizes, max_pcount * subbands_num, MPI_INT, comm);
 		free(local_subband_sizes);
 
-//		int patch_sizes[total_patch_num];
-//		int patch_ranks[total_patch_num];
 		int* patch_sizes = malloc(total_patch_num * sizeof(int)); 	/* A array in which element i is the size of patch i */
 		int* patch_ranks = malloc(total_patch_num * sizeof(int)); 	/* A array in which element i is the owned rank of patch i */
 		for (int i = 0; i < max_pcount * proc_num; i++)
@@ -93,12 +79,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		}
 		free(patch_size_id);
 		free(global_subband_sizes);
-//		double gather_end = MPI_Wtime();
-//		double gather_time = gather_end - gather_start;
-//		printf("%d: gather time %f\n", rank, gather_time);
 		/******************************************************************************/
-//
-//		double decide_start = MPI_Wtime();
+
 		int agg_ranks[out_file_num]; /* AGG Array */
 
 		int gap = proc_num / out_file_num;
@@ -111,10 +93,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			if (i % gap == 0)
 				agg_ranks[r++] = i;
 		}
-//
-//
-////		decide_aggregator(file, agg_ranks); /* Decide AGG */
-//
+
+//		decide_aggregator(file, agg_ranks); /* Decide AGG */
+
 		long long int total_size = 0; /* The total size of all the patches across all the processes */
 		for (int i = 0; i < total_patch_num; i++)
 			total_size += patch_sizes[i];
@@ -127,13 +108,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
 			local_patch->compression_ratio /= file->mpr->global_box[i];
 		}
-//		double decide_end = MPI_Wtime();
-//		double decide_time = decide_end - decide_start;
-//		if (rank == 0)
-//			printf("decide time %f\n", decide_time);
 
 		/****************** Convert to z-order ********************/
-//		double z_order_start = MPI_Wtime();
 		int patch_count_power2 = 0;  /* z-order count */
 		int* patch_sizes_zorder = NULL;
 		int* patch_ids_zorder = NULL;
@@ -167,15 +143,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				}
 			}
 		}
-//		double z_order_end = MPI_Wtime();
-//		double z_order_time = z_order_end - z_order_start;
-//		if (rank == 0)
-//			printf("z_order time %f\n", z_order_time);
 		/**********************************************************/
 
 		/************************* Assign patches **************************/
-//		double assign_start = MPI_Wtime();
-
 		int patch_assign_array[total_patch_num];
 		memset(patch_assign_array, -1, total_patch_num * sizeof(int));
 
@@ -260,14 +230,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		free(patch_sizes_zorder);
 		free(patch_ids_zorder);
 		local_patch->agg_patch_count = recv_num;
-
-//		double assign_end = MPI_Wtime();
-//		double assign_time = assign_end - assign_start;
-//		if (rank == 0)
-//			printf("assign time %f\n", assign_time);
 		/**********************************************************************/
-
-//		double data_exchange_start = MPI_Wtime();
 		/* calculate total size per aggregator */
 		for (int i = 0; i < out_file_num; i++)
 		{
@@ -330,10 +293,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			req_id++;
 		}
 		MPI_Waitall(req_id, req, stat);
-//		double data_exchange_end = MPI_Wtime();
-//		double data_exchange_time = data_exchange_end - data_exchange_start;
-//		if (rank == 0)
-//			printf("data_exchange time %f\n", data_exchange_time);
 		/**********************************************************************/
 
 		free(patch_ranks);
