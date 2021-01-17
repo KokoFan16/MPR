@@ -44,7 +44,7 @@ MPR_return_code MPR_flush(MPR_file file, int ite)
 	}
 	file->time->total_end = MPI_Wtime(); /* the end time for the program */
 
-	MPR_timing_logs(file, lvi, (lvi + lvc), ite);
+//	MPR_timing_logs(file, lvi, (lvi + lvc), ite);
 //	MPR_timing_output(file, lvi, (lvi + lvc));
 
 	return MPR_success;
