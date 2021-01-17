@@ -58,8 +58,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
 		}
 
-		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
-		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
+//		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
+//		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
 
 //		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 //			MPI_Allgather(local_subband_sizes, max_pcount * subbands_num, MPI_INT, global_subband_sizes, max_pcount * subbands_num, MPI_INT, comm);
