@@ -22,6 +22,12 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 	int max_pcount = total_patch_num / proc_num + 1;
 
+
+
+	MPI_Barrier(comm);
+
+
+	double gather_start = MPI_Wtime();
 	for (int v  = svi; v < evi; v++)
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch;
@@ -41,7 +47,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 //			local_subband_sizes = malloc(max_pcount * subbands_num * sizeof(int));
 //			subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
 //		}
-//		double gather_start = MPI_Wtime();
+
 
 		int local_patch_size[max_pcount];
 		for (int i = 0; i < patch_count; i++)
@@ -91,10 +97,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 //		}
 //		free(patch_size_id);
 //		free(global_subband_sizes);
-//		double gather_end = MPI_Wtime();
-//		double gather_time = gather_end - gather_start;
-//		if (rank == 0)
-//			printf("gather time %f\n", gather_time);
+		double gather_end = MPI_Wtime();
+		double gather_time = gather_end - gather_start;
+		printf("%d: gather time %f\n", rank, gather_time);
 		/******************************************************************************/
 //
 //		double decide_start = MPI_Wtime();
