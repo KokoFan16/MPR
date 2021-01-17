@@ -30,17 +30,17 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		/*************************** Gather required information *************************/
-		int* global_subband_sizes = NULL;
-		int* local_subband_sizes = NULL;
-		int* subband_sizes = NULL;
-		int subbands_num = 0;
-		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-		{
-			subbands_num = file->mpr->wavelet_trans_num * 7 + 1;
-			global_subband_sizes = malloc(max_pcount * proc_num * subbands_num * sizeof(int));
-			local_subband_sizes = malloc(max_pcount * subbands_num * sizeof(int));
-			subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
-		}
+//		int* global_subband_sizes = NULL;
+//		int* local_subband_sizes = NULL;
+//		int* subband_sizes = NULL;
+//		int subbands_num = 0;
+//		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//		{
+//			subbands_num = file->mpr->wavelet_trans_num * 7 + 1;
+//			global_subband_sizes = malloc(max_pcount * proc_num * subbands_num * sizeof(int));
+//			local_subband_sizes = malloc(max_pcount * subbands_num * sizeof(int));
+//			subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
+//		}
 //		double gather_start = MPI_Wtime();
 
 		int local_patch_size[max_pcount];
