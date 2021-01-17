@@ -43,24 +43,24 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		}
 //		double gather_start = MPI_Wtime();
 
-//		int process_size = 0;
-//		int local_patch_size_id_rank[max_pcount * 3]; /* local information: size, id, own_rank per patch */
-//		memset(local_patch_size_id_rank, -1, max_pcount * 3 * sizeof(int));
-//		for (int i = 0; i < patch_count; i++)
-//		{
-//			local_patch_size_id_rank[i * 3] = local_patch->patch[i]->global_id;
-//			local_patch_size_id_rank[i * 3 + 1] = local_patch->patch[i]->patch_buffer_size;
-//			local_patch_size_id_rank[i * 3 + 2] = rank;
-//
-//			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-//				memcpy(&local_subband_sizes[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
-//
-//			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
-//		}
-//
-//		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
-//		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
-//
+		int process_size = 0;
+		int local_patch_size_id_rank[max_pcount * 3]; /* local information: size, id, own_rank per patch */
+		memset(local_patch_size_id_rank, -1, max_pcount * 3 * sizeof(int));
+		for (int i = 0; i < patch_count; i++)
+		{
+			local_patch_size_id_rank[i * 3] = local_patch->patch[i]->global_id;
+			local_patch_size_id_rank[i * 3 + 1] = local_patch->patch[i]->patch_buffer_size;
+			local_patch_size_id_rank[i * 3 + 2] = rank;
+
+			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+				memcpy(&local_subband_sizes[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
+
+			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
+		}
+
+		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
+		MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
+
 //		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 //			MPI_Allgather(local_subband_sizes, max_pcount * subbands_num, MPI_INT, global_subband_sizes, max_pcount * subbands_num, MPI_INT, comm);
 //		free(local_subband_sizes);
