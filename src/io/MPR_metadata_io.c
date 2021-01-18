@@ -238,11 +238,12 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
 	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
 
+
 	if (file->mpr->is_aggregator == 1)
 	{
 		int meta_count = 1; /* the number of needed meta-data */
-		unsigned char* meta_buffer = NULL; /* the buffer for meta-data */
 
+		unsigned char* meta_buffer = NULL; /* the buffer for meta-data */
 		int MODE = file->mpr->io_type; /* write IO mode */
 		if (MODE == MPR_RAW_IO || MODE == MPR_MUL_RES_IO) /* No compression involves */
 		{
@@ -252,7 +253,7 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 			for (int i = 1; i < meta_count; i++) /* the patch id */
 				memcpy(&meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->agg_patch_id_array[i-1], sizeof(int));
 		}
-		else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO || MODE == MPR_Benchmark) /* Compression involves */
+		else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO || MODE == MPR_Benchmark || MODE == MPR_ZFP_ONLY) /* Compression involves */
 		{
 			meta_count += file->mpr->variable_count * 2; /* the patch count for aggregator per variable */
 			meta_buffer = malloc(meta_count * sizeof(int));
@@ -627,7 +628,7 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 			patches_size[buffer[(i + 1)]] = patch_size;
 		}
 	}
-	else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO || MPR_Benchmark)
+	else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO || MPR_Benchmark || MPR_ZFP_ONLY)
 	{
 		int total_var_patch_counts = 0;   /* the number of patch counts per file across all the variables */
 		int var_patch_counts[file->mpr->variable_count];  /* each i is the number of patch count of variable i */
