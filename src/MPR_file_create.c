@@ -51,6 +51,19 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	memset((*file)->time, 0, sizeof (*((*file)->time)));
 	(*file)->time->total_start = MPI_Wtime();  /* the start time for this program */
 
+	(*file)->time->rst_start = 0;
+	(*file)->time->rst_end = 0;
+	(*file)->time->wave_start = 0;
+	(*file)->time->wave_end = 0;
+	(*file)->time->zfp_start = 0;
+	(*file)->time->zfp_end = 0;
+	(*file)->time->agg_start = 0;
+	(*file)->time->agg_end = 0;
+	(*file)->time->wrt_data_start = 0;
+	(*file)->time->wrt_data_end = 0;
+	(*file)->time->wrt_metadata_start = 0;
+	(*file)->time->wrt_metadata_end = 0;
+
 	if (global != NULL)
 		memcpy((*file)->mpr->global_box, global, MPR_MAX_DIMENSIONS * sizeof(int));
 
