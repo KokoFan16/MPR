@@ -147,7 +147,7 @@ static void MPR_timing_logs(MPR_file file, int svi, int evi)
 
 		if (file->mpr->is_aggregator == 1)
 		{
-			FILE* fp = fopen(time_log, "w"); /* open file */
+			FILE* fp = fopen(time_log, "a"); /* open file */
 		    if (!fp) /* Check file handle */
 				fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
 		    fprintf(fp,"%d %d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", file->mpr->current_time_step, rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
