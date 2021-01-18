@@ -7,7 +7,7 @@
 
 #include "MPR.h"
 
-MPR_return_code MPR_write(MPR_file file, int svi, int evi, int ite)
+MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 {
 //	write_data_out(file, svi);
 
@@ -19,7 +19,7 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi, int ite)
 		return MPR_err_file;
 	}
 	/* Create metadata layout (folder) */
-	if (MPR_create_folder_structure(file, svi, evi, ite) != MPR_success)
+	if (MPR_create_folder_structure(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
@@ -34,7 +34,7 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi, int ite)
 	else if (MODE == MPR_MUL_PRE_IO)
 		ret = MPR_multi_pre_write(file, svi, evi);
 	else if (MODE == MPR_MUL_RES_PRE_IO)
-		ret = MPR_multi_pre_res_write(file, svi, evi, ite);
+		ret = MPR_multi_pre_res_write(file, svi, evi);
 	else if (MODE == MPR_Benchmark)
 		ret = MPR_benchmark_write(file, svi, evi);
 	else
@@ -47,29 +47,29 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi, int ite)
 	}
 
 	/* Write metadata out */
-//	file->time->wrt_metadata_start = MPI_Wtime();
-//	if (MPR_metadata_write_out(file, svi, evi, ite) != MPR_success)
-//	{
-//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//		return MPR_err_file;
-//	}
-//	file->time->wrt_metadata_end = MPI_Wtime();
-//
-//	/* write data out */
-//	file->time->wrt_data_start = MPI_Wtime();
-//	if (MPR_write_data_out(file, svi, evi, ite) != MPR_success)
-//	{
-//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//		return MPR_err_file;
-//	}
-//	file->time->wrt_data_end = MPI_Wtime();
-//
-//	/* buffers cleanup */
-//	if (MPR_variable_buffer_cleanup(file, svi, evi) != MPR_success)
-//	{
-//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//		return MPR_err_file;
-//	}
+	file->time->wrt_metadata_start = MPI_Wtime();
+	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_metadata_end = MPI_Wtime();
+
+	/* write data out */
+	file->time->wrt_data_start = MPI_Wtime();
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_data_end = MPI_Wtime();
+
+	/* buffers cleanup */
+	if (MPR_variable_buffer_cleanup(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
 
 	return MPR_success;
 }

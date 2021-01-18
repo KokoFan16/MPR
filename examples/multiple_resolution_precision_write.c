@@ -53,43 +53,40 @@ int main(int argc, char **argv)
 	/* Initialize per-process local domain */
 	calculate_per_process_offsets();
 
-	for (int i = 0; i < 2; i++)
+	/* If there is input file, read file in parallel, otherwise, create local simulation sdata */
+	if (strcmp(input_file, "") == 0)
+		create_synthetic_simulation_data();  /* Create local simulation data */
+	else
 	{
-		/* If there is input file, read file in parallel, otherwise, create local simulation sdata */
-		if (strcmp(input_file, "") == 0)
-			create_synthetic_simulation_data();  /* Create local simulation data */
-		else
-		{
-			if (rank == 0)
-				printf("Read data from file %s\n", input_file);
-			read_file_parallel();   /* Read file in parallel */
-		}
-
-		create_mpr_point_and_access();
-
-		/* Set variables */
-		variable = (MPR_variable*)malloc(sizeof(*variable) * variable_count);
-		memset(variable, 0, sizeof(*variable) * variable_count);
-
-		for (ts = 0; ts < time_step_count; ts++)
-		{
-			set_mpr_file(ts);
-
-			for (var = 0; var < variable_count; var++)
-				set_mpr_variable(var);
-
-			MPR_close(file, i);
-		}
-
-
-		if (MPR_close_access(p_access) != MPR_success)
-			terminate_with_error_msg("MPR_close_access");
-
-		free(variable);
-		variable = 0;
-
-		destroy_data();
+		if (rank == 0)
+			printf("Read data from file %s\n", input_file);
+		read_file_parallel();   /* Read file in parallel */
 	}
+
+	create_mpr_point_and_access();
+
+	/* Set variables */
+	variable = (MPR_variable*)malloc(sizeof(*variable) * variable_count);
+	memset(variable, 0, sizeof(*variable) * variable_count);
+
+	for (ts = 0; ts < time_step_count; ts++)
+	{
+		set_mpr_file(ts);
+
+		for (var = 0; var < variable_count; var++)
+			set_mpr_variable(var);
+
+		MPR_close(file);
+	}
+
+
+	if (MPR_close_access(p_access) != MPR_success)
+		terminate_with_error_msg("MPR_close_access");
+
+	free(variable);
+	variable = 0;
+
+	destroy_data();
 
 	/* MPI close */
 	shutdown_mpi();

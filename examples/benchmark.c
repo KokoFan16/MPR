@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 	    for (var = 0; var < variable_count; var++)
 	    	set_mpr_variable(var);
 
-	    MPR_close(file, 0);
+	    MPR_close(file);
 	}
 
 	if (MPR_close_access(p_access) != MPR_success)

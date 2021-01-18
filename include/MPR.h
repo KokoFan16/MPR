@@ -14,9 +14,9 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 
 MPR_return_code MPR_file_open(const char* filename, int flags, MPR_access access_type, MPR_point global, MPR_point local, MPR_point offset, MPR_file* file);
 
-MPR_return_code MPR_close(MPR_file file, int ite);
+MPR_return_code MPR_close(MPR_file file);
 
-MPR_return_code MPR_flush(MPR_file file, int ite);
+MPR_return_code MPR_flush(MPR_file file);
 
 MPR_return_code MPR_default_bits_per_datatype(MPR_data_type type, int* bits);
 

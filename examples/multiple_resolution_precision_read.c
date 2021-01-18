@@ -40,19 +40,16 @@ int main(int argc, char **argv)
 
 	calculate_per_process_offsets();  /* Initialize per-process local domain */
 
-	for (int i = 0; i < 10; i++)
-	{
-		create_mpr_point_and_access(); 	/* Create MPI access and point */
+	create_mpr_point_and_access(); 	/* Create MPI access and point */
 
-		set_mpr_file(current_ts); 	/* Set file structure of current time step */
+	set_mpr_file(current_ts); 	/* Set file structure of current time step */
 
-		set_mpr_variable_and_create_buffer();
+	set_mpr_variable_and_create_buffer();
 
-		MPR_close(file, i);
+	MPR_close(file);
 
-		if (MPR_close_access(p_access) != MPR_success) /* close access */
-			terminate_with_error_msg("MPR_close_access");
-	}
+	if (MPR_close_access(p_access) != MPR_success) /* close access */
+		terminate_with_error_msg("MPR_close_access");
 
 	/* MPI close */
 	shutdown_mpi();

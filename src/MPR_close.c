@@ -9,9 +9,9 @@
 #include <errno.h>
 
 static void MPR_timing_output(MPR_file file, int svi, int evi);
-static void MPR_timing_logs(MPR_file file, int svi, int evi, int ite);
+static void MPR_timing_logs(MPR_file file, int svi, int evi);
 
-MPR_return_code MPR_flush(MPR_file file, int ite)
+MPR_return_code MPR_flush(MPR_file file)
 {
 	/* making sure that variables are added to the dataset */
 	if (file->mpr->variable_count <= 0)
@@ -27,7 +27,7 @@ MPR_return_code MPR_flush(MPR_file file, int ite)
 	if (file->flags == MPR_MODE_CREATE)
 	{
 		/* write 10 time-steps */
-		if (MPR_write(file, lvi, (lvi + lvc), ite) != MPR_success)
+		if (MPR_write(file, lvi, (lvi + lvc)) != MPR_success)
 		{
 			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 			return MPR_err_io;
@@ -44,15 +44,15 @@ MPR_return_code MPR_flush(MPR_file file, int ite)
 	}
 	file->time->total_end = MPI_Wtime(); /* the end time for the program */
 
-//	MPR_timing_logs(file, lvi, (lvi + lvc), ite);
+	MPR_timing_logs(file, lvi, (lvi + lvc));
 //	MPR_timing_output(file, lvi, (lvi + lvc));
 
 	return MPR_success;
 }
 
-MPR_return_code MPR_close(MPR_file file, int ite)
+MPR_return_code MPR_close(MPR_file file)
 {
-	if (MPR_flush(file, ite) != MPR_success)
+	if (MPR_flush(file) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_flush;
@@ -74,7 +74,7 @@ MPR_return_code MPR_close(MPR_file file, int ite)
 }
 
 
-static void MPR_timing_logs(MPR_file file, int svi, int evi, int ite)
+static void MPR_timing_logs(MPR_file file, int svi, int evi)
 {
 	int rank = file->comm->simulation_rank;
 	int MODE = file->mpr->io_type;
@@ -87,7 +87,7 @@ static void MPR_timing_logs(MPR_file file, int svi, int evi, int ite)
 	memset(time_folder, 0, sizeof(*time_folder) * 512);
 	sprintf(time_folder, "time_%s", directory_path);
 
-	if (ite == 0)
+	if (file->mpr->current_time_step == 0)
 	{
 		int file_size = 0;
 		for (int v = svi; v < evi; v++)
@@ -134,7 +134,7 @@ static void MPR_timing_logs(MPR_file file, int svi, int evi, int ite)
 			FILE* fp = fopen(time_log, "a"); /* open file */
 		    if (!fp) /* Check file handle */
 				fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
-		    fprintf(fp,"%d %d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", ite, rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+		    fprintf(fp,"%d %d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", file->mpr->current_time_step, rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
 		    fclose(fp);
 		}
 	}
