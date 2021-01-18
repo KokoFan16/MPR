@@ -164,7 +164,7 @@ static void MPR_timing_logs(MPR_file file, int svi, int evi)
 		char time_log[512];
 		sprintf(time_log, "%s/time_%d", time_folder, rank);
 
-		FILE* fp = fopen(time_log, "w"); /* open file */
+		FILE* fp = fopen(time_log, "a"); /* open file */
 	    if (!fp) /* Check file handle */
 			fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
 	    fprintf(fp,"Rank_%d: [%f] >= [meta %f read %f zfp %f wave %f rst %f]\n", rank, total_time, parse_bound, read_time, comp_time, wave_time, rst_time);
