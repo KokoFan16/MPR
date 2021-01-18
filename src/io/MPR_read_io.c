@@ -106,6 +106,7 @@ MPR_return_code MPR_multi_pre_res_read(MPR_file file, int svi)
 	return MPR_success;
 }
 
+
 /* Read data with meta-data */
 MPR_return_code MPR_read_data(MPR_file file, int svi)
 {

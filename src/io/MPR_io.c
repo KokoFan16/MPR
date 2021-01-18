@@ -99,7 +99,7 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 		ret = MPR_raw_read(file, svi);
 	else if (MODE == MPR_MUL_RES_IO)
 		ret = MPR_multi_res_read(file, svi);
-	else if (MODE == MPR_MUL_PRE_IO)
+	else if (MODE == MPR_MUL_PRE_IO || MPR_Benchmark)
 		ret = MPR_multi_pre_read(file, svi);
 	else if (MODE == MPR_MUL_RES_PRE_IO)
 		ret = MPR_multi_pre_res_read(file, svi);

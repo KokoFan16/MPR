@@ -20,7 +20,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 	int total_patch_num = file->mpr->total_patches_num; /* The number of total patches */
 	int node_num = file->mpr->node_num; /* the number of nodes */
 
-	int max_pcount = total_patch_num / proc_num + 1;
+	int max_pcount = total_patch_num / proc_num;
+	if (total_patch_num % proc_num > 0)
+		max_pcount += 1;
 
 	for (int v  = svi; v < evi; v++)
 	{

@@ -627,7 +627,7 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 			patches_size[buffer[(i + 1)]] = patch_size;
 		}
 	}
-	else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO)
+	else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO || MPR_Benchmark)
 	{
 		int total_var_patch_counts = 0;   /* the number of patch counts per file across all the variables */
 		int var_patch_counts[file->mpr->variable_count];  /* each i is the number of patch count of variable i */

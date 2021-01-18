@@ -44,7 +44,7 @@ MPR_return_code MPR_flush(MPR_file file)
 	}
 	file->time->total_end = MPI_Wtime(); /* the end time for the program */
 
-	MPR_timing_logs(file, lvi, (lvi + lvc));
+//	MPR_timing_logs(file, lvi, (lvi + lvc));
 //	MPR_timing_output(file, lvi, (lvi + lvc));
 
 	return MPR_success;
@@ -95,8 +95,8 @@ static void MPR_timing_logs(MPR_file file, int svi, int evi)
 			MPR_local_patch local_patch = file->variable[v]->local_patch;
 			file_size += local_patch->out_file_size;
 
-			if (rank == 0)
-				printf("The compression ratio for variable %d is %f.\n", v, file->variable[v]->local_patch->compression_ratio);
+//			if (rank == 0)
+//				printf("The compression ratio for variable %d is %f.\n", v, file->variable[v]->local_patch->compression_ratio);
 		}
 
 		if (file->mpr->is_aggregator == 1)
