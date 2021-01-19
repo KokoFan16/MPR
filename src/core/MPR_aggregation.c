@@ -195,6 +195,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		else
 		{
 			long long int average_file_size = total_size / out_file_num; /* The idea average file size*/
+			float threshold = 0.9;
 
 			int pcount = 0;
 			int agg_id = 0;
@@ -202,7 +203,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			{
 				while (pcount < total_patch_num)
 				{
-					if (agg_sizes[agg_id] >= average_file_size)
+					if (agg_sizes[agg_id] > average_file_size * threshold)
 						agg_id++;
 					patch_assign_array[pcount] = agg_ranks[agg_id];
 					if (rank == agg_ranks[agg_id])
@@ -217,7 +218,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				{
 					if (patch_ids_zorder[pcount] > -1)
 					{
-						if (agg_sizes[agg_id] > average_file_size)
+						if (agg_sizes[agg_id] > average_file_size * threshold)
 							agg_id++;
 
 						patch_assign_array[patch_ids_zorder[pcount]] = agg_ranks[agg_id];
