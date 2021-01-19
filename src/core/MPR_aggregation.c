@@ -233,6 +233,12 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		free(patch_sizes_zorder);
 		free(patch_ids_zorder);
 		local_patch->agg_patch_count = recv_num;
+
+		if (rank == 0)
+		{
+			for (int i = 0; i < total_patch_num; i++)
+				printf("%d: %d\n", i, patch_assign_array[i]);
+		}
 		/**********************************************************************/
 		/* calculate total size per aggregator */
 		for (int i = 0; i < out_file_num; i++)
