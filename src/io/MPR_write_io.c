@@ -210,29 +210,40 @@ MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)
 	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
 
 	/* The file name for out files */
-	char *file_name;
-	file_name = malloc(PATH_MAX * sizeof(*file_name));
-	memset(file_name, 0, PATH_MAX * sizeof(*file_name));
+	char file_name[512];
+	memset(file_name, 0, 512 * sizeof(*file_name));
 	sprintf(file_name, "%s/time%09d/%d", directory_path, file->mpr->current_time_step, file->comm->simulation_rank);
+	free(directory_path);
 
 	/* Write file */
 	if (file->mpr->is_aggregator == 1)
 	{
+		int fp = open(file_name, O_CREAT | O_EXCL | O_WRONLY, 0664);
+		if (fp == -1)
+		{
+			fprintf(stderr, "File %s is existed, please delete it.\n", file_name);
+			MPI_Abort(MPI_COMM_WORLD, -1);
+		}
+		int write_meta_size = write(fp, file->mpr->file_meta_buffer, file->mpr->file_meta_size);
+		if (write_meta_size != file->mpr->file_meta_size)
+		{
+			fprintf(stderr, "[%s] [%d] pwrite() failed.\n", __FILE__, __LINE__);
+			MPI_Abort(MPI_COMM_WORLD, -1);
+		}
+		free(file->mpr->file_meta_buffer);
+
 		for (int v = svi; v < evi; v++)
 		{
 			MPR_local_patch local_patch = file->variable[v]->local_patch;
-			int fp = open(file_name, O_CREAT | O_WRONLY | O_APPEND, 0664);
-			long long int write_count = write(fp, local_patch->buffer, local_patch->out_file_size);
-			if (write_count != local_patch->out_file_size)
+			long long int write_file_size = write(fp, local_patch->buffer, local_patch->out_file_size);
+			if (write_file_size != local_patch->out_file_size)
 			{
 			  fprintf(stderr, "[%s] [%d] pwrite() failed.\n", __FILE__, __LINE__);
 			  return MPR_err_io;
 			}
-			close(fp);
 		}
+		close(fp);
 	}
-	free(file_name);
-	free(directory_path);
 	return MPR_success;
 }
 

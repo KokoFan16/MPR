@@ -85,7 +85,7 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 	}
 
 	/* Write file related metadata out */
-	if (MPR_file_metadata_write_out(file, svi, evi) != MPR_success)
+	if (MPR_gather_file_metadata(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
@@ -232,31 +232,25 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 	return MPR_success;
 }
 
-MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
+MPR_return_code MPR_gather_file_metadata(MPR_file file, int svi, int evi)
 {
-	char directory_path[PATH_MAX]; /* file template */
-	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
-	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
-
-
 	if (file->mpr->is_aggregator == 1)
 	{
 		int meta_count = 1; /* the number of needed meta-data */
 
-		unsigned char* meta_buffer = NULL; /* the buffer for meta-data */
 		int MODE = file->mpr->io_type; /* write IO mode */
 		if (MODE == MPR_RAW_IO || MODE == MPR_MUL_RES_IO) /* No compression involves */
 		{
 			meta_count += file->variable[svi]->local_patch->agg_patch_count; /* the number of patches per file */
-			meta_buffer = malloc(meta_count * sizeof(int)); /* allocate memory */
-			memcpy(meta_buffer, &meta_count, sizeof(int));
+			file->mpr->file_meta_buffer = malloc(meta_count * sizeof(int)); /* allocate memory */
+			memcpy(file->mpr->file_meta_buffer, &meta_count, sizeof(int));
 			for (int i = 1; i < meta_count; i++) /* the patch id */
-				memcpy(&meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->agg_patch_id_array[i-1], sizeof(int));
+				memcpy(&file->mpr->file_meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->agg_patch_id_array[i-1], sizeof(int));
 		}
 		else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO || MODE == MPR_Benchmark || MODE == MPR_ZFP_ONLY) /* Compression involves */
 		{
 			meta_count += file->mpr->variable_count * 2; /* the patch count for aggregator per variable */
-			meta_buffer = malloc(meta_count * sizeof(int));
+			file->mpr->file_meta_buffer = malloc(meta_count * sizeof(int));
 			int meta_id = 1; /* the first one should be the total number of meta-data */
 
 			int vars_agg_patch_count = 0; /* the total patch count for the aggregator across all the variables */
@@ -264,14 +258,14 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 			{
 				vars_agg_patch_count += file->variable[v]->local_patch->agg_patch_count;
 				/* Meta-data: the patch count per variable */
-				memcpy(&meta_buffer[meta_id*sizeof(int)], &file->variable[v]->local_patch->agg_patch_count, sizeof(int));
-				memcpy(&meta_buffer[(meta_id + file->mpr->variable_count)*sizeof(int)], &file->variable[v]->local_patch->out_file_size, sizeof(int));
+				memcpy(&file->mpr->file_meta_buffer[meta_id*sizeof(int)], &file->variable[v]->local_patch->agg_patch_count, sizeof(int));
+				memcpy(&file->mpr->file_meta_buffer[(meta_id + file->mpr->variable_count)*sizeof(int)], &file->variable[v]->local_patch->out_file_size, sizeof(int));
 				meta_id++;
 			}
 
 			meta_id += file->mpr->variable_count;
 			meta_count += vars_agg_patch_count * 3; /* Meta-data: patch-id, patch-offset, patch-size */
-			meta_buffer = realloc(meta_buffer, meta_count * sizeof(int));
+			file->mpr->file_meta_buffer = realloc(file->mpr->file_meta_buffer, meta_count * sizeof(int));
 
 			for (int v = svi; v < evi; v++)
 			{
@@ -281,9 +275,9 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 					int poffset_id = meta_id + local_patch->agg_patch_count * file->mpr->variable_count;
 					int psize_id = meta_id + local_patch->agg_patch_count * file->mpr->variable_count * 2;
 
-					memcpy(&meta_buffer[meta_id * sizeof(int)], &local_patch->agg_patch_id_array[i], sizeof(int));
-					memcpy(&meta_buffer[poffset_id * sizeof(int)], &local_patch->agg_patch_disps[i], sizeof(int));
-					memcpy(&meta_buffer[psize_id * sizeof(int)], &local_patch->agg_patch_size[i], sizeof(int));
+					memcpy(&file->mpr->file_meta_buffer[meta_id * sizeof(int)], &local_patch->agg_patch_id_array[i], sizeof(int));
+					memcpy(&file->mpr->file_meta_buffer[poffset_id * sizeof(int)], &local_patch->agg_patch_disps[i], sizeof(int));
+					memcpy(&file->mpr->file_meta_buffer[psize_id * sizeof(int)], &local_patch->agg_patch_size[i], sizeof(int));
 					meta_id++;
 				}
 			}
@@ -293,19 +287,19 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 			{
 				int subbands_num = file->mpr->wavelet_trans_num * 7 + 1; /* the number of sub-bands per patch */
 				meta_count += vars_agg_patch_count * subbands_num; /* Meta-data: size of each sub-band */
-				meta_buffer = realloc(meta_buffer, meta_count * sizeof(int));
+				file->mpr->file_meta_buffer = realloc(file->mpr->file_meta_buffer, meta_count * sizeof(int));
 
 				for (int v = svi; v < evi; v++)
 				{
 					MPR_local_patch local_patch = file->variable[v]->local_patch;
 					for (int i = 0; i < local_patch->agg_patch_count; i++)
 					{
-						memcpy(&meta_buffer[meta_id * sizeof(int)], &local_patch->agg_subbands_size[i*subbands_num], subbands_num*sizeof(int));
+						memcpy(&file->mpr->file_meta_buffer[meta_id * sizeof(int)], &local_patch->agg_subbands_size[i*subbands_num], subbands_num*sizeof(int));
 						meta_id += subbands_num;
 					}
 				}
 			}
-			memcpy(&meta_buffer[0], &meta_count, sizeof(int)); /* the first metadata should be the total number of metadata*/
+			memcpy(&file->mpr->file_meta_buffer[0], &meta_count, sizeof(int)); /* the first metadata should be the total number of metadata*/
 		}
 		else
 		{
@@ -313,27 +307,7 @@ MPR_return_code MPR_file_metadata_write_out(MPR_file file, int svi, int evi)
 			MPI_Abort(MPI_COMM_WORLD, -1);
 		}
 
-		/* The file name for out files */
-		char file_name[PATH_MAX];
-		memset(file_name, 0, PATH_MAX * sizeof(*file_name));
-		sprintf(file_name, "%s/time%09d/%d", directory_path, file->mpr->current_time_step, file->comm->simulation_rank);
-
-		/* write meta-data out */
-		int fp = open(file_name, O_CREAT | O_EXCL | O_WRONLY, 0664);
-		if (fp == -1)
-		{
-			fprintf(stderr, "File %s is existed, please delete it.\n", file_name);
-			MPI_Abort(MPI_COMM_WORLD, -1);
-		}
-		int write_count = write(fp, meta_buffer, meta_count * sizeof(int));
-		if (write_count != meta_count * sizeof(int))
-		{
-		  fprintf(stderr, "[%s] [%d] pwrite() failed.\n", __FILE__, __LINE__);
-		  MPI_Abort(MPI_COMM_WORLD, -1);
-		}
-		close(fp);
-
-		free(meta_buffer); /* Clean up */
+		file->mpr->file_meta_size = meta_count * sizeof(int);
 	}
 	return MPR_success;
 }
