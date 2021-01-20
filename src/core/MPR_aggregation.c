@@ -16,7 +16,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 	int rank = file->comm->simulation_rank; /* The rank of each process */
 	MPI_Comm comm = file->comm->simulation_comm; /* The MPI communicator */
 
-	int out_file_num = file->mpr->out_file_num;  /* The number of out files(aggregators) */
+//	int out_file_num = file->mpr->out_file_num;  /* The number of out files(aggregators) */
 	int total_patch_num = file->mpr->total_patches_num; /* The number of total patches */
 	int node_num = file->mpr->node_num; /* the number of nodes */
 
@@ -83,18 +83,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		free(global_subband_sizes);
 		/******************************************************************************/
 
-		int agg_ranks[out_file_num]; /* AGG Array */
-
-		int gap = proc_num / out_file_num;
-		if (rank % gap == 0)
-			file->mpr->is_aggregator = 1;
-
-		int r = 0;
-		for (int i = 0; i < proc_num; i++)
-		{
-			if (i % gap == 0)
-				agg_ranks[r++] = i;
-		}
 
 //		decide_aggregator(file, agg_ranks); /* Decide AGG */
 
@@ -151,27 +139,24 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		int patch_assign_array[total_patch_num];
 		memset(patch_assign_array, -1, total_patch_num * sizeof(int));
 
-		int recv_array[total_patch_num]; /* Local receive array per process */
-		int recv_num = 0;  /* number of received number of patches per aggregator */
-
 		long long int agg_size = 0; /* the size of aggregator */
-		long long int agg_sizes[out_file_num]; /* the current size of aggregators */
-		memset(agg_sizes, 0, out_file_num * sizeof(long long int));
+		long long int agg_sizes[file->mpr->out_file_num]; /* the current size of aggregators */
+		memset(agg_sizes, 0, file->mpr->out_file_num * sizeof(long long int));
 
+		int cur_agg_count = 0;
 		if (file->mpr->is_fixed_file_size == 0) /* fixed number of patches per file mode */
 		{
-			int avg_patch_num = ceil((float)total_patch_num / out_file_num); /* average patches count per file */
-			int agg_id = 0; /* aggregator id */
+			int avg_patch_num = ceil((float)total_patch_num / file->mpr->out_file_num); /* average patches count per file */
 			if (file->mpr->is_z_order == 0)  /* row order */
 			{
 				for (int i = 0; i < total_patch_num; i++)
 				{
-					if (i == ((agg_id + 1) * avg_patch_num))
-						agg_id++;
-					patch_assign_array[i] = agg_ranks[agg_id];
-					agg_sizes[agg_id] += patch_sizes[i];
-					if (rank == agg_ranks[agg_id])
-						recv_array[recv_num++] = i;
+					if (i == ((cur_agg_count + 1) * avg_patch_num))
+						cur_agg_count++;
+					patch_assign_array[i] = cur_agg_count;
+					agg_sizes[cur_agg_count] += patch_sizes[i];
+//					if (rank == agg_ranks[agg_id])
+//						recv_array[recv_num++] = i;
 				}
 			}
 			else /* z-order */
@@ -181,12 +166,12 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				{
 					if (patch_ids_zorder[i] > -1)
 					{
-						if (pcount == ((agg_id + 1) * avg_patch_num))
-							agg_id++;
-						patch_assign_array[patch_ids_zorder[i]] = agg_ranks[agg_id];
-						agg_sizes[agg_id] += patch_sizes_zorder[i];
-						if (rank == agg_ranks[agg_id])
-							recv_array[recv_num++] = patch_ids_zorder[i];
+						if (pcount == ((cur_agg_count + 1) * avg_patch_num))
+							cur_agg_count++;
+						patch_assign_array[patch_ids_zorder[i]] = cur_agg_count;
+						agg_sizes[cur_agg_count] += patch_sizes_zorder[i];
+//						if (rank == agg_ranks[agg_id])
+//							recv_array[recv_num++] = patch_ids_zorder[i];
 						pcount++;
 					}
 				}
@@ -194,54 +179,79 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		}
 		else
 		{
-			long long int average_file_size = total_size / out_file_num; /* The idea average file size*/
+			long long int average_file_size = total_size / file->mpr->out_file_num; /* The idea average file size*/
 
 			int pcount = 0;
-			int agg_id = 0;
 			if (file->mpr->is_z_order == 0) /* row-order */
 			{
-				while (pcount < total_patch_num && agg_id < out_file_num)
+				while (pcount < total_patch_num && cur_agg_count < file->mpr->out_file_num)
 				{
-					if (agg_sizes[agg_id] > average_file_size)
-						agg_id++;
-					patch_assign_array[pcount] = agg_ranks[agg_id];
-					if (rank == agg_ranks[agg_id])
-						recv_array[recv_num++] = pcount;
-					agg_sizes[agg_id] += patch_sizes[pcount];
+					if (agg_sizes[cur_agg_count] > average_file_size)
+						cur_agg_count++;
+					patch_assign_array[pcount] = cur_agg_count;
+//					if (rank == agg_ranks[agg_id])
+//						recv_array[recv_num++] = pcount;
+					agg_sizes[cur_agg_count] += patch_sizes[pcount];
 					pcount++;
 				}
 			}
 			else /* z-order */
 			{
-				while (pcount < patch_count_power2 && agg_id < out_file_num)
+				while (pcount < patch_count_power2 && cur_agg_count < file->mpr->out_file_num)
 				{
 					if (patch_ids_zorder[pcount] > -1)
 					{
-						if (agg_sizes[agg_id] > average_file_size)
-							agg_id++;
+						if (agg_sizes[cur_agg_count] > average_file_size)
+							cur_agg_count++;
 
-						patch_assign_array[patch_ids_zorder[pcount]] = agg_ranks[agg_id];
-						if (rank == agg_ranks[agg_id])
-							recv_array[recv_num++] = patch_ids_zorder[pcount];
-						agg_sizes[agg_id] += patch_sizes_zorder[pcount];
+						patch_assign_array[patch_ids_zorder[pcount]] = cur_agg_count;
+//						if (rank == agg_ranks[agg_id])
+//							recv_array[recv_num++] = patch_ids_zorder[pcount];
+						agg_sizes[cur_agg_count] += patch_sizes_zorder[pcount];
 					}
 					pcount++;
 				}
 			}
 		}
+
+		file->mpr->out_file_num = cur_agg_count + 1;
+
+		int agg_ranks[file->mpr->out_file_num]; /* AGG Array */
+		int gap = proc_num / file->mpr->out_file_num;
+		if (rank % gap == 0)
+			file->mpr->is_aggregator = 1;
+
+		int r = 0;
+		for (int i = 0; i < proc_num; i++)
+		{
+			if (i % gap == 0)
+				agg_ranks[r++] = i;
+		}
+
+		int recv_array[total_patch_num]; /* Local receive array per process */
+		int recv_num = 0;  /* number of received number of patches per aggregator */
+		for (int i = 0; i < total_patch_num; i++)
+		{
+			if (rank == agg_ranks[patch_assign_array[i]])
+				recv_array[recv_num++] = i;
+		}
+
+		if (rank == 0 && file->mpr->current_time_step == 0)
+		{
+			printf("The number of out files is %d\n", file->mpr->out_file_num);
+		}
+
 		free(patch_sizes_zorder);
 		free(patch_ids_zorder);
 		local_patch->agg_patch_count = recv_num;
+
 		/**********************************************************************/
 		/* calculate total size per aggregator */
-		for (int i = 0; i < out_file_num; i++)
+		for (int i = 0; i < file->mpr->out_file_num; i++)
 		{
 			if (rank == agg_ranks[i])
 				agg_size = agg_sizes[i];
 		}
-
-//		if (file->mpr->is_aggregator == 1)
-//			printf("The compressed size of aggregation %d of variable %d is %d\n", rank, v, agg_size);
 
 		local_patch->agg_patch_id_array = malloc(recv_num * sizeof(int));
 		local_patch->agg_patch_disps = malloc(recv_num * sizeof(int));
@@ -264,7 +274,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		{
 			int id = local_patch->patch[i]->global_id;
 			int buffer_size = local_patch->patch[i]->patch_buffer_size;
-			MPI_Isend(local_patch->patch[i]->buffer, buffer_size, MPI_BYTE, patch_assign_array[id], id, comm, &req[req_id]);
+			MPI_Isend(local_patch->patch[i]->buffer, buffer_size, MPI_BYTE, agg_ranks[patch_assign_array[id]], id, comm, &req[req_id]);
 			req_id++;
 		}
 
