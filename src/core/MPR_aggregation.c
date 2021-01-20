@@ -7,7 +7,6 @@
 
 #include "../MPR_inc.h"
 
-static void decide_aggregator(MPR_file file, int* agg_ranks);
 static int calZOrder(int x, int y, int z);
 
 MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
@@ -83,9 +82,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		free(global_subband_sizes);
 		/******************************************************************************/
 
-
-//		decide_aggregator(file, agg_ranks); /* Decide AGG */
-
 		long long int total_size = 0; /* The total size of all the patches across all the processes */
 		for (int i = 0; i < total_patch_num; i++)
 			total_size += patch_sizes[i];
@@ -155,8 +151,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 						cur_agg_count++;
 					patch_assign_array[i] = cur_agg_count;
 					agg_sizes[cur_agg_count] += patch_sizes[i];
-//					if (rank == agg_ranks[agg_id])
-//						recv_array[recv_num++] = i;
 				}
 			}
 			else /* z-order */
@@ -170,8 +164,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 							cur_agg_count++;
 						patch_assign_array[patch_ids_zorder[i]] = cur_agg_count;
 						agg_sizes[cur_agg_count] += patch_sizes_zorder[i];
-//						if (rank == agg_ranks[agg_id])
-//							recv_array[recv_num++] = patch_ids_zorder[i];
 						pcount++;
 					}
 				}
@@ -189,8 +181,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					if (agg_sizes[cur_agg_count] > average_file_size)
 						cur_agg_count++;
 					patch_assign_array[pcount] = cur_agg_count;
-//					if (rank == agg_ranks[agg_id])
-//						recv_array[recv_num++] = pcount;
 					agg_sizes[cur_agg_count] += patch_sizes[pcount];
 					pcount++;
 				}
@@ -205,8 +195,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 							cur_agg_count++;
 
 						patch_assign_array[patch_ids_zorder[pcount]] = cur_agg_count;
-//						if (rank == agg_ranks[agg_id])
-//							recv_array[recv_num++] = patch_ids_zorder[pcount];
 						agg_sizes[cur_agg_count] += patch_sizes_zorder[pcount];
 					}
 					pcount++;
@@ -240,12 +228,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				recv_array[recv_num++] = i;
 		}
 
-
-		if (rank == 0 && file->mpr->current_time_step == 0)
-		{
-			printf("The number of out files is %d\n", file->mpr->out_file_num);
-		}
-
 		free(patch_sizes_zorder);
 		free(patch_ids_zorder);
 		local_patch->agg_patch_count = recv_num;
@@ -257,9 +239,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			if (rank == agg_ranks[i])
 				agg_size = agg_sizes[i];
 		}
-
-		if (file->mpr->is_aggregator == 1 && file->mpr->current_time_step == 0)
-			printf("%d: %d, %lld\n", rank, recv_num, agg_size);
 
 		local_patch->agg_patch_id_array = malloc(recv_num * sizeof(int));
 		local_patch->agg_patch_disps = malloc(recv_num * sizeof(int));
@@ -389,52 +368,6 @@ MPR_return_code MPR_no_aggregation(MPR_file file, int svi, int evi)
 
 	return MPR_success;
 }
-
-
-/* Decide aggregators */
-static void decide_aggregator(MPR_file file, int* agg_ranks)
-{
-	int rank = file->comm->simulation_rank; /* The rank of each process */
-	int out_file_num = file->mpr->out_file_num;  /* The number of out files(aggregators) */
-	int node_num = file->mpr->node_num; /* the number of nodes */
-
-	/* Decide the aggregators */
-	if (node_num == 1)  /* If the all the processes belong to one node */
-	{
-		if (rank < out_file_num)
-			file->mpr->is_aggregator = 1;
-
-		for (int i = 0; i < out_file_num; i++)
-			agg_ranks[i] = i;
-	}
-	else  /* If they belong to multiple nodes */
-	{
-		int avg_files_per_node = out_file_num / node_num;  /* The average number of files per node */
-		int proc_num_last_node = file->mpr->proc_num_last_node; /* The number of processes of last node */
-
-		int file_assign_per_node[node_num]; /* Array: the number of assigned files for all the nodes */
-		/* The number of files for last node */
-		file_assign_per_node[node_num - 1] = (avg_files_per_node < proc_num_last_node)? avg_files_per_node: proc_num_last_node;
-		/* The number of files for others */
-		out_file_num -= file_assign_per_node[node_num - 1];
-		avg_files_per_node = out_file_num / (node_num - 1);
-		for (int i = 0; i < (node_num - 1); i++)
-			file_assign_per_node[i] = (i < (out_file_num % (node_num - 1)))? (avg_files_per_node + 1): avg_files_per_node;
-		/* Decide aggregators */
-		int r = 0;
-		for (int i = 0; i < file->comm->simulation_nprocs; i++)
-		{
-			int id = i / file->mpr->proc_num_per_node;
-			if (i % file->mpr->proc_num_per_node < file_assign_per_node[id])
-			{
-				agg_ranks[r++] = i;
-				if (rank == i)
-					file->mpr->is_aggregator = 1;
-			}
-		}
-	}
-}
-
 
 static int calZOrder(int x, int y, int z)
 {
