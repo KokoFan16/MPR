@@ -236,6 +236,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				recv_array[recv_num++] = i;
 		}
 
+
 		if (rank == 0 && file->mpr->current_time_step == 0)
 		{
 			printf("The number of out files is %d\n", file->mpr->out_file_num);
@@ -252,6 +253,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			if (rank == agg_ranks[i])
 				agg_size = agg_sizes[i];
 		}
+
+		if (file->mpr->is_aggregator == 1 && file->mpr->current_time_step == 0)
+			printf("%d: %d, %lld\n", rank, recv_num, agg_size);
 
 		local_patch->agg_patch_id_array = malloc(recv_num * sizeof(int));
 		local_patch->agg_patch_disps = malloc(recv_num * sizeof(int));
