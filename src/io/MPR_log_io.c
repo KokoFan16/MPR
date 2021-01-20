@@ -85,7 +85,6 @@ MPR_return_code MPR_timing_logs(MPR_file file, int svi, int evi)
 		}
 	}
 
-
 	if (file->flags == MPR_MODE_RDONLY)
 	{
 		double parse_bound = file->time->parse_bound_end - file->time->parse_bound_start;
@@ -147,7 +146,6 @@ MPR_return_code MPR_logs(MPR_file file, int svi, int evi)
 		for (int v = svi; v < evi; v++)
 		{
 			MPR_local_patch local_patch = file->variable[v]->local_patch;
-
 			if (file->mpr->is_aggregator == 1)
 			{
 				fprintf(fp, "%d, A %d, count %d, size %lld, msize %d\n", file->mpr->current_time_step, rank, local_patch->agg_patch_count, local_patch->out_file_size, file->mpr->file_meta_size);
@@ -160,17 +158,6 @@ MPR_return_code MPR_logs(MPR_file file, int svi, int evi)
 			fprintf(fp, "%d, R %d, count %d, size %lld\n", file->mpr->current_time_step, rank, local_patch->patch_count, local_patch->proc_size);
 		}
 		fclose(fp);
-
-
-//		if (file->mpr->is_aggregator == 1)
-//		{
-//			FILE* fp = fopen(time_log, "a"); /* open file */
-//		    if (!fp) /* Check file handle */
-//				fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
-//		    fprintf(fp,"%d %d: [%f] >= [rst %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", file->mpr->current_time_step, rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
-//		    fclose(fp);
-//		}
-
 	}
 	return MPR_success;
 }

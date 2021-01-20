@@ -164,3 +164,15 @@ MPR_return_code MPR_set_aggregation_order(MPR_file file, float order)
 }
 
 
+MPR_return_code MPR_set_logs(MPR_file file, int log)
+{
+	if (!file)
+      return MPR_err_file;
+
+	file->mpr->is_logs = log;
+
+    return MPR_success;
+}
+
+
+

@@ -67,10 +67,13 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	file->time->wrt_data_end = MPI_Wtime();
 
 
-	if (MPR_logs(file, svi, evi) != MPR_success)
+	if (file->mpr->is_logs == 1)
 	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
+		if (MPR_logs(file, svi, evi) != MPR_success)
+		{
+			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+			return MPR_err_file;
+		}
 	}
 
 	/* buffers cleanup */

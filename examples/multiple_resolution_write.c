@@ -41,7 +41,8 @@ char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_write -g 64x64x64 -l 32x3
 					 "  -n: the number of processes per node\n"
 					 "  -o: the number of out files\n"
 					 "  -m: aggregation mode (0: fixed-patch-count, 1: fixed-size)\n"
-					 "  -e: aggregation order (0: row-order, 1: z-order)\n";
+					 "  -e: aggregation order (0: row-order, 1: z-order)\n"
+					 "  -d: whether to dump the logs\n (1: dump the logs)";
 
 int main(int argc, char **argv)
 {
@@ -100,7 +101,7 @@ int main(int argc, char **argv)
 /* Parse arguments */
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:l:p:i:f:t:v:n:o:m:e:";
+  char flags[] = "g:l:p:i:f:t:v:n:o:m:e:d:";
   int one_opt = 0;
 
   while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -174,6 +175,11 @@ static void parse_args(int argc, char **argv)
     case('e'): // Aggregation order
       if (sscanf(optarg, "%d", &is_z_order) < 0 || is_z_order > 1)
         terminate_with_error_msg("Invalid aggregation order (z-order or row-order)\n%s", usage);
+      break;
+
+    case('d'): // is_log
+      if (sscanf(optarg, "%d", &logs) < 0 || logs > 1)
+        terminate_with_error_msg("Invalid logs parameter (0 or 1)\n%s", usage);
       break;
 
     default:
@@ -352,6 +358,7 @@ static void set_mpr_file(int ts)
   MPR_set_procs_num_per_node(file, proc_num_per_node);
   MPR_set_aggregation_mode(file, is_fixed_file_size);
   MPR_set_aggregation_order(file, is_z_order);
+  MPR_set_logs(file, logs);
 
   return;
 }

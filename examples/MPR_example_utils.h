@@ -27,6 +27,7 @@ static int out_file_num = 1;
 static int is_fixed_file_size = 1;
 static int is_z_order = 1;
 static int proc_num_per_node = 16;
+static int logs = 0;
 
 static MPR_point global_size, local_offset, local_size;
 static MPR_access p_access;

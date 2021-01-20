@@ -42,6 +42,8 @@ struct mpr_dataset_struct
 	int out_file_num;                                 /* The number of out file */
 	unsigned long long file_size;                     /* The total size of each out file */
 
+	int is_logs;                                      /* Whether to dump the logs */
+
 	int is_aggregator;                                /* If the rank is a aggregator */
 	unsigned char* file_meta_buffer;
 	int file_meta_size;

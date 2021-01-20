@@ -44,7 +44,8 @@ char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 64x64x64 -l 32x32x32 -
 					 "  -z: compression mode: (0: accuracy, 1: precision)\n"
 		             "  -c: compression parameter(double)\n"
 					 "  -m: aggregation mode (0: fixed-patch-count, 1: fixed-size)\n"
-		             "  -e: aggregation order (0: row-order, 1: z-order)\n";
+		             "  -e: aggregation order (0: row-order, 1: z-order)\n"
+					 "  -d: whether to dump the logs\n (1: dump the logs)";
 
 int main(int argc, char **argv)
 {
@@ -104,7 +105,7 @@ int main(int argc, char **argv)
 /* Parse arguments */
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:l:p:i:f:t:v:n:o:z:c:m:e:";
+  char flags[] = "g:l:p:i:f:t:v:n:o:z:c:m:e:d:";
   int one_opt = 0;
 
   while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -188,6 +189,11 @@ static void parse_args(int argc, char **argv)
     case('e'): // is_z_orde
       if (sscanf(optarg, "%d", &is_z_order) < 0 || is_z_order > 1)
         terminate_with_error_msg("Invalid aggregation order (z-order or row-order)\n%s", usage);
+      break;
+
+    case('d'): // is_log
+      if (sscanf(optarg, "%d", &logs) < 0 || logs > 1)
+        terminate_with_error_msg("Invalid logs parameter (0 or 1)\n%s", usage);
       break;
 
     default:
@@ -369,6 +375,7 @@ static void set_mpr_file(int ts)
   MPR_set_compression_parameter(file, compress_param);
   MPR_set_aggregation_mode(file, is_fixed_file_size);
   MPR_set_aggregation_order(file, is_z_order);
+  MPR_set_logs(file, logs);
 
   return;
 }

@@ -64,4 +64,6 @@ MPR_return_code MPR_set_aggregation_mode(MPR_file file, float mode);
 
 MPR_return_code MPR_set_aggregation_order(MPR_file file, float order);
 
+MPR_return_code MPR_set_logs(MPR_file file, int log);
+
 #endif /* INCLUDE_MPR_H_ */
