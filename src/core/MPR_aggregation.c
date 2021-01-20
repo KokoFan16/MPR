@@ -195,15 +195,14 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		else
 		{
 			long long int average_file_size = total_size / out_file_num; /* The idea average file size*/
-			float threshold = 0.9;
 
 			int pcount = 0;
 			int agg_id = 0;
 			if (file->mpr->is_z_order == 0) /* row-order */
 			{
-				while (pcount < total_patch_num)
+				while (pcount < total_patch_num && agg_id < out_file_num)
 				{
-					if (agg_sizes[agg_id] > average_file_size * threshold)
+					if (agg_sizes[agg_id] > average_file_size)
 						agg_id++;
 					patch_assign_array[pcount] = agg_ranks[agg_id];
 					if (rank == agg_ranks[agg_id])
@@ -214,11 +213,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			}
 			else /* z-order */
 			{
-				while (pcount < patch_count_power2)
+				while (pcount < patch_count_power2 && agg_id < out_file_num)
 				{
 					if (patch_ids_zorder[pcount] > -1)
 					{
-						if (agg_sizes[agg_id] > average_file_size * threshold)
+						if (agg_sizes[agg_id] > average_file_size)
 							agg_id++;
 
 						patch_assign_array[patch_ids_zorder[pcount]] = agg_ranks[agg_id];
@@ -233,12 +232,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		free(patch_sizes_zorder);
 		free(patch_ids_zorder);
 		local_patch->agg_patch_count = recv_num;
-
-		if (rank == 0)
-		{
-			for (int i = 0; i < total_patch_num; i++)
-				printf("%d: %d\n", i, patch_assign_array[i]);
-		}
 		/**********************************************************************/
 		/* calculate total size per aggregator */
 		for (int i = 0; i < out_file_num; i++)
