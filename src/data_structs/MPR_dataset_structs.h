@@ -56,6 +56,7 @@ struct mpr_dataset_struct
 	int file_metadata_count;                          /* (only for read) The meta-data count of file */
 
 	int read_level;                                   /* (only for read) The resolution level to read */
+	int is_write;                                     /* whether to write out the read chunk */
 
 	int is_fixed_file_size;                           /* whether is fixed file size mode, otherwise, fixed number of patches per file */
 	int is_z_order;                                   /* whether to use z-order, otherwise, use row-order */

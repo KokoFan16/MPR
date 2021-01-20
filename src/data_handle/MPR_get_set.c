@@ -142,6 +142,17 @@ MPR_return_code MPR_set_read_level(MPR_file file, int read_level)
 }
 
 
+MPR_return_code MPR_set_is_write(MPR_file file, int is_write)
+{
+  if (!file)
+    return MPR_err_file;
+
+  file->mpr->is_write = is_write;
+
+  return MPR_success;
+}
+
+
 MPR_return_code MPR_set_aggregation_mode(MPR_file file, float mode)
 {
 	if (!file)

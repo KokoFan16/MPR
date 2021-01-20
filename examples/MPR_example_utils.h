@@ -18,7 +18,6 @@ static int global_box_size[NUM_DIMS];
 static int local_box_offset[NUM_DIMS];
 static int local_box_size[NUM_DIMS];
 static int patch_box_size[NUM_DIMS];
-int sub_div[NUM_DIMS];
 static int time_step_count = 1;
 static int variable_count = 1;
 static int compress_mode = 1;
@@ -28,6 +27,9 @@ static int is_fixed_file_size = 1;
 static int is_z_order = 1;
 static int proc_num_per_node = 16;
 static int logs = 0;
+static int is_write = 0;
+
+int sub_div[NUM_DIMS];
 
 static MPR_point global_size, local_offset, local_size;
 static MPR_access p_access;

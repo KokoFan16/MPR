@@ -57,6 +57,8 @@ MPR_return_code MPR_file_open(const char* filename, int flags, MPR_access access
 
 	(*file)->mpr->wavelet_trans_num = 0;
 
+	(*file)->mpr->is_write = 0;
+
 	(*file)->local_variable_index = 0;
 	(*file)->local_variable_count = 0;
 	(*file)->variable_index_tracker = 0;

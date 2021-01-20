@@ -28,7 +28,8 @@ char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_pre_read -g 16x16x16 -l 8
 					"  -i: input file name\n"
 					"  -t: time step index to read\n"
 					"  -v: variable index to read\n"
-					"  -r: the resolution level to read\n";
+					"  -r: the resolution level to read"
+					"  -w: whether to write the data out\n";
 
 int main(int argc, char **argv)
 {
@@ -58,7 +59,7 @@ int main(int argc, char **argv)
 
 static void parse_args(int argc, char **argv)
 {
-	char flags[] = "g:l:s:i:t:v:r:";
+	char flags[] = "g:l:s:i:t:v:r:w:";
 	int one_opt = 0;
 
 	while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -104,6 +105,12 @@ static void parse_args(int argc, char **argv)
 					terminate_with_error_msg("Invalid resolution level to read\n%s", usage);
 				break;
 
+			case('w'): // whether to write the data out
+				if (sscanf(optarg, "%d", &is_write) < 0 || is_write > 1)
+					terminate_with_error_msg("Invalid write parameter (0, 1)\n%s", usage);
+				break;
+
+
 	    default:
 	      terminate_with_error_msg("Wrong arguments\n%s", usage);
 	    }
@@ -133,6 +140,8 @@ static void set_mpr_file(int ts)
 	MPR_set_current_time_step(file, ts);   /* Set the current timestep */
 
 	MPR_set_read_level(file, read_level);
+
+	MPR_set_is_write(file, is_write);
 
 }
 
