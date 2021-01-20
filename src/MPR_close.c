@@ -95,12 +95,12 @@ static void MPR_timing_logs(MPR_file file, int svi, int evi)
 		memset(directory_path, 0, sizeof(*directory_path) * 512);
 		strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
 
-		sprintf(time_folder, "time_%s", directory_path);
+		sprintf(time_folder, "time_write_%s", directory_path);
 		free(directory_path);
 	}
 
 	if (file->flags == MPR_MODE_RDONLY)
-		sprintf(time_folder, "time_%s", file->mpr->filename);
+		sprintf(time_folder, "time_read_%s", file->mpr->filename);
 
 	long len = strlen(time_folder);
 	time_folder[len] = '\0';
@@ -167,7 +167,7 @@ static void MPR_timing_logs(MPR_file file, int svi, int evi)
 		FILE* fp = fopen(time_log, "a"); /* open file */
 	    if (!fp) /* Check file handle */
 			fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
-	    fprintf(fp,"Rank_%d: [%f] >= [meta %f read %f zfp %f wave %f rst %f]\n", rank, total_time, parse_bound, read_time, comp_time, wave_time, rst_time);
+	    fprintf(fp,"%d: [%f] >= [meta %f read %f zfp %f wave %f rst %f]\n", rank, total_time, parse_bound, read_time, comp_time, wave_time, rst_time);
 	    fclose(fp);
 	}
 }
