@@ -217,7 +217,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		file->mpr->out_file_num = cur_agg_count + 1;
 
 		int agg_ranks[file->mpr->out_file_num]; /* AGG Array */
-		int gap = ceil(proc_num / (float)file->mpr->out_file_num);
+		int gap = proc_num / file->mpr->out_file_num;
 
 		int cagg = 0;
 		for (int i = 0; i < proc_num; i+= gap)
