@@ -15,7 +15,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 	int rank = file->comm->simulation_rank; /* The rank of each process */
 	MPI_Comm comm = file->comm->simulation_comm; /* The MPI communicator */
 
-//	int out_file_num = file->mpr->out_file_num;  /* The number of out files(aggregators) */
 	int total_patch_num = file->mpr->total_patches_num; /* The number of total patches */
 	int node_num = file->mpr->node_num; /* the number of nodes */
 
@@ -43,7 +42,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
 		}
 
-		int process_size = 0;
+		local_patch->proc_size = 0;
 		int local_patch_size_id_rank[max_pcount * 3]; /* local information: size, id, own_rank per patch */
 		memset(local_patch_size_id_rank, -1, max_pcount * 3 * sizeof(int));
 		for (int i = 0; i < patch_count; i++)
@@ -55,7 +54,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 				memcpy(&local_subband_sizes[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
 
-			process_size += local_patch->patch[i]->patch_buffer_size; /* print only */
+			local_patch->proc_size += local_patch->patch[i]->patch_buffer_size; /* print only */
 		}
 
 		int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));

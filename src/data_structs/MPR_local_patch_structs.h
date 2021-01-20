@@ -11,12 +11,13 @@
 struct mpr_local_patch_struct
 {
 	int patch_count;                         /* Number of patches in the local patch */
+	long long int proc_size;                      /* The size per process */
 
 	int bounding_box[MPR_MAX_DIMENSIONS*2];  /* The bounding box for each out file */
 
 	unsigned char* buffer;                   /* data buffer */
 
-	long long int out_file_size;                       /* the size out file */
+	long long int out_file_size;             /* the size out file */
 
 	float compression_ratio;                 /* compression ratio for each variable */
 
