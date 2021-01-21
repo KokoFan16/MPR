@@ -178,7 +178,12 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				while (pcount < total_patch_num && cur_agg_count < file->mpr->out_file_num)
 				{
 					if (agg_sizes[cur_agg_count] > average_file_size)
+					{
+						total_size -= agg_sizes[cur_agg_count];
 						cur_agg_count++;
+						average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
+
+					}
 					patch_assign_array[pcount] = cur_agg_count;
 					agg_sizes[cur_agg_count] += patch_sizes[pcount];
 					pcount++;
@@ -191,7 +196,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					if (patch_ids_zorder[pcount] > -1)
 					{
 						if (agg_sizes[cur_agg_count] > average_file_size)
+						{
+							total_size -= agg_sizes[cur_agg_count];
 							cur_agg_count++;
+							average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
+						}
 
 						patch_assign_array[patch_ids_zorder[pcount]] = cur_agg_count;
 						agg_sizes[cur_agg_count] += patch_sizes_zorder[pcount];
@@ -200,6 +209,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				}
 			}
 		}
+
+		if (rank == 0)
+			printf("out files is %d\n", cur_agg_count + 1);
 
 		file->mpr->out_file_num = cur_agg_count + 1;
 
