@@ -179,9 +179,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				{
 					if (agg_sizes[cur_agg_count] > average_file_size)
 					{
-						total_size -= agg_sizes[cur_agg_count];
+//						total_size -= agg_sizes[cur_agg_count];
 						cur_agg_count++;
-						average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
+//						average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
 
 					}
 					patch_assign_array[pcount] = cur_agg_count;
@@ -197,9 +197,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					{
 						if (agg_sizes[cur_agg_count] > average_file_size)
 						{
-							total_size -= agg_sizes[cur_agg_count];
+//							total_size -= agg_sizes[cur_agg_count];
 							cur_agg_count++;
-							average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
+//							average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
 						}
 
 						patch_assign_array[patch_ids_zorder[pcount]] = cur_agg_count;
