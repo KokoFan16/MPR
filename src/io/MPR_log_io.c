@@ -116,7 +116,7 @@ MPR_return_code MPR_logs(MPR_file file, int svi, int evi)
 		memset(directory_path, 0, sizeof(*directory_path) * 512);
 		strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
 
-		sprintf(log_folder, "%s_logs", directory_path);
+		sprintf(log_folder, "log_%s", directory_path);
 		free(directory_path);
 
 		long len = strlen(log_folder);
