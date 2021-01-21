@@ -218,7 +218,7 @@ MPR_return_code MPR_check_bouding_box(MPR_file file)
 {
 	char bounding_meta_path[PATH_MAX]; /* the patch bounding box metadata */
 	memset(bounding_meta_path, 0, sizeof(*bounding_meta_path) * PATH_MAX);
-	sprintf(bounding_meta_path, "%s_bounding_box", file->mpr->filename);
+	sprintf(bounding_meta_path, "%s/time%09d/bounding_box.mpr", file->mpr->filename, file->mpr->current_time_step);
 
 	/* Parse the bounding box meta-data */
 	if (MPR_bounding_box_metatda_parse(bounding_meta_path, file) != MPR_success)

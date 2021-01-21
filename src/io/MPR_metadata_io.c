@@ -154,7 +154,7 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 
 	char bounding_meta_path[PATH_MAX]; /* the patch bounding box metadata */
 	memset(bounding_meta_path, 0, sizeof(*bounding_meta_path) * PATH_MAX);
-	sprintf(bounding_meta_path, "%s_bounding_box", directory_path);
+	sprintf(bounding_meta_path, "%s/time%09d/bounding_box.mpr", directory_path, file->mpr->current_time_step);
 
 	unsigned char* meta_buffer = NULL; /* The buffer for dounding box meta-data */
 
