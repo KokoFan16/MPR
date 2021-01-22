@@ -37,8 +37,6 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		ret = MPR_multi_pre_res_write(file, svi, evi);
 	else if (MODE == MPR_Benchmark)
 		ret = MPR_benchmark_write(file, svi, evi);
-	else if (MODE == MPR_ZFP_ONLY)
-		ret = MPR_ZFF_io_write(file, svi, evi);
 	else
 		fprintf(stderr, "Unsupported MPR Mode.\n");
 
@@ -132,7 +130,7 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 		ret = MPR_raw_read(file, svi);
 	else if (MODE == MPR_MUL_RES_IO)
 		ret = MPR_multi_res_read(file, svi);
-	else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_Benchmark || MODE == MPR_ZFP_ONLY)
+	else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_Benchmark)
 		ret = MPR_multi_pre_read(file, svi);
 	else if (MODE == MPR_MUL_RES_PRE_IO)
 		ret = MPR_multi_pre_res_read(file, svi);

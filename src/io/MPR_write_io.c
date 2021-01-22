@@ -126,27 +126,6 @@ MPR_return_code MPR_benchmark_write(MPR_file file, int svi, int evi)
 	return MPR_success;
 }
 
-
-MPR_return_code MPR_ZFF_io_write(MPR_file file, int svi, int evi)
-{
-	if (MPR_processing(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-
-	/* Perform zfp compression */
-	file->time->zfp_start = MPI_Wtime();
-	if (MPR_ZFP_compression_perform(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->zfp_end = MPI_Wtime();
-
-	return MPR_success;
-}
-
 /* Write data out */
 MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)
 {

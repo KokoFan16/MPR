@@ -42,7 +42,6 @@ enum MPR_io_type {
 	MPR_MUL_PRE_IO = 2,            /* Write data with multiple precision format (ZFP compression) */
 	MPR_MUL_RES_PRE_IO = 3,        /* Write data with multiple resolution and precision format */
 	MPR_Benchmark = 4,             /* Benchmark format: only apply ZFP + AGG + I/O */
-	MPR_ZFP_ONLY = 5               /* Benchmark format: only apply ZFP + I/O */
 };
 
 typedef unsigned int MPR_data_layout;

@@ -18,8 +18,6 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi);
 
 MPR_return_code MPR_benchmark_write(MPR_file file, int svi, int evi);
 
-MPR_return_code MPR_ZFF_io_write(MPR_file file, int svi, int evi);
-
 MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi);
 
 #endif /* SRC_IO_MPR_WRITE_IO_H_ */
