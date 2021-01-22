@@ -328,7 +328,6 @@ MPR_return_code MPR_no_aggregation(MPR_file file, int svi, int evi)
 	for (int v  = svi; v < evi; v++)
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch;
-		int patch_count = local_patch->patch_count; /* the number of patches per process */
 
 		local_patch->agg_patch_count = 1;
 
@@ -339,41 +338,19 @@ MPR_return_code MPR_no_aggregation(MPR_file file, int svi, int evi)
 
 		local_patch->out_file_size = local_patch->patch[0]->patch_buffer_size;
 
-		local_patch->agg_patch_id_array = malloc(patch_count * sizeof(int));
-		local_patch->agg_patch_disps = malloc(patch_count * sizeof(int));
-		local_patch->agg_patch_size = malloc(patch_count * sizeof(int));
+		local_patch->agg_patch_id_array = malloc(sizeof(int));
+		local_patch->agg_patch_disps = malloc(sizeof(int));
+		local_patch->agg_patch_size = malloc(sizeof(int));
 
 		int patch_id = local_patch->patch[0]->global_id;
 		local_patch->agg_patch_id_array[0] = patch_id;
 		local_patch->agg_patch_size[0] = local_patch->patch[0]->patch_buffer_size;
 		local_patch->agg_patch_disps[0] = 0;
 
-		int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* patch count in each dimension */
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 		{
-			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
-			local_patch->compression_ratio /= file->mpr->global_box[i];
-		}
-
-
-		int max_xyz[MPR_MAX_DIMENSIONS] = {0, 0, 0};
-		int min_xyz[MPR_MAX_DIMENSIONS] = {INT_MAX, INT_MAX, INT_MAX};
-
-		int z = patch_id / (patch_count_xyz[0] * patch_count_xyz[1]);
-		int y = (patch_id - (z * patch_count_xyz[0] * patch_count_xyz[1])) / patch_count_xyz[0];
-		int x = patch_id - z * patch_count_xyz[0] * patch_count_xyz[1] - y * patch_count_xyz[0];
-
-		if (z < min_xyz[2]) min_xyz[2] = z;
-		if (z > max_xyz[2]) max_xyz[2] = z;
-		if (y < min_xyz[1]) min_xyz[1] = y;
-		if (y > max_xyz[1]) max_xyz[1] = y;
-		if (x < min_xyz[0]) min_xyz[0] = x;
-		if (x > max_xyz[0]) max_xyz[0] = x;
-
-		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
-		{
-			local_patch->bounding_box[i] = min_xyz[i];
-			local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = max_xyz[i] + 1;
+			local_patch->bounding_box[i] = file->mpr->local_offset[i]/file->mpr->patch_box[i];
+			local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = (file->mpr->local_offset[i] + file->mpr->local_box[i])/file->mpr->patch_box[i];
 		}
 	}
 

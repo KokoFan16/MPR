@@ -19,15 +19,6 @@ MPR_return_code MPR_raw_write(MPR_file file, int svi, int evi)
 	}
 	file->time->rst_end = MPI_Wtime();
 
-	/* Aggregation phase */
-	file->time->agg_start = MPI_Wtime();
-	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->agg_end = MPI_Wtime();
-
 	return MPR_success;
 }
 
@@ -51,15 +42,6 @@ MPR_return_code MPR_multi_res_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->wave_end = MPI_Wtime();
-
-	/* Aggregation phase */
-	file->time->agg_start = MPI_Wtime();
-	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->agg_end = MPI_Wtime();
 
 	return MPR_success;
 }
@@ -85,15 +67,6 @@ MPR_return_code MPR_multi_pre_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->zfp_end = MPI_Wtime();
-
-	/* Aggregation phase */
-	file->time->agg_start = MPI_Wtime();
-	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->agg_end = MPI_Wtime();
 
 	return MPR_success;
 }
@@ -128,17 +101,6 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 	}
 	file->time->zfp_end = MPI_Wtime();
 
-//	MPI_Barrier(file->comm->simulation_comm);
-
-	/* Aggregation phase */
-	file->time->agg_start = MPI_Wtime();
-	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->agg_end = MPI_Wtime();
-
 	return MPR_success;
 }
 
@@ -161,15 +123,6 @@ MPR_return_code MPR_benchmark_write(MPR_file file, int svi, int evi)
 	}
 	file->time->zfp_end = MPI_Wtime();
 
-	/* Aggregation phase */
-	file->time->agg_start = MPI_Wtime();
-	if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->agg_end = MPI_Wtime();
-
 	return MPR_success;
 }
 
@@ -190,12 +143,6 @@ MPR_return_code MPR_ZFF_io_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->zfp_end = MPI_Wtime();
-
-	if (MPR_no_aggregation(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
 
 	return MPR_success;
 }

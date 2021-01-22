@@ -48,6 +48,27 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 
+	/* Aggregation phase */
+
+	if (file->mpr->out_file_num == file->comm->simulation_nprocs)
+	{
+		if (MPR_no_aggregation(file, svi, evi) != MPR_success)
+		{
+			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+			return MPR_err_file;
+		}
+	}
+	else
+	{
+		file->time->agg_start = MPI_Wtime();
+		if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
+		{
+			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+			return MPR_err_file;
+		}
+		file->time->agg_end = MPI_Wtime();
+	}
+
 	/* Write metadata out */
 	file->time->wrt_metadata_start = MPI_Wtime();
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
