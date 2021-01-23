@@ -47,7 +47,6 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	}
 
 	/* Aggregation phase */
-
 	if (file->mpr->out_file_num == file->comm->simulation_nprocs)
 	{
 		if (MPR_no_aggregation(file, svi, evi) != MPR_success)
@@ -68,24 +67,24 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	}
 
 	/* Write metadata out */
-	file->time->wrt_metadata_start = MPI_Wtime();
-	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->wrt_metadata_end = MPI_Wtime();
-
-	/* write data out */
-	file->time->wrt_data_start = MPI_Wtime();
-	if (MPR_write_data_out(file, svi, evi) != MPR_success)
-	{
-		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-		return MPR_err_file;
-	}
-	file->time->wrt_data_end = MPI_Wtime();
-
-
+//	file->time->wrt_metadata_start = MPI_Wtime();
+//	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
+//	{
+//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+//		return MPR_err_file;
+//	}
+//	file->time->wrt_metadata_end = MPI_Wtime();
+//
+//	/* write data out */
+//	file->time->wrt_data_start = MPI_Wtime();
+//	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+//	{
+//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+//		return MPR_err_file;
+//	}
+//	file->time->wrt_data_end = MPI_Wtime();
+//
+//
 	if (file->mpr->is_logs == 1)
 	{
 		if (MPR_logs(file, svi, evi) != MPR_success)
