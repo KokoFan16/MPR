@@ -247,7 +247,7 @@ MPR_return_code MPR_gather_file_metadata(MPR_file file, int svi, int evi)
 			for (int i = 1; i < meta_count; i++) /* the patch id */
 				memcpy(&file->mpr->file_meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->agg_patch_id_array[i-1], sizeof(int));
 		}
-		else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO || MODE == MPR_Benchmark) /* Compression involves */
+		else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO) /* Compression involves */
 		{
 			meta_count += file->mpr->variable_count * 2; /* the patch count for aggregator per variable */
 			file->mpr->file_meta_buffer = malloc(meta_count * sizeof(int));
@@ -602,7 +602,7 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 			patches_size[buffer[(i + 1)]] = patch_size;
 		}
 	}
-	else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO ||  MODE == MPR_Benchmark )
+	else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO)
 	{
 		int total_var_patch_counts = 0;   /* the number of patch counts per file across all the variables */
 		int var_patch_counts[file->mpr->variable_count];  /* each i is the number of patch count of variable i */
