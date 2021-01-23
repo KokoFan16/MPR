@@ -100,6 +100,8 @@ MPR_return_code MPR_timing_logs(MPR_file file, int svi, int evi)
 	    fclose(fp);
 	}
 
+	MPI_Barrier(file->comm->simulation_comm);
+
 	return MPR_success;
 }
 
@@ -159,5 +161,8 @@ MPR_return_code MPR_logs(MPR_file file, int svi, int evi)
 		}
 		fclose(fp);
 	}
+
+	MPI_Barrier(file->comm->simulation_comm);
+
 	return MPR_success;
 }
