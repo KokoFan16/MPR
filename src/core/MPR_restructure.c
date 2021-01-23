@@ -7,10 +7,6 @@
 
 #include "../MPR_inc.h"
 
-//static int intersect_patch(MPR_patch A, MPR_patch B);
-static int intersect_patch(int* a_size, int* a_offset, int* b_size, int* b_offset);
-//static int contains_patch(MPR_patch reg_patch, MPR_patch* patches, int count);
-
 /* Set the default restructuring box (32x32x32) */
 MPR_return_code MPR_set_patch_box_size(MPR_file file, int svi)
 {
@@ -23,6 +19,46 @@ MPR_return_code MPR_set_patch_box_size(MPR_file file, int svi)
 
 	return MPR_success;
 }
+
+
+MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi)
+{
+	int is_same = 0;
+	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
+	{
+		int local = file->mpr->local_box[d];
+		if (local + file->mpr->local_offset[d] > file->mpr->global_box[d])
+			local = file->mpr->global_box[d] - file->mpr->local_offset[d];
+		if (local == file->mpr->patch_box[d])
+			is_same += 1;
+	}
+
+	int min_same = 0;
+	MPI_Allreduce(&is_same, &min_same, 1, MPI_INT, MPI_MIN, file->comm->simulation_comm);
+
+	if (min_same == MPR_MAX_DIMENSIONS)
+	{
+		if (MPR_processing(file, svi, evi) != MPR_success)
+		{
+			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+			return MPR_err_file;
+		}
+	}
+	else
+	{
+		/* Perform restructure phase */
+		file->time->rst_start = MPI_Wtime();
+		if (MPR_restructure_perform(file, svi, evi) != MPR_success)
+		{
+			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+			return MPR_err_file;
+		}
+		file->time->rst_end = MPI_Wtime();
+	}
+
+	return MPR_success;
+}
+
 
 MPR_return_code MPR_processing(MPR_file file, int svi, int evi)
 {
@@ -51,6 +87,8 @@ MPR_return_code MPR_processing(MPR_file file, int svi, int evi)
 	}
 	return MPR_success;
 }
+
+
 
 MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int end_var_index)
 {
@@ -368,35 +406,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 	}
 	/**********************************************************************************************/
 
-//	printf("The number of patches of process %d is %d\n", file->comm->simulation_rank, local_patch_num);
-
 	return MPR_success;
 }
 
-static int intersect_patch(int* a_size, int* a_offset, int* b_size, int* b_offset)
-{
-	int d = 0, check_bit = 0;
-	for (d = 0; d < MPR_MAX_DIMENSIONS; d++)
-	{
-		check_bit = check_bit || (a_offset[d] + a_size[d] - 1) < b_offset[d] || (b_offset[d] + b_size[d] - 1) < a_offset[d];
-	}
-	return !(check_bit);
-}
-
-/* Check if the current patch has already been included */
-static int contains_patch(MPR_patch reg_patch, MPR_patch* patches, int count)
-{
-  for (int i = 0; i < count; i++)
-  {
-    int matches = 0;
-    for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
-    {
-      if (reg_patch->offset[d] == patches[i]->offset[d] && reg_patch->size[d] == patches[i]->size[d])
-        matches++;
-    }
-
-    if (matches == MPR_MAX_DIMENSIONS)
-      return 1;
-  }
-  return 0;
-}

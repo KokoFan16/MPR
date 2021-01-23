@@ -14,4 +14,6 @@ MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int 
 
 MPR_return_code MPR_processing(MPR_file file, int svi, int evi);
 
+MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi);
+
 #endif /* SRC_CORE_MPR_RESTRUCTURE_H_ */

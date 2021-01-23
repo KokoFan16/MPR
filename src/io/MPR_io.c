@@ -9,8 +9,6 @@
 
 MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 {
-//	write_data_out(file, svi);
-
 	int MODE = file->mpr->io_type;
 	/* Set the default restructuring box (32x32x32) */
 	if (MPR_set_patch_box_size(file, svi) != MPR_success)
@@ -25,18 +23,20 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 
+	if (MPR_is_partition(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
 	/* Write Mode: write data out */
 	int ret = 0;
-	if (MODE == MPR_RAW_IO)
-		ret = MPR_raw_write(file, svi, evi);
-	else if (MODE == MPR_MUL_RES_IO)
+	if (MODE == MPR_MUL_RES_IO)
 		ret = MPR_multi_res_write(file, svi, evi);
 	else if (MODE == MPR_MUL_PRE_IO)
 		ret = MPR_multi_pre_write(file, svi, evi);
 	else if (MODE == MPR_MUL_RES_PRE_IO)
 		ret = MPR_multi_pre_res_write(file, svi, evi);
-	else if (MODE == MPR_Benchmark)
-		ret = MPR_benchmark_write(file, svi, evi);
 	else
 		fprintf(stderr, "Unsupported MPR Mode.\n");
 
@@ -67,24 +67,24 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	}
 
 	/* Write metadata out */
-//	file->time->wrt_metadata_start = MPI_Wtime();
-//	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
-//	{
-//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//		return MPR_err_file;
-//	}
-//	file->time->wrt_metadata_end = MPI_Wtime();
-//
-//	/* write data out */
-//	file->time->wrt_data_start = MPI_Wtime();
-//	if (MPR_write_data_out(file, svi, evi) != MPR_success)
-//	{
-//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//		return MPR_err_file;
-//	}
-//	file->time->wrt_data_end = MPI_Wtime();
-//
-//
+	file->time->wrt_metadata_start = MPI_Wtime();
+	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_metadata_end = MPI_Wtime();
+
+	/* write data out */
+	file->time->wrt_data_start = MPI_Wtime();
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_data_end = MPI_Wtime();
+
+
 	if (file->mpr->is_logs == 1)
 	{
 		if (MPR_logs(file, svi, evi) != MPR_success)
