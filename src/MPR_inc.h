@@ -18,7 +18,6 @@
 #include "io/MPR_write_io.h"
 #include "io/MPR_read_io.h"
 #include "io/MPR_log_io.h"
-#include "core/MPR_restructure.h"
 #include "core/MPR_aggregation.h"
 #include "core/MPR_compression.h"
 #include "core/MPR_wavelet.h"
@@ -37,6 +36,7 @@
 #include <math.h>
 
 #include "../external/zfp/include/zfp.h"
+#include "core/MPR_partition.h"
 
 
 #endif /* SRC_MPR_INC_H_ */
