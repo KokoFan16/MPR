@@ -48,7 +48,7 @@ MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi)
 	{
 		/* Perform restructure phase */
 		file->time->rst_start = MPI_Wtime();
-		if (MPR_restructure_perform(file, svi, evi) != MPR_success)
+		if (MPR_partition_perform(file, svi, evi) != MPR_success)
 		{
 			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 			return MPR_err_file;
@@ -89,8 +89,7 @@ MPR_return_code MPR_processing(MPR_file file, int svi, int evi)
 }
 
 
-
-MPR_return_code MPR_restructure_perform(MPR_file file, int start_var_index, int end_var_index)
+MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int end_var_index)
 {
 	/************************** Basic information *******************************/
 	int rank = file->comm->simulation_rank; /* The rank of process */
