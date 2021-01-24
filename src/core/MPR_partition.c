@@ -74,13 +74,14 @@ MPR_return_code MPR_processing(MPR_file file, int svi, int evi)
 
 	for (int v = svi; v < evi; v++)
 	{
+		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
 		local_patch->patch = malloc(sizeof(MPR_patch*));
 		local_patch->patch_count = 1;
 		local_patch->patch[0] = (MPR_patch)malloc(sizeof(*local_patch->patch[0]));
 		local_patch->patch[0]->global_id = file->comm->simulation_rank;
-
-		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
+		local_patch->patch[0]->patch_buffer_size = patch_size * bytes;
 
 		local_patch->patch[0]->buffer = malloc(patch_size * bytes);
 		memcpy(local_patch->patch[0]->buffer, local_patch->buffer, patch_size*bytes);
