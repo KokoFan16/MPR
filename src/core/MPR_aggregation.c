@@ -329,23 +329,40 @@ MPR_return_code MPR_no_aggregation(MPR_file file, int svi, int evi)
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch;
 
-		local_patch->agg_patch_count = 1;
+		local_patch->agg_patch_count = local_patch->patch_count;
 
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
-		local_patch->buffer = malloc(local_patch->patch[0]->patch_buffer_size);
-		memcpy(local_patch->buffer, local_patch->patch[0]->buffer, local_patch->patch[0]->patch_buffer_size);
+		int local_size = 0;
+		for (int i = 0; i < local_patch->patch_count; i++)
+			local_size += local_patch->patch[i]->patch_buffer_size;
+		local_patch->out_file_size = local_size;
+		local_patch->proc_size = local_size;
 
-		local_patch->out_file_size = local_patch->patch[0]->patch_buffer_size;
+		local_patch->buffer = malloc(local_size);
+		local_patch->agg_patch_id_array = malloc(local_patch->patch_count * sizeof(int));
+		local_patch->agg_patch_disps = malloc(local_patch->patch_count * sizeof(int));
+		local_patch->agg_patch_size = malloc(local_patch->patch_count * sizeof(int));
 
-		local_patch->agg_patch_id_array = malloc(sizeof(int));
-		local_patch->agg_patch_disps = malloc(sizeof(int));
-		local_patch->agg_patch_size = malloc(sizeof(int));
+		local_patch->agg_subbands_size = NULL;
+		int subbands_num = 0;
+		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+		{
+			subbands_num = file->mpr->wavelet_trans_num * 7 + 1;
+			local_patch->agg_subbands_size = malloc(local_patch->patch_count * subbands_num * sizeof(int));
+		}
 
-		int patch_id = local_patch->patch[0]->global_id;
-		local_patch->agg_patch_id_array[0] = patch_id;
-		local_patch->agg_patch_size[0] = local_patch->patch[0]->patch_buffer_size;
-		local_patch->agg_patch_disps[0] = 0;
+		int offset = 0;
+		for (int i = 0; i < local_patch->patch_count; i++)
+		{
+			local_patch->agg_patch_id_array[i] = local_patch->patch[i]->global_id;
+			local_patch->agg_patch_disps[i] = offset;
+			local_patch->agg_patch_size[i] = local_patch->patch[i]->patch_buffer_size;
+			memcpy(&local_patch->buffer[offset], local_patch->patch[i]->buffer, local_patch->patch[i]->patch_buffer_size);
+			offset += local_patch->patch[i]->patch_buffer_size;
+			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+				memcpy(&local_patch->agg_subbands_size[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
+		}
 
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 		{
