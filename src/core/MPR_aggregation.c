@@ -177,7 +177,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			{
 				while (pcount < total_patch_num && cur_agg_count < file->mpr->out_file_num)
 				{
-					if (agg_sizes[cur_agg_count] > average_file_size)
+					if (agg_sizes[cur_agg_count] >= average_file_size)
 					{
 						total_size -= agg_sizes[cur_agg_count];
 						cur_agg_count++;
@@ -195,7 +195,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				{
 					if (patch_ids_zorder[pcount] > -1)
 					{
-						if (agg_sizes[cur_agg_count] > average_file_size)
+						if (agg_sizes[cur_agg_count] >= average_file_size)
 						{
 							total_size -= agg_sizes[cur_agg_count];
 							cur_agg_count++;
