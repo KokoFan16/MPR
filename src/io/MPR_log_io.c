@@ -52,7 +52,6 @@ MPR_return_code MPR_timing_logs(MPR_file file, int svi, int evi)
 
 	MPI_Barrier(file->comm->simulation_comm);
 
-
 	if (file->flags == MPR_MODE_CREATE)
 	{
 		if (file->mpr->current_time_step == 0)
@@ -70,7 +69,6 @@ MPR_return_code MPR_timing_logs(MPR_file file, int svi, int evi)
 
 		double agg_time = file->time->agg_end - file->time->agg_start;
 		double wrt_data_time = file->time->wrt_data_end - file->time->wrt_data_start;
-		double wrt_metadata_time = file->time->wrt_metadata_end - file->time->wrt_metadata_start;
 
 		char time_log[512];
 		sprintf(time_log, "%s/time_%d", time_folder, rank);
@@ -80,14 +78,13 @@ MPR_return_code MPR_timing_logs(MPR_file file, int svi, int evi)
 			FILE* fp = fopen(time_log, "a"); /* open file */
 		    if (!fp) /* Check file handle */
 				fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
-		    fprintf(fp,"%d %d: [%f] >= [part %f wave %f comp %f agg %f w_dd %f w_meda %f]\n", file->mpr->current_time_step, rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time, wrt_metadata_time);
+		    fprintf(fp,"%d %d: [%f] >= [part %f wave %f comp %f agg %f io %f]\n", file->mpr->current_time_step, rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time);
 		    fclose(fp);
 		}
 	}
 
 	if (file->flags == MPR_MODE_RDONLY)
 	{
-		double parse_bound = file->time->parse_bound_end - file->time->parse_bound_start;
 		double read_time = file->time->read_end - file->time->read_start;
 
 		char time_log[512];
@@ -96,7 +93,7 @@ MPR_return_code MPR_timing_logs(MPR_file file, int svi, int evi)
 		FILE* fp = fopen(time_log, "a"); /* open file */
 	    if (!fp) /* Check file handle */
 			fprintf(stderr, " [%s] [%d] time_dir is corrupt.\n", __FILE__, __LINE__);
-	    fprintf(fp,"%d: [%f] >= [meta %f read %f comp %f wave %f rst %f]\n", rank, total_time, parse_bound, read_time, comp_time, wave_time, rst_time);
+	    fprintf(fp,"%d: [%f] >= [read %f comp %f wave %f rst %f]\n", rank, total_time, read_time, comp_time, wave_time, rst_time);
 	    fclose(fp);
 	}
 

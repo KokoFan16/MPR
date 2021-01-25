@@ -70,16 +70,14 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	}
 
 	/* Write metadata out */
-	file->time->wrt_metadata_start = MPI_Wtime();
+	file->time->wrt_data_start = MPI_Wtime();
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-	file->time->wrt_metadata_end = MPI_Wtime();
 
 	/* write data out */
-	file->time->wrt_data_start = MPI_Wtime();
 	if (MPR_write_data_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
@@ -119,13 +117,21 @@ MPR_return_code MPR_read(MPR_file file, int svi)
 	}
 
 	/* check which files need to be opened */
-	file->time->parse_bound_start = MPI_Wtime();
+	file->time->read_start = MPI_Wtime();
 	if (MPR_check_bouding_box(file) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-	file->time->parse_bound_end = MPI_Wtime();
+
+	/* read data */
+	if (MPR_read_data(file, svi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->read_end = MPI_Wtime();
+
 
 	int ret = 0;
 	if (MODE == MPR_RAW_IO)
