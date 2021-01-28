@@ -224,7 +224,8 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
 	int array_subsize[MPR_MAX_DIMENSIONS] = {file->mpr->patch_box[0] * bytes, file->mpr->patch_box[1], file->mpr->patch_box[2]};
 
-	unsigned char* local_buffer =  malloc(patch_size * local_patch->patch_count);
+	long long int local_buffer_size = patch_size * local_patch->patch_count;
+	unsigned char* local_buffer =  malloc(local_buffer_size);
 
 	MPI_Request req[local_patch->patch_count*2];
 	MPI_Status stat[local_patch->patch_count*2];
@@ -244,8 +245,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 		MPI_Irecv(local_buffer, 1, recv_type, file->comm->simulation_rank, i, file->comm->simulation_comm, &req[req_id]);
 		req_id++;
 
-		MPI_Isend(local_patch->patch[i]->buffer, patch_size, MPI_BYTE, file->comm->simulation_rank, i,
-				file->comm->simulation_comm, &req[req_id]);
+		MPI_Isend(local_patch->patch[i]->buffer, patch_size, MPI_BYTE, file->comm->simulation_rank, i, file->comm->simulation_comm, &req[req_id]);
 		req_id++;
 
 		MPI_Type_free(&recv_type);
