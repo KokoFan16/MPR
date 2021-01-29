@@ -149,10 +149,10 @@ MPR_return_code MPR_logs(MPR_file file, int svi, int evi)
 			{
 				fprintf(fp, "%d, A %d, count %d, size %lld, msize %d\n", file->mpr->current_time_step, rank, local_patch->agg_patch_count, local_patch->out_file_size, file->mpr->file_meta_size);
 
-				for (int i = 0; i < local_patch->agg_patch_count; i++)
-				{
-					fprintf(fp, "%d, P %d, size %d\n", file->mpr->current_time_step, local_patch->agg_patch_id_array[i], local_patch->agg_patch_size[i]);
-				}
+//				for (int i = 0; i < local_patch->agg_patch_count; i++)
+//				{
+//					fprintf(fp, "%d, P %d, size %d\n", file->mpr->current_time_step, local_patch->agg_patch_id_array[i], local_patch->agg_patch_size[i]);
+//				}
 			}
 			fprintf(fp, "%d, R %d, count %d, size %lld\n", file->mpr->current_time_step, rank, local_patch->patch_count, local_patch->proc_size);
 		}
