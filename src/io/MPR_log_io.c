@@ -19,85 +19,93 @@ MPR_return_code MPR_timing_logs(MPR_file file, int svi, int evi)
 	double wave_time = file->time->wave_end - file->time->wave_start;
 	double comp_time = file->time->zfp_end - file->time->zfp_start;
 
-	double max_total_time = 0;
-	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, file->comm->simulation_comm);
-
-	char time_folder[512];
-
 	if (file->flags == MPR_MODE_CREATE)
 	{
-		char* directory_path = malloc(512);
-		memset(directory_path, 0, sizeof(*directory_path) * 512);
-		strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
-
-		sprintf(time_folder, "time_write_%s", directory_path);
-		free(directory_path);
-	}
-
-	if (file->flags == MPR_MODE_RDONLY)
-		sprintf(time_folder, "time_read_%s", file->mpr->filename);
-
-	long len = strlen(time_folder);
-	time_folder[len] = '\0';
-
-	if (file->mpr->current_time_step == 0)
-	{
-		if (rank == 0)
-		{
-			int ret = mkdir(time_folder, S_IRWXU | S_IRWXG | S_IRWXO);
-			if (ret != 0 && errno != EEXIST)
-				fprintf(stderr, "Error: failed to mkdir %s\n", time_folder);
-		}
-	}
-
-	MPI_Barrier(file->comm->simulation_comm);
-
-	if (file->flags == MPR_MODE_CREATE)
-	{
-		if (file->mpr->current_time_step == 0)
-		{
-			int file_size = 0;
-			for (int v = svi; v < evi; v++)
-			{
-				MPR_local_patch local_patch = file->variable[v]->local_patch;
-				file_size += local_patch->out_file_size;
-
-				if (rank == 0 && file->mpr->current_time_step == 0)
-					printf("The compression ratio for variable %d is %f.\n", v, file->variable[v]->local_patch->compression_ratio);
-			}
-		}
-
 		double agg_time = file->time->agg_end - file->time->agg_start;
 		double wrt_data_time = file->time->wrt_data_end - file->time->wrt_data_start;
 
-		char time_log[512];
-		sprintf(time_log, "%s/time_%d", time_folder, rank);
+		time_buffer[file->mpr->current_time_step*8] = file->mpr->current_time_step;
+		time_buffer[file->mpr->current_time_step*8+1] = rank;
+		time_buffer[file->mpr->current_time_step*8+2] = total_time;
+		time_buffer[file->mpr->current_time_step*8+3] = rst_time;
+		time_buffer[file->mpr->current_time_step*8+4] = wave_time;
+		time_buffer[file->mpr->current_time_step*8+5] = comp_time;
+		time_buffer[file->mpr->current_time_step*8+6] = agg_time;
+		time_buffer[file->mpr->current_time_step*8+7] = wrt_data_time;
 
-		if (file->mpr->is_aggregator == 1)
+		if (file->mpr->current_time_step == (file->mpr->last_tstep -1))
 		{
-			FILE* fp = fopen(time_log, "a"); /* open file */
-		    if (!fp) /* Check file handle */
-				fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
-		    fprintf(fp,"%d %d: [%f] >= [part %f wave %f comp %f agg %f io %f]\n", file->mpr->current_time_step, rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time);
-		    fclose(fp);
+			int count = file->mpr->last_tstep * 8;
+			float* total_time_buffer = NULL;
+			if (rank == 0)
+				total_time_buffer = malloc(count*sizeof(float)*file->comm->simulation_nprocs);
+
+			MPI_Gather(time_buffer, count, MPI_FLOAT, total_time_buffer, count, MPI_FLOAT, 0, file->comm->simulation_comm);
+
+			if (rank == 0)
+			{
+				char* directory_path = malloc(512);
+				memset(directory_path, 0, sizeof(*directory_path) * 512);
+				strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
+
+				char time_log[512];
+				sprintf(time_log, "time_write_%s_log", directory_path);
+				free(directory_path);
+
+				FILE* fp = fopen(time_log, "w"); /* open file */
+				if (!fp) /* Check file handle */
+					fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
+
+				int loop_count = file->comm->simulation_nprocs * file->mpr->last_tstep;
+				for (int i = 0; i < loop_count; i++)
+					fprintf(fp, "%d %d: [%f] >= [part %f wave %f comp %f agg %f io %f]\n", (int)total_time_buffer[i*8+0], (int)total_time_buffer[i*8+1], total_time_buffer[i*8+2], total_time_buffer[i*8+3], total_time_buffer[i*8+4], total_time_buffer[i*8+5], total_time_buffer[i*8+6], total_time_buffer[i*8+7]);
+
+				fclose(fp);
+			}
+			free(total_time_buffer);
 		}
 	}
 
+
 	if (file->flags == MPR_MODE_RDONLY)
 	{
+		time_buffer = malloc(6*sizeof(float));
+
 		double read_time = file->time->read_end - file->time->read_start;
 
-		char time_log[512];
-		sprintf(time_log, "%s/time_%d", time_folder, rank);
+		time_buffer[0] = rank;
+		time_buffer[1] = total_time;
+		time_buffer[2] = read_time;
+		time_buffer[3] = comp_time;
+		time_buffer[4] = wave_time;
+		time_buffer[5] = rst_time;
 
-		FILE* fp = fopen(time_log, "a"); /* open file */
-	    if (!fp) /* Check file handle */
-			fprintf(stderr, " [%s] [%d] time_dir is corrupt.\n", __FILE__, __LINE__);
-	    fprintf(fp,"%d: [%f] >= [read %f comp %f wave %f rst %f]\n", rank, total_time, read_time, comp_time, wave_time, rst_time);
-	    fclose(fp);
+		int count = 6;
+		float* total_time_buffer = NULL;
+		if (file->comm->simulation_rank == 0)
+			total_time_buffer = malloc(count*sizeof(float)*file->comm->simulation_nprocs);
+
+		MPI_Gather(time_buffer, count, MPI_FLOAT, total_time_buffer, count, MPI_FLOAT, 0, file->comm->simulation_comm);
+
+		if (rank == 0)
+		{
+			char time_log[512];
+			sprintf(time_log, "time_read_%s_log", file->mpr->filename);
+
+			FILE* fp = fopen(time_log, "w"); /* open file */
+			if (!fp) /* Check file handle */
+				fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
+
+			int loop_count = file->comm->simulation_nprocs;
+			for (int i = 0; i < loop_count; i++)
+				fprintf(fp,"%d: [%f] >= [read %f comp %f wave %f rst %f]\n", (int)total_time_buffer[i*6+0], total_time_buffer[i*6+1], total_time_buffer[i*6+2], total_time_buffer[i*6+3], total_time_buffer[i*6+4], total_time_buffer[i*6+5]);
+
+			fclose(fp);
+		}
+
+		free(total_time_buffer);
+		free(time_buffer);
 	}
-
-	MPI_Barrier(file->comm->simulation_comm);
 
 	return MPR_success;
 }

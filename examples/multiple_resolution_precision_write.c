@@ -70,6 +70,7 @@ int main(int argc, char **argv)
 	variable = (MPR_variable*)malloc(sizeof(*variable) * variable_count);
 	memset(variable, 0, sizeof(*variable) * variable_count);
 
+	time_buffer = malloc(time_step_count*8*sizeof(float));
 	for (ts = 0; ts < time_step_count; ts++)
 	{
 		set_mpr_file(ts);
@@ -79,7 +80,7 @@ int main(int argc, char **argv)
 
 		MPR_close(file);
 	}
-
+	free(time_buffer);
 
 	if (MPR_close_access(p_access) != MPR_success)
 		terminate_with_error_msg("MPR_close_access");
@@ -362,6 +363,7 @@ static void set_mpr_file(int ts)
 	  terminate_with_error_msg("MPR_file_create\n");
 
   MPR_set_current_time_step(file, ts);   /* Set the current timestep */
+  MPR_set_last_time_step(file, time_step_count);
   MPR_set_variable_count(file, variable_count);   /* Set the number of variables */
   MPR_set_io_mode(file, MPR_MUL_RES_PRE_IO);   /* Select I/O mode */
   MPR_set_out_file_num(file, out_file_num);
@@ -371,7 +373,6 @@ static void set_mpr_file(int ts)
   MPR_set_aggregation_mode(file, is_fixed_file_size);
   MPR_set_aggregation_order(file, is_z_order);
   MPR_set_logs(file, logs);
-
   return;
 }
 

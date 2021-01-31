@@ -44,6 +44,19 @@ MPR_return_code MPR_set_current_time_step(MPR_file file, const int current_time_
   return MPR_success;
 }
 
+MPR_return_code MPR_set_last_time_step(MPR_file file, const int last_time_step)
+{
+  if (!file)
+    return MPR_err_file;
+
+  if (last_time_step < 0)
+    return MPR_err_time;
+
+  file->mpr->last_tstep = last_time_step;
+
+  return MPR_success;
+}
+
 MPR_return_code MPR_get_current_time_step(MPR_file file, int* current_time_step)
 {
   if (!file)

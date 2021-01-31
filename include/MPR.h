@@ -30,6 +30,8 @@ MPR_return_code MPR_set_current_time_step(MPR_file file, const int current_time_
 
 MPR_return_code MPR_get_current_time_step(MPR_file file, int* current_time_step);
 
+MPR_return_code MPR_set_last_time_step(MPR_file file, const int last_time_step);
+
 MPR_return_code MPR_set_out_file_num(MPR_file file, int num);
 
 MPR_return_code MPR_set_procs_num_per_node(MPR_file file, int npro);
