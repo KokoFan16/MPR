@@ -141,23 +141,3 @@ MPR_return_code MPR_variable_buffer_cleanup(MPR_file file, int svi, int evi)
 	return MPR_success;
 }
 
-
-MPR_return_code MPR_variable_cleanup(MPR_file file, int svi)
-{
-	for (int i = 0; i < file->variable[svi]->local_patch->patch_count; i++)
-	{
-		free(file->variable[svi]->local_patch->patch[i]->buffer);
-		if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-			free(file->variable[svi]->local_patch->patch[i]->subbands_comp_size);
-		free(file->variable[svi]->local_patch->patch[i]);
-	}
-	free(file->variable[svi]->local_patch->buffer);
-	free(file->variable[svi]->local_patch->patch);
-	free(file->variable[svi]->local_patch->agg_patch_id_array);
-	free(file->variable[svi]->local_patch->agg_patch_disps);
-	free(file->variable[svi]->local_patch->agg_patch_size);
-	free(file->variable[svi]->local_patch->agg_subbands_size);
-	free(file->variable[svi]->local_patch);
-	return MPR_success;
-}
-

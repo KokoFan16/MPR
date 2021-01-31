@@ -56,8 +56,6 @@ MPR_return_code MPR_set_compression_mode(MPR_file file, int mode);
 
 MPR_return_code MPR_set_compression_parameter(MPR_file file, float param);
 
-MPR_return_code MPR_variable_cleanup(MPR_file file, int svi);
-
 MPR_return_code MPR_set_read_level(MPR_file file, int read_level);
 
 MPR_return_code MPR_set_is_write(MPR_file file, int is_write);
