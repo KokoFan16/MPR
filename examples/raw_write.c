@@ -71,7 +71,9 @@ int main(int argc, char **argv)
 	variable = (MPR_variable*)malloc(sizeof(*variable) * variable_count);
 	memset(variable, 0, sizeof(*variable) * variable_count);
 
-	time_buffer = malloc(time_step_count*8*sizeof(float));
+	time_buffer = malloc(time_step_count * 9 * sizeof(float));
+	memset(time_buffer, 0, time_step_count * 9 * sizeof(float));
+
 	for (ts = 0; ts < time_step_count; ts++)
 	{
 		set_mpr_file(ts);

@@ -47,13 +47,11 @@ MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi)
 	else
 	{
 		/* Perform restructure phase */
-		file->time->rst_start = MPI_Wtime();
 		if (MPR_partition_perform(file, svi, evi) != MPR_success)
 		{
 			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 			return MPR_err_file;
 		}
-		file->time->rst_end = MPI_Wtime();
 	}
 
 	return MPR_success;

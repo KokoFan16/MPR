@@ -70,7 +70,10 @@ int main(int argc, char **argv)
 	variable = (MPR_variable*)malloc(sizeof(*variable) * variable_count);
 	memset(variable, 0, sizeof(*variable) * variable_count);
 
-	time_buffer = malloc(time_step_count*8*sizeof(float));
+	time_buffer = malloc(time_step_count * 9 * sizeof(float));
+	memset(time_buffer, 0, time_step_count * 9 * sizeof(float));
+	size_buffer = malloc(time_step_count * 5 * variable_count * sizeof(long long int));
+
 	for (ts = 0; ts < time_step_count; ts++)
 	{
 		set_mpr_file(ts);
@@ -81,6 +84,7 @@ int main(int argc, char **argv)
 		MPR_close(file);
 	}
 	free(time_buffer);
+	free(size_buffer);
 
 	if (MPR_close_access(p_access) != MPR_success)
 		terminate_with_error_msg("MPR_close_access");
