@@ -42,6 +42,8 @@ MPR_return_code MPR_flush(MPR_file file)
 	}
 	file->time->total_end = MPI_Wtime(); /* the end time for the program */
 
+
+	double log_start = MPI_Wtime();
 	if (file->mpr->is_logs == 1)
 	{
 		if (MPR_logs(file, lvi, (lvi + lvc)) != MPR_success)
@@ -56,6 +58,10 @@ MPR_return_code MPR_flush(MPR_file file)
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_io;
 	}
+	double log_end = MPI_Wtime();
+
+	if (file->comm->simulation_rank == 0)
+		printf("Time taken of writing logs %f\n", (log_end - log_start));
 
 	/* buffers cleanup */
 	if (MPR_variable_buffer_cleanup(file, lvi, (lvi + lvc)) != MPR_success)
