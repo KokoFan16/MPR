@@ -126,105 +126,57 @@ MPR_return_code MPR_logs(MPR_file file, int svi, int evi)
 {
 	int rank = file->comm->simulation_rank;
 
-//	if (file->flags == MPR_MODE_CREATE)
-//	{
-//		int log_count = 5;
-//		for (int v = svi; v < evi; v++)
-//		{
-//			MPR_local_patch local_patch = file->variable[v]->local_patch;
-//
-//			int offset = file->mpr->current_time_step * var_count * log_count + v * log_count;
-//			size_buffer[offset] = (long long int) file->mpr->current_time_step;
-//			size_buffer[offset+1] = (long long int) v;
-//			size_buffer[offset+2] = (long long int) rank;
-//			size_buffer[offset+3] = (long long int) local_patch->agg_patch_count;
-//			size_buffer[offset+4] = local_patch->out_file_size;
-////			size_buffer[offset+5] = file->mpr->file_meta_size;
-//		}
+	if (file->flags == MPR_MODE_CREATE)
+	{
+		if (file->mpr->current_time_step == (file->mpr->last_tstep -1))
+		{
+			int log_count = 5;
+			MPR_local_patch local_patch = file->variable[0]->local_patch;
 
-//		if (file->mpr->current_time_step == (file->mpr->last_tstep -1))
-//		{
-//			int count = file->mpr->last_tstep * var_count * log_count;
-//			long long int* total_size_buffer = NULL;
-//			if (rank == 0)
-//				total_size_buffer = malloc(count*sizeof(long long int)*file->comm->simulation_nprocs);
-//
-//			MPI_Gather(size_buffer, count, MPI_LONG_LONG_INT, total_size_buffer, count, MPI_LONG_LONG_INT, 0, file->comm->simulation_comm);
-//
-//			if (rank == 0)
-//			{
-//				char* directory_path = malloc(512);
-//				memset(directory_path, 0, sizeof(*directory_path) * 512);
-//				strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
-//
-//				char size_log[512];
-//				sprintf(size_log, "size_%s_log", directory_path);
-//				free(directory_path);
-//
-//				FILE* fp = fopen(size_log, "w"); /* open file */
-//				if (!fp) /* Check file handle */
-//					fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
-//
-//				int loop_count = file->comm->simulation_nprocs * var_count * file->mpr->last_tstep;
-//				for (int i = 0; i < loop_count; i++)
-//					fprintf(fp, "%lld %lld %lld %lld %lld\n", total_size_buffer[i*8+0], total_size_buffer[i*8+1], total_size_buffer[i*8+2], total_size_buffer[i*8+3], total_size_buffer[i*8+4]);
-//
-//				fclose(fp);
-//			}
-//			free(total_size_buffer);
-//		}
+			int offset = file->mpr->current_time_step * log_count;
 
-//		char log_folder[512];
-//
-//		char* directory_path = malloc(512);
-//		memset(directory_path, 0, sizeof(*directory_path) * 512);
-//		strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
-//
-//		sprintf(log_folder, "log_%s", directory_path);
-//		free(directory_path);
-//
-//		long len = strlen(log_folder);
-//		log_folder[len] = '\0';
-//
-//		if (file->mpr->current_time_step == 0)
-//		{
-//			if (rank == 0)
-//			{
-//				int ret = mkdir(log_folder, S_IRWXU | S_IRWXG | S_IRWXO);
-//				if (ret != 0 && errno != EEXIST)
-//					fprintf(stderr, "Error: failed to mkdir %s\n", log_folder);
-//
-//			}
-//		}
-//		MPI_Barrier(file->comm->simulation_comm);
-//
-//		char log_file[512];
-//		sprintf(log_file, "%s/log_%d", log_folder, rank);
-//
-//		FILE* fp = fopen(log_file, "a"); /* open file */
-//	    if (!fp) /* Check file handle */
-//	    {
-//			fprintf(stderr, " [%s] [%d] log_dir is corrupt.\n", __FILE__, __LINE__);
-//			return -1;
-//	    }
-//		for (int v = svi; v < evi; v++)
-//		{
-//			MPR_local_patch local_patch = file->variable[v]->local_patch;
-//			if (file->mpr->is_aggregator == 1)
-//			{
-//
-//
-////				for (int i = 0; i < local_patch->agg_patch_count; i++)
-////				{
-////					fprintf(fp, "%d, P %d, size %d\n", file->mpr->current_time_step, local_patch->agg_patch_id_array[i], local_patch->agg_patch_size[i]);
-////				}
-//			}
-//			fprintf(fp, "%d, R %d, count %d, size %lld\n", file->mpr->current_time_step, rank, local_patch->patch_count, local_patch->proc_size);
-//		}
-//		fclose(fp);
-//	}
+			if (file->mpr->is_aggregator == 1)
+			{
+				size_buffer[offset] = file->mpr->is_aggregator;
+				size_buffer[offset + 1] = file->mpr->current_time_step;
+				size_buffer[offset + 2] = rank;
+				size_buffer[offset + 3] = local_patch->agg_patch_count;
+				size_buffer[offset + 4] = local_patch->out_file_size;
+			}
 
-//	MPI_Barrier(file->comm->simulation_comm);
+			int count = file->mpr->last_tstep * log_count;
+			long long int* total_size_buffer = NULL;
+			if (rank == 0)
+				total_size_buffer = malloc(count*sizeof(long long int)*file->comm->simulation_nprocs);
+
+			MPI_Gather(size_buffer, count, MPI_LONG_LONG_INT, total_size_buffer, count, MPI_LONG_LONG_INT, 0, file->comm->simulation_comm);
+
+			if (rank == 0)
+			{
+				char* directory_path = malloc(512);
+				memset(directory_path, 0, sizeof(*directory_path) * 512);
+				strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
+
+				char size_log[512];
+				sprintf(size_log, "size_%s_log", directory_path);
+				free(directory_path);
+
+				FILE* fp = fopen(size_log, "w"); /* open file */
+				if (!fp) /* Check file handle */
+					fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
+
+				int loop_count = file->comm->simulation_nprocs * file->mpr->last_tstep;
+				for (int i = 0; i < loop_count; i++)
+				{
+					if (total_size_buffer[i*log_count] == 1)
+						fprintf(fp, "%lld %lld %lld %lld\n", total_size_buffer[i*log_count+1], total_size_buffer[i*log_count+2], total_size_buffer[i*log_count+3], total_size_buffer[i*log_count+4]);
+				}
+
+				fclose(fp);
+			}
+			free(total_size_buffer);
+		}
+	}
 
 	return MPR_success;
 }

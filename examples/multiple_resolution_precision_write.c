@@ -72,7 +72,8 @@ int main(int argc, char **argv)
 
 	time_buffer = malloc(time_step_count * 9 * sizeof(float));
 	memset(time_buffer, 0, time_step_count * 9 * sizeof(float));
-	size_buffer = malloc(time_step_count * 5 * variable_count * sizeof(long long int));
+	size_buffer = malloc(time_step_count * 5 * sizeof(long long int));
+	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
 
 	for (ts = 0; ts < time_step_count; ts++)
 	{
