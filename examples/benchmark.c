@@ -37,6 +37,7 @@ char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 8x8x8 -p 8x8x8 -i inpu
                      "  -f: file name template\n"
                      "  -t: number of timesteps\n"
                      "  -v: number of variables (or file containing a list of variables)\n"
+					 "  -o: the number of out files\n"
 					 "  -d: whether to dump the logs\n (1: dump the logs)";
 
 
@@ -49,10 +50,13 @@ int main(int argc, char **argv)
 	/* Parse input arguments and initialize */
 	parse_args(argc, argv);
 
-
+	/* Read histogram */
 	read_size_file(input_file);
 
+	/* Create new histogram by using linear interpolation */
 	linear_interpolation();
+
+	aggregation_perform();
 
 
 	/* MPI close */
@@ -84,10 +88,8 @@ static int read_size_file(char* input_file)
 
 static int linear_interpolation()
 {
-	// 2 2 2
-	int file_patch_count = patch_box_size[0] * patch_box_size[1] * patch_box_size[2];
-	// 4 2 2
-	patch_count = global_box_size[0] * global_box_size[1] * global_box_size[2];
+	int file_patch_count = patch_box_size[0] * patch_box_size[1] * patch_box_size[2]; // the patch count from original histogram
+	patch_count = global_box_size[0] * global_box_size[1] * global_box_size[2]; // the new patch count
 
 	if (patch_count == file_patch_count)
 		patch_sizes = origin_patch_sizes;
@@ -95,35 +97,37 @@ static int linear_interpolation()
 	{
 		patch_sizes = malloc(patch_count * sizeof(int));
 
-		float factor_x = patch_box_size[0] / (float) global_box_size[0]; // 0.5
-		float factor_y = patch_box_size[1] / (float) global_box_size[1]; // 1
-		float factor_z = patch_box_size[2] / (float) global_box_size[2]; // 1
+		float factor_x = patch_box_size[0] / (float) global_box_size[0];
+		float factor_y = patch_box_size[1] / (float) global_box_size[1];
+		float factor_z = patch_box_size[2] / (float) global_box_size[2];
 
-		for (int k = 0; k < global_box_size[2]; k++) // 0 1
+		for (int k = 0; k < global_box_size[2]; k++)
 		{
-			for (int j = 0; j < global_box_size[1]; j++) // 0 1
+			for (int j = 0; j < global_box_size[1]; j++)
 			{
-				for (int i = 0; i < global_box_size[0]; i++) // 0 1 2 3
+				for (int i = 0; i < global_box_size[0]; i++)
 				{
-					float z = k * factor_z; // 0 1
-					float y = j * factor_y; // 0 1
-					float x = i * factor_x; // 0 0.5 1 1.5
+					float z = k * factor_z;
+					float y = j * factor_y;
+					float x = i * factor_x;
 
-					int z_int = (int)floor(k * factor_z); // 0 1
-					int y_int = (int)floor(j * factor_y); // 0 1
-					int x_int = (int)floor(i * factor_x); // 0 0 1 1
+					int z_int = (int)floor(k * factor_z);
+					int y_int = (int)floor(j * factor_y);
+					int x_int = (int)floor(i * factor_x);
 
-					float w = z - z_int; // 0
-					float u = y - y_int; // 0
-					float v = x - x_int; // 0 0.5 0 0.5
+					float w = z - z_int;
+					float u = y - y_int;
+					float v = x - x_int;
 
-					if (x_int + 1 == patch_box_size[0]) // 2
-						x_int -= 1;  // 1
-					if (y_int + 1 == patch_box_size[1]) // 2
+					// check boundary
+					if (x_int + 1 == patch_box_size[0])
+						x_int -= 1;
+					if (y_int + 1 == patch_box_size[1])
 						y_int -= 1;
-					if (z_int + 1 == patch_box_size[2]) // 2
+					if (z_int + 1 == patch_box_size[2])
 						z_int -= 1;
 
+					// find 8 neighbors
 					int c000 = origin_patch_sizes[z_int * patch_box_size[1] * patch_box_size[0] + y_int * patch_box_size[0] + x_int];
 					int c001 = origin_patch_sizes[z_int * patch_box_size[1] * patch_box_size[0] + y_int * patch_box_size[0] + x_int + 1];
 					int c011 = origin_patch_sizes[z_int * patch_box_size[1] * patch_box_size[0] + (y_int + 1) * patch_box_size[0] + x_int + 1];
@@ -133,6 +137,7 @@ static int linear_interpolation()
 					int c111 = origin_patch_sizes[(z_int + 1) * patch_box_size[1] * patch_box_size[0] + (y_int + 1) * patch_box_size[0] + x_int + 1];
 					int c110 = origin_patch_sizes[(z_int + 1) * patch_box_size[1] * patch_box_size[0] + (y_int + 1) * patch_box_size[0] + x_int];
 
+					// calculate interpolated values
 					int index = k * global_box_size[1] * global_box_size[0] + j * global_box_size[0] + i;
 					patch_sizes[index] = (c000 * (1 - v) * (1 - u) * (1 - w)
 							+ c100 * v * (1 - u) * (1 - w)
@@ -145,23 +150,52 @@ static int linear_interpolation()
 				}
 			}
 		}
-
-		if (rank == 0)
-		{
-			for (int i = 0; i < patch_count; i++)
-			{
-				printf("%d\n", patch_sizes[i]);
-			}
-		}
-
 	}
-
 	return MPR_success;
 }
 
+
+static int aggregation_perform()
+{
+	long long int total_size = 0;
+	for (int i = 0; i < patch_count; i++)
+		total_size += patch_sizes[i];
+
+	long long int average_file_size = total_size / out_file_num;
+
+	int cur_agg_count = 0;
+	long long int agg_sizes[out_file_num]; /* the current size of aggregators */
+	memset(agg_sizes, 0, out_file_num * sizeof(long long int));
+
+	int patch_assign_array[patch_count];
+	memset(patch_assign_array, -1, patch_count * sizeof(int));
+
+	int under = 0;
+	int pcount = 0;
+	while (pcount < patch_count && cur_agg_count < out_file_num)
+	{
+		if (agg_sizes[cur_agg_count] >= average_file_size)
+		{
+			if (agg_sizes[cur_agg_count] >= average_file_size)
+			{
+				agg_sizes[cur_agg_count] -= patch_sizes[--pcount];
+				under = 1 - under;
+				total_size -= agg_sizes[cur_agg_count];
+				cur_agg_count++;
+				average_file_size = total_size / (out_file_num - cur_agg_count);
+			}
+		}
+		patch_assign_array[pcount] = cur_agg_count;
+		agg_sizes[cur_agg_count] += patch_sizes[pcount];
+		pcount++;
+	}
+	return MPR_success;
+}
+
+
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:p:i:f:t:v:d:";
+  char flags[] = "g:p:i:f:t:v:o:d:";
   int one_opt = 0;
 
   while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -209,6 +243,11 @@ static void parse_args(int argc, char **argv)
 		  terminate_with_error_msg("Invalid number of variables\n%s", usage);
 	  }
 	  break;
+
+    case('o'): // The number of out files
+      if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > process_count)
+        terminate_with_error_msg("Invalid number of out files\n%s", usage);
+      break;
 
     case('d'): // is_log
       if (sscanf(optarg, "%d", &logs) < 0 || logs > 1)
