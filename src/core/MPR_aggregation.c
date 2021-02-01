@@ -172,7 +172,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		{
 			long long int average_file_size = total_size / file->mpr->out_file_num; /* The idea average file size*/
 
-			int under = 0;
 			int pcount = 0;
 			if (file->mpr->is_z_order == 0) /* row-order */
 			{
@@ -180,8 +179,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				{
 					if (agg_sizes[cur_agg_count] >= average_file_size)
 					{
-						agg_sizes[cur_agg_count] -= patch_sizes[--pcount];
-						under = 1 - under;
 						total_size -= agg_sizes[cur_agg_count];
 						cur_agg_count++;
 						average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
@@ -200,8 +197,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					{
 						if (agg_sizes[cur_agg_count] >= average_file_size)
 						{
-							agg_sizes[cur_agg_count] -= patch_sizes_zorder[--pcount];
-							under = 1 - under;
 							total_size -= agg_sizes[cur_agg_count];
 							cur_agg_count++;
 							average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
@@ -215,8 +210,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			}
 		}
 
-//		if (rank == 0)
-//			printf("out files is %d\n", cur_agg_count + 1);
+		if (rank == 0)
+			printf("out files is %d\n", cur_agg_count + 1);
 
 		file->mpr->out_file_num = cur_agg_count + 1;
 
