@@ -21,14 +21,16 @@ char var_list[512];
 int* patch_sizes;
 int* origin_patch_sizes;
 int patch_count;
-//char output_file_name[512];
-//unsigned char **data;
+
+unsigned char* local_buffer;
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
 static int generate_vars();
 static int read_size_file(char* input_file);
 static int linear_interpolation();
+static int aggregation_perform();
+static int generate_random_local_data();
 
 char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 8x8x8 -p 8x8x8 -i input_file -v 2 -t 4 -f output_file_name\n"
                      "  -g: patch count dimensions (patch count in x y z)\n"
@@ -56,8 +58,11 @@ int main(int argc, char **argv)
 	/* Create new histogram by using linear interpolation */
 	linear_interpolation();
 
-	aggregation_perform();
+	/* Create local data per process */
+	generate_random_local_data();
 
+	/* Aggregation */
+	aggregation_perform();
 
 	/* MPI close */
 	shutdown_mpi();
@@ -97,45 +102,40 @@ static int linear_interpolation()
 	{
 		patch_sizes = malloc(patch_count * sizeof(int));
 
-		float factor_x = patch_box_size[0] / (float) global_box_size[0];
-		float factor_y = patch_box_size[1] / (float) global_box_size[1];
-		float factor_z = patch_box_size[2] / (float) global_box_size[2];
+		float factor_x = patch_box_size[0] / (float)global_box_size[0];
+		float factor_y = patch_box_size[1] / (float)global_box_size[1];
+		float factor_z = patch_box_size[2] / (float)global_box_size[2];
 
 		for (int k = 0; k < global_box_size[2]; k++)
 		{
+			float z = k * factor_z;
+			int z_int = (int)((k + 0.5f) * factor_z);
+			float w = z - z_int;
+			int z_int_p1 = (z_int + 1) < patch_box_size[2] ? (z_int + 1) : z_int;
+
 			for (int j = 0; j < global_box_size[1]; j++)
 			{
+				float y = j * factor_y;
+				int y_int = (int)((j + 0.5f) * factor_y);
+				float u = y - y_int;
+				int y_int_p1 = (y_int + 1) < patch_box_size[1] ? (y_int + 1) : y_int;
+
 				for (int i = 0; i < global_box_size[0]; i++)
 				{
-					float z = k * factor_z;
-					float y = j * factor_y;
 					float x = i * factor_x;
-
-					int z_int = (int)floor(k * factor_z);
-					int y_int = (int)floor(j * factor_y);
-					int x_int = (int)floor(i * factor_x);
-
-					float w = z - z_int;
-					float u = y - y_int;
+					int x_int = (int)((i + 0.5f) * factor_x);
 					float v = x - x_int;
-
-					// check boundary
-					if (x_int + 1 == patch_box_size[0])
-						x_int -= 1;
-					if (y_int + 1 == patch_box_size[1])
-						y_int -= 1;
-					if (z_int + 1 == patch_box_size[2])
-						z_int -= 1;
+					int x_int_p1 = (x_int + 1) < patch_box_size[0] ? (x_int + 1) : x_int;
 
 					// find 8 neighbors
 					int c000 = origin_patch_sizes[z_int * patch_box_size[1] * patch_box_size[0] + y_int * patch_box_size[0] + x_int];
-					int c001 = origin_patch_sizes[z_int * patch_box_size[1] * patch_box_size[0] + y_int * patch_box_size[0] + x_int + 1];
-					int c011 = origin_patch_sizes[z_int * patch_box_size[1] * patch_box_size[0] + (y_int + 1) * patch_box_size[0] + x_int + 1];
-					int c010 = origin_patch_sizes[z_int * patch_box_size[1] * patch_box_size[0] + (y_int + 1) * patch_box_size[0] + x_int];
-					int c100 = origin_patch_sizes[(z_int + 1) * patch_box_size[1] * patch_box_size[0] + y_int * patch_box_size[0] + x_int];
-					int c101 = origin_patch_sizes[(z_int + 1) * patch_box_size[1] * patch_box_size[0] + y_int * patch_box_size[0] + x_int + 1];
-					int c111 = origin_patch_sizes[(z_int + 1) * patch_box_size[1] * patch_box_size[0] + (y_int + 1) * patch_box_size[0] + x_int + 1];
-					int c110 = origin_patch_sizes[(z_int + 1) * patch_box_size[1] * patch_box_size[0] + (y_int + 1) * patch_box_size[0] + x_int];
+					int c001 = origin_patch_sizes[z_int * patch_box_size[1] * patch_box_size[0] + y_int * patch_box_size[0] + x_int_p1];
+					int c011 = origin_patch_sizes[z_int * patch_box_size[1] * patch_box_size[0] + y_int_p1 * patch_box_size[0] + x_int_p1];
+					int c010 = origin_patch_sizes[z_int * patch_box_size[1] * patch_box_size[0] + y_int_p1 * patch_box_size[0] + x_int];
+					int c100 = origin_patch_sizes[z_int_p1 * patch_box_size[1] * patch_box_size[0] + y_int * patch_box_size[0] + x_int];
+					int c101 = origin_patch_sizes[z_int_p1 * patch_box_size[1] * patch_box_size[0] + y_int * patch_box_size[0] + x_int_p1];
+					int c111 = origin_patch_sizes[z_int_p1 * patch_box_size[1] * patch_box_size[0] + y_int_p1 * patch_box_size[0] + x_int_p1];
+					int c110 = origin_patch_sizes[z_int_p1 * patch_box_size[1] * patch_box_size[0] + y_int_p1 * patch_box_size[0] + x_int];
 
 					// calculate interpolated values
 					int index = k * global_box_size[1] * global_box_size[0] + j * global_box_size[0] + i;
@@ -146,13 +146,24 @@ static int linear_interpolation()
 							+ c101 * v * (1 - u) * w
 							+ c011 * (1 - v) * u * w
 							+ c110 * v * u * (1 - w)
-							+ c111 * v * u * v);
+							+ c111 * v * u * w);
 				}
 			}
 		}
 	}
 	return MPR_success;
 }
+
+
+static int generate_random_local_data()
+{
+	local_buffer = malloc(patch_sizes[rank]);
+	for (int i = 0; i < patch_sizes[rank]; i++)
+		local_buffer[i] = 'a' + (random() % 26);
+
+	return MPR_success;
+}
+
 
 
 static int aggregation_perform()
@@ -172,11 +183,12 @@ static int aggregation_perform()
 
 	int under = 0;
 	int pcount = 0;
+	/* Patches assigned to aggregators */
 	while (pcount < patch_count && cur_agg_count < out_file_num)
 	{
 		if (agg_sizes[cur_agg_count] >= average_file_size)
 		{
-			if (agg_sizes[cur_agg_count] >= average_file_size)
+			if (agg_sizes[cur_agg_count] >= average_file_size) // update average value
 			{
 				agg_sizes[cur_agg_count] -= patch_sizes[--pcount];
 				under = 1 - under;
@@ -189,6 +201,62 @@ static int aggregation_perform()
 		agg_sizes[cur_agg_count] += patch_sizes[pcount];
 		pcount++;
 	}
+
+	int agg_ranks[out_file_num]; /* AGG Array */
+	int gap = process_count / out_file_num;
+
+	int cagg = 0;
+	int is_aggregator = 0;
+	for (int i = 0; i < process_count; i+= gap)
+	{
+		if (cagg < out_file_num)
+		{
+			agg_ranks[cagg++] = i;
+			if (rank == i)
+				is_aggregator = 1;
+		}
+		else
+			break;
+	}
+
+	long long int agg_size = 0;
+	for (int i = 0; i < out_file_num; i++)
+	{
+		if (rank == agg_ranks[i])
+			agg_size = agg_sizes[i];
+	}
+
+	int recv_array[patch_count]; /* Local receive array per process */
+	int recv_num = 0;  /* number of received number of patches per aggregator */
+	for (int i = 0; i < patch_count; i++)
+	{
+		if (rank == agg_ranks[patch_assign_array[i]])
+			recv_array[recv_num++] = i;
+	}
+
+	/* Data exchange */
+	int comm_count =  recv_num + 1; /* the maximum transform times */
+	MPI_Request* req = malloc(comm_count * sizeof(MPI_Request));
+	MPI_Status* stat = malloc(comm_count * sizeof(MPI_Status));
+	int req_id = 0;
+	int offset = 0;
+
+	unsigned char* recv_buffer = NULL;
+	if (is_aggregator == 1)
+		recv_buffer = malloc(agg_size);
+
+	for (int i = 0; i < recv_num; i++)
+	{
+		MPI_Irecv(&recv_buffer[offset], patch_sizes[recv_array[i]], MPI_BYTE, recv_array[i], recv_array[i], MPI_COMM_WORLD, &req[req_id]);
+		offset += patch_sizes[recv_array[i]];
+		req_id++;
+	}
+
+	MPI_Isend(local_buffer, patch_sizes[rank], MPI_BYTE, agg_ranks[patch_assign_array[rank]], rank, MPI_COMM_WORLD, &req[req_id]);
+	req_id++;
+
+	MPI_Waitall(req_id, req, stat);
+
 	return MPR_success;
 }
 
