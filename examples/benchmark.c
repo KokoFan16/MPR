@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 	double max_time = 0;
 	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 	if (total_time == max_time)
-		printf("%d: r %f i %f g %f\n", process_count, read_time, inter_time, gene_time);
+		printf("%d (%d): r %f i %f g %f\n", process_count, is_collective, read_time, inter_time, gene_time);
 
 	for (ts = 0; ts < time_step_count; ts++)
 	{
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
 		double max_write_time = 0;
 		MPI_Allreduce(&write_time, &max_write_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 		if (max_write_time == write_time)
-			printf("%d: %d w %f\n", process_count, ts, write_time);
+			printf("%d (%d): %d w %f\n", process_count, is_collective, ts, write_time);
 	}
 
 	free(origin_patch_sizes);
