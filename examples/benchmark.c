@@ -130,13 +130,12 @@ static int linear_interpolation()
 {
 	int file_patch_count = patch_box_size[0] * patch_box_size[1] * patch_box_size[2]; // the patch count from original histogram
 	patch_count = global_box_size[0] * global_box_size[1] * global_box_size[2]; // the new patch count
+	patch_sizes = malloc(patch_count * sizeof(int));
 
 	if (patch_count == file_patch_count)
-		patch_sizes = origin_patch_sizes;
+		memcpy(patch_sizes, origin_patch_sizes, patch_count * sizeof(int));
 	else
 	{
-		patch_sizes = malloc(patch_count * sizeof(int));
-
 		float factor_x = patch_box_size[0] / (float)global_box_size[0];
 		float factor_y = patch_box_size[1] / (float)global_box_size[1];
 		float factor_z = patch_box_size[2] / (float)global_box_size[2];
@@ -259,6 +258,7 @@ static void write_data(int ts)
 
 static int aggregation_perform()
 {
+	total_size = 0;
 	for (int i = 0; i < patch_count; i++)
 		total_size += patch_sizes[i];
 
@@ -271,7 +271,6 @@ static int aggregation_perform()
 	int patch_assign_array[patch_count];
 	memset(patch_assign_array, -1, patch_count * sizeof(int));
 
-	int under = 0;
 	int pcount = 0;
 	/* Patches assigned to aggregators */
 	while (pcount < patch_count && cur_agg_count < out_file_num)
@@ -280,8 +279,6 @@ static int aggregation_perform()
 		{
 			if (agg_sizes[cur_agg_count] >= average_file_size) // update average value
 			{
-				agg_sizes[cur_agg_count] -= patch_sizes[--pcount];
-				under = 1 - under;
 				total_size -= agg_sizes[cur_agg_count];
 				cur_agg_count++;
 				average_file_size = total_size / (out_file_num - cur_agg_count);
@@ -296,6 +293,7 @@ static int aggregation_perform()
 	int gap = process_count / out_file_num;
 
 	int cagg = 0;
+	is_aggregator = 0;
 	for (int i = 0; i < process_count; i+= gap)
 	{
 		if (cagg < out_file_num)
@@ -308,10 +306,13 @@ static int aggregation_perform()
 			break;
 	}
 
+	agg_size = 0;
 	for (int i = 0; i < out_file_num; i++)
 	{
 		if (rank == agg_ranks[i])
 			agg_size = agg_sizes[i];
+		if (rank == 0)
+			printf("%d: %lld\n", i, agg_sizes[i]);
 	}
 
 	int recv_array[patch_count]; /* Local receive array per process */
