@@ -311,8 +311,6 @@ static int aggregation_perform()
 	{
 		if (rank == agg_ranks[i])
 			agg_size = agg_sizes[i];
-		if (rank == 0)
-			printf("%d: %lld\n", i, agg_sizes[i]);
 	}
 
 	int recv_array[patch_count]; /* Local receive array per process */
