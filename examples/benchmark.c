@@ -27,6 +27,7 @@ int is_aggregator = 0;
 unsigned char* local_buffer = NULL;
 unsigned char* recv_buffer = NULL;
 long long int agg_size = 0;
+long long int total_size = 0;
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -55,26 +56,42 @@ int main(int argc, char **argv)
 	int ts = 0;
 	/* Init MPI and MPI vars (e.g. rank and process_count) */
 	init_mpi(argc, argv);
-
 	/* Parse input arguments and initialize */
 	parse_args(argc, argv);
-
 	/* Read histogram */
+	double read_start = MPI_Wtime();
 	read_size_file(input_file);
+	double read_end = MPI_Wtime();
+	double read_time = read_end - read_start;
 
 	/* Create new histogram by using linear interpolation */
+	double inter_start = MPI_Wtime();
 	linear_interpolation();
+	double inter_end = MPI_Wtime();
+	double inter_time = inter_end - inter_start;
 
 	/* Create local data per process */
+	double gene_start = MPI_Wtime();
 	generate_random_local_data();
+	double gene_end = MPI_Wtime();
+	double gene_time = gene_end - gene_start;
+
+	double total_time = read_time + inter_time + gene_time;
+	double max_time = 0;
+	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+	if (total_time == max_time)
+		printf("r %f i %f g %f\n", read_time, inter_time, gene_time);
 
 	for (ts = 0; ts < time_step_count; ts++)
 	{
 		double write_start = MPI_Wtime();
 		write_data(ts);
 		double write_end = MPI_Wtime();
-		if (rank == 0)
-			printf("I/O time %f\n", (write_end - write_start));
+		double write_time = write_end - write_start;
+		double max_write_time = 0;
+		MPI_Allreduce(&write_time, &max_write_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+		if (max_write_time == write_time)
+			printf("%d w %f\n", ts, write_time);
 	}
 
 	free(origin_patch_sizes);
@@ -223,17 +240,25 @@ static void write_data(int ts)
 
 		MPI_File fh;
 		MPI_Status status;
-		int err = MPI_File_open(MPI_COMM_WORLD, file_name, MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
+		MPI_Info info;
+		MPI_Info_create(&info);
+		MPI_Info_set(info, "romio_cb_write" , "enable");
+		if (total_size > 1073741824)
+		{
+			MPI_Info_set(info, "striping_factor", "48");
+			MPI_Info_set(info, "striping_unit", "8388608");
+		}
+		int err = MPI_File_open(MPI_COMM_WORLD, file_name, MPI_MODE_WRONLY | MPI_MODE_CREATE, info, &fh);
 		if (err)
 			terminate_with_error_msg("ERROR: MPI open file failed!\n");
 		MPI_File_write_at_all(fh, offset, local_buffer, patch_sizes[rank], MPI_BYTE, &status);
+		MPI_Info_free(&info);
 		MPI_File_close(&fh);
 	}
 }
 
 static int aggregation_perform()
 {
-	long long int total_size = 0;
 	for (int i = 0; i < patch_count; i++)
 		total_size += patch_sizes[i];
 
