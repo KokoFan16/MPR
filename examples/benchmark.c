@@ -8,6 +8,7 @@
 
 #include "../src/utils/MPR_windows_utils.h"
 #include "MPR_example_utils.h"
+#include <errno.h>
 
 char var_name[MAX_VAR_COUNT][512];
 int bpv[MAX_VAR_COUNT];
@@ -18,11 +19,15 @@ char input_file[512];
 char output_file_template[512];
 char var_list[512];
 
-int* patch_sizes;
-int* origin_patch_sizes;
-int patch_count;
+int* patch_sizes = NULL;
+int* origin_patch_sizes = NULL;
+int patch_count = 0;
+int is_collective = 0;
+int is_aggregator = 0;
 
-unsigned char* local_buffer;
+unsigned char* local_buffer = NULL;
+unsigned char* recv_buffer = NULL;
+long long int agg_size = 0;
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -31,8 +36,10 @@ static int read_size_file(char* input_file);
 static int linear_interpolation();
 static int aggregation_perform();
 static int generate_random_local_data();
+static void write_data(int ts);
+static void create_folder(char* data_path);
 
-char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 8x8x8 -p 8x8x8 -i input_file -v 2 -t 4 -f output_file_name\n"
+char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 8x8x8 -p 8x8x8 -i input_file -v 2 -t 4 -f output_file_name -w 1 -o 4\n"
                      "  -g: patch count dimensions (patch count in x y z)\n"
 					 "  -p: patch count dimensions in input file (patch count in x y z)\n"
 					 "  -i: input file name\n"
@@ -40,6 +47,7 @@ char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 8x8x8 -p 8x8x8 -i inpu
                      "  -t: number of timesteps\n"
                      "  -v: number of variables (or file containing a list of variables)\n"
 					 "  -o: the number of out files\n"
+					 "  -w: write mode (1 means MPI collective I/O)\n"
 					 "  -d: whether to dump the logs\n (1: dump the logs)";
 
 
@@ -61,8 +69,10 @@ int main(int argc, char **argv)
 	/* Create local data per process */
 	generate_random_local_data();
 
-	/* Aggregation */
-	aggregation_perform();
+	write_data(0);
+
+	free(origin_patch_sizes);
+	free(patch_sizes);
 
 	/* MPI close */
 	shutdown_mpi();
@@ -154,7 +164,6 @@ static int linear_interpolation()
 	return MPR_success;
 }
 
-
 static int generate_random_local_data()
 {
 	local_buffer = malloc(patch_sizes[rank]);
@@ -165,6 +174,54 @@ static int generate_random_local_data()
 }
 
 
+static void write_data(int ts)
+{
+	if (is_collective == 0)
+	{
+		/* Aggregation */
+		aggregation_perform();
+
+		char* data_set_path = malloc(sizeof(*data_set_path) * 512);
+		memset(data_set_path, 0, sizeof(*data_set_path) * 512);
+		sprintf(data_set_path, "%s/time%09d/", output_file_template, ts);
+
+		create_folder(data_set_path);
+
+		char file_name[512];
+		memset(file_name, 0, 512 * sizeof(*file_name));
+		sprintf(file_name, "%s%d", data_set_path, rank);
+		free(data_set_path);
+
+		if (is_aggregator == 1)
+		{
+			int fp = open(file_name, O_CREAT | O_EXCL | O_WRONLY, 0664);
+			if (fp == -1)
+				terminate_with_error_msg("ERROR: Cannot open write file or file already exist!\n");
+			long long int write_file_size = write(fp, recv_buffer, agg_size);
+			if (write_file_size != agg_size)
+				terminate_with_error_msg("ERROR: Write count is not correct!\n");
+			close(fp);
+		}
+	}
+	else
+	{
+		long long int offset = 0;
+		for (int i = 0; i < rank; i++)
+			offset += patch_sizes[i];
+
+		char file_name[512];
+		memset(file_name, 0, 512 * sizeof(*file_name));
+		sprintf(file_name, "%s_time%09d_data", output_file_template, ts);
+
+		MPI_File fh;
+		MPI_Status status;
+		int err = MPI_File_open(MPI_COMM_WORLD, file_name, MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
+		if (err)
+			terminate_with_error_msg("ERROR: MPI open file failed!\n");
+		MPI_File_write_at_all(fh, offset, local_buffer, patch_sizes[rank], MPI_BYTE, &status);
+		MPI_File_close(&fh);
+	}
+}
 
 static int aggregation_perform()
 {
@@ -206,7 +263,6 @@ static int aggregation_perform()
 	int gap = process_count / out_file_num;
 
 	int cagg = 0;
-	int is_aggregator = 0;
 	for (int i = 0; i < process_count; i+= gap)
 	{
 		if (cagg < out_file_num)
@@ -219,11 +275,12 @@ static int aggregation_perform()
 			break;
 	}
 
-	long long int agg_size = 0;
 	for (int i = 0; i < out_file_num; i++)
 	{
 		if (rank == agg_ranks[i])
 			agg_size = agg_sizes[i];
+		if (rank == 0)
+			printf("%d %lld\n", i, agg_sizes[i]);
 	}
 
 	int recv_array[patch_count]; /* Local receive array per process */
@@ -241,7 +298,6 @@ static int aggregation_perform()
 	int req_id = 0;
 	int offset = 0;
 
-	unsigned char* recv_buffer = NULL;
 	if (is_aggregator == 1)
 		recv_buffer = malloc(agg_size);
 
@@ -261,9 +317,45 @@ static int aggregation_perform()
 }
 
 
+static void create_folder(char* data_path)
+{
+	char last_path[512] = {0};
+	char this_path[512] = {0};
+	char tmp_path[512] = {0};
+	char* pos;
+
+	if (rank == 0)
+	{
+		strcpy(this_path, data_path);
+		if ((pos = strrchr(this_path, '/')))
+		{
+			pos[1] = '\0';
+			if (strcmp(this_path, last_path) != 0)
+			{
+				/* make sure if this directory exists */
+				strcpy(last_path, this_path);
+				memset(tmp_path, 0, 512 * sizeof (char));
+				/* walk up path and mkdir each segment */
+				for (int j = 0; j < (int)strlen(this_path); j++)
+				{
+					if (j > 0 && this_path[j] == '/')
+					{
+						int ret = mkdir(tmp_path, S_IRWXU | S_IRWXG | S_IRWXO);
+						if (ret != 0 && errno != EEXIST)
+							terminate_with_error_msg("ERROR: Create data folder failed!\n");
+					}
+					tmp_path[j] = this_path[j];
+				}
+			}
+		}
+	}
+	MPI_Barrier(MPI_COMM_WORLD);
+}
+
+
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:p:i:f:t:v:o:d:";
+  char flags[] = "g:p:i:f:t:v:w:o:d:";
   int one_opt = 0;
 
   while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -311,6 +403,11 @@ static void parse_args(int argc, char **argv)
 		  terminate_with_error_msg("Invalid number of variables\n%s", usage);
 	  }
 	  break;
+
+    case('w'): // The number of out files
+      if (sscanf(optarg, "%d", &is_collective) < 0 || is_collective > 1)
+        terminate_with_error_msg("Invalid write mode (1 means MPI collective I/O)\n%s", usage);
+      break;
 
     case('o'): // The number of out files
       if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > process_count)
