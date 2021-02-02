@@ -14,7 +14,6 @@ char var_name[MAX_VAR_COUNT][512];
 int bpv[MAX_VAR_COUNT];
 char type_name[MAX_VAR_COUNT][512];
 int vps[MAX_VAR_COUNT];
-//MPR_variable* variable;
 char input_file[512];
 char output_file_template[512];
 char var_list[512];
@@ -53,7 +52,7 @@ char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 8x8x8 -p 8x8x8 -i inpu
 
 int main(int argc, char **argv)
 {
-	int ts = 0, var = 0;
+	int ts = 0;
 	/* Init MPI and MPI vars (e.g. rank and process_count) */
 	init_mpi(argc, argv);
 
@@ -69,10 +68,19 @@ int main(int argc, char **argv)
 	/* Create local data per process */
 	generate_random_local_data();
 
-	write_data(0);
+	for (ts = 0; ts < time_step_count; ts++)
+	{
+		double write_start = MPI_Wtime();
+		write_data(ts);
+		double write_end = MPI_Wtime();
+		if (rank == 0)
+			printf("I/O time %f\n", (write_end - write_start));
+	}
 
 	free(origin_patch_sizes);
 	free(patch_sizes);
+	free(local_buffer);
+	free(recv_buffer);
 
 	/* MPI close */
 	shutdown_mpi();
@@ -279,8 +287,6 @@ static int aggregation_perform()
 	{
 		if (rank == agg_ranks[i])
 			agg_size = agg_sizes[i];
-		if (rank == 0)
-			printf("%d %lld\n", i, agg_sizes[i]);
 	}
 
 	int recv_array[patch_count]; /* Local receive array per process */
