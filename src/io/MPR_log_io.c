@@ -40,6 +40,11 @@ MPR_return_code MPR_timing_logs(MPR_file file, int svi, int evi)
 			time_buffer[offset + 8] = wrt_data_time;
 		}
 
+		double max_time = 0;
+		MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, file->comm->simulation_comm);
+		if (total_time == max_time)
+			printf("%d %d: [%f] >= [p %f w %f c %f a %f o %f]\n", file->mpr->current_time_step, rank, total_time, rst_time, wave_time, comp_time, agg_time, wrt_data_time);
+
 		if (file->mpr->current_time_step == (file->mpr->last_tstep -1))
 		{
 			int count = file->mpr->last_tstep * time_count;
