@@ -261,13 +261,67 @@ static void write_data(int ts)
 	}
 }
 
+
+static int calZOrder(int x, int y, int z)
+{
+	static const unsigned int B[] = {0x09249249, 0x030C30C3, 0x0300F00F, 0x030000FF};
+	static const unsigned int S[] = {2, 4, 8, 16};
+
+	x = (x | (x << S[3])) & B[3];
+	x = (x | (x << S[2])) & B[2];
+	x = (x | (x << S[1])) & B[1];
+	x = (x | (x << S[0])) & B[0];
+
+	y = (y | (y << S[3])) & B[3];
+	y = (y | (y << S[2])) & B[2];
+	y = (y | (y << S[1])) & B[1];
+	y = (y | (y << S[0])) & B[0];
+
+	z = (z | (z << S[3])) & B[3];
+	z = (z | (z << S[2])) & B[2];
+	z = (z | (z << S[1])) & B[1];
+	z = (z | (z << S[0])) & B[0];
+
+	int result = x | (y << 1) | (z << 2);
+	return result;
+}
+
 static int aggregation_perform()
 {
-	total_size = 0;
-	for (int i = 0; i < patch_count; i++)
-		total_size += patch_sizes[i];
+	/****************** Convert to z-order ********************/
+	int patch_count_power2 = 0;  /* z-order count */
+	int* patch_sizes_zorder = NULL;
+	int* patch_ids_zorder = NULL;
+	int next_2_power_xyz[MPR_MAX_DIMENSIONS]; /* (e.g., 3x3x3 -> 4x4x4)*/
+	int max_d = 0;
+	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+	{
+		if (global_box_size[i] > max_d)
+			max_d = global_box_size[i];
+	}
+	patch_count_power2 = pow(pow(2, ceil(log2(max_d))), 3); /* 27 -> 64 */
 
-	long long int average_file_size = total_size / out_file_num;
+	/* Reorder the patch id array with z-order curve */
+	patch_sizes_zorder = (int*)malloc(patch_count_power2 * sizeof(int)); /* patch size with z-order */
+	memset(patch_sizes_zorder, 0, patch_count_power2 * sizeof(int));
+	patch_ids_zorder = (int*)malloc(patch_count_power2 * sizeof(int));  /* patch id with z-order */
+	memset(patch_ids_zorder, -1, patch_count_power2 * sizeof(int));
+	for (int z = 0; z < global_box_size[2]; z++)
+	{
+		for (int y = 0; y < global_box_size[1]; y++)
+		{
+			for (int x = 0; x < global_box_size[0]; x++)
+			{
+				int zorder = calZOrder(x, y, z);  /* Calculate the index with z-order */
+				int index = z * global_box_size[1] * global_box_size[0] + y * global_box_size[0] + x;
+				patch_sizes_zorder[zorder] = patch_sizes[index];
+				patch_ids_zorder[zorder] = index;
+			}
+		}
+	}
+
+	long long int total_size_tmp = total_size;
+	long long int average_file_size = total_size_tmp / out_file_num;
 
 	int cur_agg_count = 0;
 	long long int agg_sizes[out_file_num]; /* the current size of aggregators */
@@ -279,21 +333,19 @@ static int aggregation_perform()
 	int under = 0;
 	int pcount = 0;
 	/* Patches assigned to aggregators */
-	while (pcount < patch_count && cur_agg_count < out_file_num)
+	while (pcount < patch_count_power2 && cur_agg_count < out_file_num)
 	{
-		if (agg_sizes[cur_agg_count] >= average_file_size)
+		if (patch_ids_zorder[pcount] > -1)
 		{
-			if (agg_sizes[cur_agg_count] >= average_file_size) // update average value
+			if (agg_sizes[cur_agg_count] >= average_file_size)
 			{
-				agg_sizes[cur_agg_count] -= patch_sizes[--pcount];
-				under = 1 - under;
-				total_size -= agg_sizes[cur_agg_count];
+				total_size_tmp -= agg_sizes[cur_agg_count];
 				cur_agg_count++;
-				average_file_size = total_size / (out_file_num - cur_agg_count);
+				average_file_size = total_size_tmp / (out_file_num - cur_agg_count);
 			}
+			patch_assign_array[patch_ids_zorder[pcount]] = cur_agg_count;
+			agg_sizes[cur_agg_count] += patch_sizes_zorder[pcount];
 		}
-		patch_assign_array[pcount] = cur_agg_count;
-		agg_sizes[cur_agg_count] += patch_sizes[pcount];
 		pcount++;
 	}
 
