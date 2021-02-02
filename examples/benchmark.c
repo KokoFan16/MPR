@@ -339,8 +339,6 @@ static int aggregation_perform()
 		{
 			if (agg_sizes[cur_agg_count] >= average_file_size)
 			{
-				agg_sizes[cur_agg_count] -= patch_sizes_zorder[--pcount];
-				under = 1 - under;
 				total_size_tmp -= agg_sizes[cur_agg_count];
 				cur_agg_count++;
 				average_file_size = total_size_tmp / (out_file_num - cur_agg_count);
