@@ -185,6 +185,11 @@ static int linear_interpolation()
 			}
 		}
 	}
+
+	total_size = 0;
+	for (int i = 0; i < patch_count; i++)
+		total_size += patch_sizes[i];
+
 	return MPR_success;
 }
 
