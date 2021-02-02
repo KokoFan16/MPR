@@ -271,6 +271,7 @@ static int aggregation_perform()
 	int patch_assign_array[patch_count];
 	memset(patch_assign_array, -1, patch_count * sizeof(int));
 
+	int under = 0;
 	int pcount = 0;
 	/* Patches assigned to aggregators */
 	while (pcount < patch_count && cur_agg_count < out_file_num)
@@ -279,6 +280,8 @@ static int aggregation_perform()
 		{
 			if (agg_sizes[cur_agg_count] >= average_file_size) // update average value
 			{
+				agg_sizes[cur_agg_count] -= patch_sizes[--pcount];
+				under = 1 - under;
 				total_size -= agg_sizes[cur_agg_count];
 				cur_agg_count++;
 				average_file_size = total_size / (out_file_num - cur_agg_count);
