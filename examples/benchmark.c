@@ -279,7 +279,7 @@ static void write_data(int ts)
 		long long int offset = 0;
 		for (int i = 0; i < split_rank; i++)
 		{
-			int index = split_rank + color * split_size;
+			int index = i + color * split_size;
 			offset += patch_sizes[index];
 		}
 
