@@ -23,11 +23,14 @@ int* origin_patch_sizes = NULL;
 int patch_count = 0;
 int is_collective = 0;
 int is_aggregator = 0;
+int is_balanced = 0;
 
 unsigned char* local_buffer = NULL;
 unsigned char* recv_buffer = NULL;
 long long int agg_size = 0;
 long long int total_size = 0;
+
+double agg_time = 0;
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -39,7 +42,7 @@ static int generate_random_local_data();
 static void write_data(int ts);
 static void create_folder(char* data_path);
 
-char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 8x8x8 -p 8x8x8 -i input_file -v 2 -t 4 -f output_file_name -w 1 -o 4\n"
+char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 8x8x8 -p 8x8x8 -i input_file -v 2 -t 4 -f output_file_name -w 1 -o 4 -b 1\n"
                      "  -g: patch count dimensions (patch count in x y z)\n"
 					 "  -p: patch count dimensions in input file (patch count in x y z)\n"
 					 "  -i: input file name\n"
@@ -47,8 +50,8 @@ char *usage = "Parallel Usage: mpirun -n 8 ./benchmark -g 8x8x8 -p 8x8x8 -i inpu
                      "  -t: number of timesteps\n"
                      "  -v: number of variables (or file containing a list of variables)\n"
 					 "  -o: the number of out files\n"
-					 "  -w: write mode (1 means MPI collective I/O)\n"
-					 "  -d: whether to dump the logs\n (1: dump the logs)";
+					 "  -b: whether need balanced aggregation"
+					 "  -w: write mode (1 means MPI collective I/O)\n";
 
 
 int main(int argc, char **argv)
@@ -80,7 +83,7 @@ int main(int argc, char **argv)
 	double max_time = 0;
 	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 	if (total_time == max_time)
-		printf("%d (%d): r %f i %f g %f\n", process_count, is_collective, read_time, inter_time, gene_time);
+		printf("%d (%d %d): r %f i %f g %f\n", process_count, is_collective, is_balanced, read_time, inter_time, gene_time);
 
 	for (ts = 0; ts < time_step_count; ts++)
 	{
@@ -91,7 +94,7 @@ int main(int argc, char **argv)
 		double max_write_time = 0;
 		MPI_Allreduce(&write_time, &max_write_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 		if (max_write_time == write_time)
-			printf("%d (%d): %d w %f\n", process_count, is_collective, ts, write_time);
+			printf("%d (%d %d): %d a %f w %f\n", process_count, is_collective, is_balanced, ts, agg_time, write_time);
 	}
 
 	free(origin_patch_sizes);
@@ -208,7 +211,10 @@ static void write_data(int ts)
 	if (is_collective == 0)
 	{
 		/* Aggregation */
+		double agg_start = MPI_Wtime();
 		aggregation_perform();
+		double agg_end = MPI_Wtime();
+		agg_time = agg_end - agg_start;
 
 		char* data_set_path = malloc(sizeof(*data_set_path) * 512);
 		memset(data_set_path, 0, sizeof(*data_set_path) * 512);
@@ -341,9 +347,6 @@ static int aggregation_perform()
 		}
 	}
 
-	long long int total_size_tmp = total_size;
-	long long int average_file_size = total_size_tmp / out_file_num;
-
 	int cur_agg_count = 0;
 	long long int agg_sizes[out_file_num]; /* the current size of aggregators */
 	memset(agg_sizes, 0, out_file_num * sizeof(long long int));
@@ -351,23 +354,43 @@ static int aggregation_perform()
 	int patch_assign_array[patch_count];
 	memset(patch_assign_array, -1, patch_count * sizeof(int));
 
-	int under = 0;
 	int pcount = 0;
-	/* Patches assigned to aggregators */
-	while (pcount < patch_count_power2 && cur_agg_count < out_file_num)
+	if (is_balanced == 0)
 	{
-		if (patch_ids_zorder[pcount] > -1)
+		int avg_patch_num = ceil((float)patch_count / out_file_num);
+		for (int i = 0; i < patch_count_power2; i++)
 		{
-			if (agg_sizes[cur_agg_count] >= average_file_size)
+			if (patch_ids_zorder[i] > -1)
 			{
-				total_size_tmp -= agg_sizes[cur_agg_count];
-				cur_agg_count++;
-				average_file_size = total_size_tmp / (out_file_num - cur_agg_count);
+				if (pcount == ((cur_agg_count + 1) * avg_patch_num))
+					cur_agg_count++;
+				patch_assign_array[patch_ids_zorder[i]] = cur_agg_count;
+				agg_sizes[cur_agg_count] += patch_sizes_zorder[i];
+				pcount++;
 			}
-			patch_assign_array[patch_ids_zorder[pcount]] = cur_agg_count;
-			agg_sizes[cur_agg_count] += patch_sizes_zorder[pcount];
 		}
-		pcount++;
+	}
+	else
+	{
+		long long int total_size_tmp = total_size;
+		long long int average_file_size = total_size_tmp / out_file_num;
+
+		/* Patches assigned to aggregators */
+		while (pcount < patch_count_power2 && cur_agg_count < out_file_num)
+		{
+			if (patch_ids_zorder[pcount] > -1)
+			{
+				if (agg_sizes[cur_agg_count] >= average_file_size)
+				{
+					total_size_tmp -= agg_sizes[cur_agg_count];
+					cur_agg_count++;
+					average_file_size = total_size_tmp / (out_file_num - cur_agg_count);
+				}
+				patch_assign_array[patch_ids_zorder[pcount]] = cur_agg_count;
+				agg_sizes[cur_agg_count] += patch_sizes_zorder[pcount];
+			}
+			pcount++;
+		}
 	}
 
 	int agg_ranks[out_file_num]; /* AGG Array */
@@ -466,7 +489,7 @@ static void create_folder(char* data_path)
 
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:p:i:f:t:v:w:o:d:";
+  char flags[] = "g:p:i:f:t:v:w:o:b:";
   int one_opt = 0;
 
   while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -525,9 +548,9 @@ static void parse_args(int argc, char **argv)
         terminate_with_error_msg("Invalid number of out files\n%s", usage);
       break;
 
-    case('d'): // is_log
-      if (sscanf(optarg, "%d", &logs) < 0 || logs > 1)
-        terminate_with_error_msg("Invalid logs parameter (0 or 1)\n%s", usage);
+    case('b'): // The number of out files
+      if (sscanf(optarg, "%d", &is_balanced) < 0 || is_balanced > 1)
+        terminate_with_error_msg("Invalid aggregation mode (1 means balanced mode)\n%s", usage);
       break;
 
     default:
