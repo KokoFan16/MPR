@@ -232,7 +232,7 @@ static void write_data(int ts)
 			close(fp);
 		}
 	}
-	else
+	else if (is_collective == 1)
 	{
 		long long int offset = 0;
 		for (int i = 0; i < rank; i++)
@@ -258,6 +258,27 @@ static void write_data(int ts)
 		MPI_File_write_at_all(fh, offset, local_buffer, patch_sizes[rank], MPI_BYTE, &status);
 		MPI_Info_free(&info);
 		MPI_File_close(&fh);
+	}
+	else
+	{
+		char* data_set_path = malloc(sizeof(*data_set_path) * 512);
+		memset(data_set_path, 0, sizeof(*data_set_path) * 512);
+		sprintf(data_set_path, "%s/time%09d/", output_file_template, ts);
+
+		create_folder(data_set_path);
+
+		char file_name[512];
+		memset(file_name, 0, 512 * sizeof(*file_name));
+		sprintf(file_name, "%s%d", data_set_path, rank);
+		free(data_set_path);
+
+		int fp = open(file_name, O_CREAT | O_EXCL | O_WRONLY, 0664);
+		if (fp == -1)
+			terminate_with_error_msg("ERROR: Cannot open write file or file already exist!\n");
+		long long int write_file_size = write(fp, local_buffer, patch_sizes[rank]);
+		if (write_file_size != patch_sizes[rank])
+			terminate_with_error_msg("ERROR: Write count is not correct!\n");
+		close(fp);
 	}
 }
 
@@ -495,7 +516,7 @@ static void parse_args(int argc, char **argv)
 	  break;
 
     case('w'): // The number of out files
-      if (sscanf(optarg, "%d", &is_collective) < 0 || is_collective > 1)
+      if (sscanf(optarg, "%d", &is_collective) < 0 || is_collective > 2)
         terminate_with_error_msg("Invalid write mode (1 means MPI collective I/O)\n%s", usage);
       break;
 
