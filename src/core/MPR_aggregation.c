@@ -11,6 +11,8 @@ static int calZOrder(int x, int y, int z);
 
 MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 {
+	double total_start = MPI_Wtime();
+
 	int proc_num = file->comm->simulation_nprocs;  /* The number of processes */
 	int rank = file->comm->simulation_rank; /* The rank of each process */
 	MPI_Comm comm = file->comm->simulation_comm; /* The MPI communicator */
@@ -30,6 +32,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		/*************************** Gather required information *************************/
+		double gather_start = MPI_Wtime();
+
 		int* global_subband_sizes = NULL;
 		int* local_subband_sizes = NULL;
 		int* subband_sizes = NULL;
@@ -79,6 +83,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		}
 		free(patch_size_id);
 		free(global_subband_sizes);
+
+		double gather_end = MPI_Wtime();
 		/******************************************************************************/
 
 		long long int total_size = 0; /* The total size of all the patches across all the processes */
@@ -95,6 +101,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		}
 
 		/****************** Convert to z-order ********************/
+		double convert_z_start = MPI_Wtime();
+
 		int patch_count_power2 = 0;  /* z-order count */
 		int* patch_sizes_zorder = NULL;
 		int* patch_ids_zorder = NULL;
@@ -128,9 +136,12 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				}
 			}
 		}
+		double convert_z_end = MPI_Wtime();
 		/**********************************************************/
 
 		/************************* Assign patches **************************/
+		double assign_start = MPI_Wtime();
+
 		int patch_assign_array[total_patch_num];
 		memset(patch_assign_array, -1, total_patch_num * sizeof(int));
 
@@ -242,7 +253,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		free(patch_ids_zorder);
 		local_patch->agg_patch_count = recv_num;
 
+		double assign_end = MPI_Wtime();
+
 		/**********************************************************************/
+
+		double comm_start = MPI_Wtime();
 		/* calculate total size per aggregator */
 		for (int i = 0; i < file->mpr->out_file_num; i++)
 		{
@@ -302,6 +317,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			req_id++;
 		}
 		MPI_Waitall(req_id, req, stat);
+
+		double comm_end = MPI_Wtime();
+
 		/**********************************************************************/
 
 		free(patch_ranks);
@@ -313,6 +331,13 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			local_patch->bounding_box[i] = min_xyz[i];
 			local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = max_xyz[i] + 1;
 		}
+
+		double total_end = MPI_Wtime();
+
+		if (file->comm->simulation_rank == 0)
+			printf("total %f gather %f z %f assign %f comm %f \n", (total_end - total_start), (gather_end - gather_start), (convert_z_end - convert_z_start),
+					(assign_end - assign_start), (comm_end - comm_start));
+
 	}
 	return MPR_success;
 }
