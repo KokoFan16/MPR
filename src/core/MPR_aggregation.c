@@ -334,8 +334,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 		double total_end = MPI_Wtime();
 
-		if (file->comm->simulation_rank == 0)
-			printf("total %f gather %f z %f assign %f comm %f \n", (total_end - total_start), (gather_end - gather_start), (convert_z_end - convert_z_start),
+
+		printf("%d: total %f [ gather %f z %f assign %f comm %f ] \n", rank, (total_end - total_start), (gather_end - gather_start), (convert_z_end - convert_z_start),
 					(assign_end - assign_start), (comm_end - comm_start));
 
 	}
