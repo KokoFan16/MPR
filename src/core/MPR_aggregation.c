@@ -13,6 +13,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 {
 	double total_start = MPI_Wtime();
 
+	MPI_Barrier(file->comm->simulation_comm);
+
 	int proc_num = file->comm->simulation_nprocs;  /* The number of processes */
 	int rank = file->comm->simulation_rank; /* The rank of each process */
 	MPI_Comm comm = file->comm->simulation_comm; /* The MPI communicator */
