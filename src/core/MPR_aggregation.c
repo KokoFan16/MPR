@@ -13,7 +13,9 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 {
 	double total_start = MPI_Wtime();
 
+	double sync_start = MPI_Wtime();
 	MPI_Barrier(file->comm->simulation_comm);
+	double sync_end = MPI_Wtime();
 
 	int proc_num = file->comm->simulation_nprocs;  /* The number of processes */
 	int rank = file->comm->simulation_rank; /* The rank of each process */
@@ -337,7 +339,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		double total_end = MPI_Wtime();
 
 
-		printf("%d: total %f [ gather %f z %f assign %f comm %f ] \n", rank, (total_end - total_start), (gather_end - gather_start), (convert_z_end - convert_z_start),
+		printf("Aggregation %d: total %f [ sync %f gather %f z %f assign %f comm %f ] \n", rank, (total_end - total_start), (sync_end - sync_start), (gather_end - gather_start), (convert_z_end - convert_z_start),
 					(assign_end - assign_start), (comm_end - comm_start));
 
 	}
