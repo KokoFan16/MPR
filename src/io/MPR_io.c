@@ -9,6 +9,7 @@
 
 MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 {
+
 	int MODE = file->mpr->io_type;
 	/* Set the default restructuring box (32x32x32) */
 	if (MPR_set_patch_box_size(file, svi) != MPR_success)
@@ -51,6 +52,7 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 
+
 	/* Aggregation phase */
 	if (file->mpr->out_file_num == file->comm->simulation_nprocs)
 	{
@@ -72,20 +74,20 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	}
 
 	/* Write metadata out */
-//	file->time->wrt_data_start = MPI_Wtime();
-//	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
-//	{
-//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//		return MPR_err_file;
-//	}
-//
-//	/* write data out */
-//	if (MPR_write_data_out(file, svi, evi) != MPR_success)
-//	{
-//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//		return MPR_err_file;
-//	}
-//	file->time->wrt_data_end = MPI_Wtime();
+	file->time->wrt_data_start = MPI_Wtime();
+	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+
+	/* write data out */
+	if (MPR_write_data_out(file, svi, evi) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_file;
+	}
+	file->time->wrt_data_end = MPI_Wtime();
 
 	return MPR_success;
 }
