@@ -30,7 +30,7 @@ static void set_mpr_variable(int var);
 static void create_synthetic_simulation_data();
 static void destroy_data();
 
-char *usage = "Parallel Usage: mpirun -n 8 ./raw_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_file_name -n 4 -o 4 -m 1 -e 1\n"
+char *usage = "Parallel Usage: mpirun -n 8 ./raw_write -g 64x64x64 -l 32x32x32 -p 40x40x40 -v 2 -t 4 -f output_file_name -o 4 -m 1\n"
                      "  -g: global dimensions\n"
                      "  -l: local (per-process) dimensions\n"
                      "  -p: patch box dimension\n"
@@ -38,10 +38,8 @@ char *usage = "Parallel Usage: mpirun -n 8 ./raw_write -g 64x64x64 -l 32x32x32 -
                      "  -f: file name template\n"
                      "  -t: number of timesteps\n"
                      "  -v: number of variables (or file containing a list of variables)\n"
-					 "  -n: the number of processes per node"
 					 "  -o: the number of out files\n"
 					 "  -m: aggregation mode (0: fixed-patch-count, 1: fixed-size)\n"
-					 "  -e: aggregation order (0: row-order, 1: z-order)\n"
 					 "  -d: whether to dump the logs\n (1: dump the logs)";
 
 int main(int argc, char **argv)
@@ -161,11 +159,6 @@ static void parse_args(int argc, char **argv)
 	  }
 	  break;
 
-    case('n'): // The number of processes per node
-      if (sscanf(optarg, "%d", &proc_num_per_node) == EOF || proc_num_per_node < 1)
-        terminate_with_error_msg("Invalid number of processes per node\n%s", usage);
-      break;
-
     case('o'): // The number of out files
       if (sscanf(optarg, "%d", &out_file_num) < 0 || out_file_num > process_count)
         terminate_with_error_msg("Invalid number of out files\n%s", usage);
@@ -174,11 +167,6 @@ static void parse_args(int argc, char **argv)
     case('m'): // The aggregation mode
       if (sscanf(optarg, "%d", &is_fixed_file_size) < 0 || is_fixed_file_size > 1)
         terminate_with_error_msg("Invalid aggregation mode\n%s", usage);
-      break;
-
-    case('e'): // The aggregation order
-      if (sscanf(optarg, "%d", &is_z_order) < 0 || is_z_order > 1)
-        terminate_with_error_msg("Invalid aggregation order (z-order or row-order)\n%s", usage);
       break;
 
     case('d'): // is_log
@@ -360,9 +348,7 @@ static void set_mpr_file(int ts)
   MPR_set_variable_count(file, variable_count);   /* Set the number of variables */
   MPR_set_io_mode(file, MPR_RAW_IO);   /* Select I/O mode */
   MPR_set_out_file_num(file, out_file_num);
-  MPR_set_procs_num_per_node(file, proc_num_per_node);
   MPR_set_aggregation_mode(file, is_fixed_file_size);
-  MPR_set_aggregation_order(file, is_z_order);
   MPR_set_logs(file, logs);
 
   return;

@@ -439,22 +439,6 @@ MPR_return_code MPR_basic_metatda_parse(char* file_name, MPR_file* file)
 				(*file)->mpr->variable_count = variable_counter;
 			}
 
-			if (strcmp(line, "(Pnum per node)") == 0)
-			{
-				if ( fgets(line, sizeof line, fp) == NULL)
-					return MPR_err_file;
-				line[strcspn(line, "\r\n")] = 0;
-				(*file)->mpr->proc_num_per_node = atoi(line);
-			}
-
-			if (strcmp(line, "(Pnum last)") == 0)
-			{
-				if ( fgets(line, sizeof line, fp) == NULL)
-					return MPR_err_file;
-				line[strcspn(line, "\r\n")] = 0;
-				(*file)->mpr->proc_num_last_node = atoi(line);
-			}
-
 			if (strcmp(line, "(Compression)") == 0)
 			{
 				if ( fgets(line, sizeof line, fp) == NULL)

@@ -34,8 +34,6 @@ MPR_return_code MPR_set_last_time_step(MPR_file file, const int last_time_step);
 
 MPR_return_code MPR_set_out_file_num(MPR_file file, int num);
 
-MPR_return_code MPR_set_procs_num_per_node(MPR_file file, int npro);
-
 MPR_return_code MPR_set_io_mode(MPR_file file, enum MPR_io_type io_type);
 
 MPR_return_code MPR_get_io_mode(MPR_file file, enum MPR_io_type* io_type);
@@ -63,8 +61,6 @@ MPR_return_code MPR_set_read_level(MPR_file file, int read_level);
 MPR_return_code MPR_set_is_write(MPR_file file, int is_write);
 
 MPR_return_code MPR_set_aggregation_mode(MPR_file file, float mode);
-
-MPR_return_code MPR_set_aggregation_order(MPR_file file, float order);
 
 MPR_return_code MPR_set_logs(MPR_file file, int log);
 

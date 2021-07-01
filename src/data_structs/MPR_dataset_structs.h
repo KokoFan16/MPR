@@ -20,10 +20,6 @@ struct mpr_dataset_struct
 
 	int total_patches_num;                            /* The total number of patches */
 
-	int proc_num_per_node;                            /* The number of processes per node */
-	int node_num;                                     /* The number of nodes */
-	int proc_num_last_node;                           /* The number of processes of last node */
-
 	char filename[MPR_FILE_PATH_LENGTH];              /* The .mpr file path */
 	char filename_template[MPR_FILE_PATH_LENGTH];     /* Filename template use to resolve the path of the .mpr file and binaries */
 	char filename_time_template[MPR_FILE_PATH_LENGTH];/* Filename template used to resolve the path of time folders */
@@ -59,7 +55,6 @@ struct mpr_dataset_struct
 	int is_write;                                     /* whether to write out the read chunk */
 
 	int is_fixed_file_size;                           /* whether is fixed file size mode, otherwise, fixed number of patches per file */
-	int is_z_order;                                   /* whether to use z-order, otherwise, use row-order */
 };
 typedef struct mpr_dataset_struct* MPR_dataset;
 

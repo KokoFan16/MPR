@@ -63,13 +63,6 @@ MPR_return_code MPR_processing(MPR_file file, int svi, int evi)
 	int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
 	file->mpr->total_patches_num = file->comm->simulation_nprocs;
 
-	int node_num = ceil((float)file->comm->simulation_nprocs / file->mpr->proc_num_per_node); /* The number of nodes based on the number of processes per node */
-	file->mpr->node_num = node_num;
-
-	int proc_reminder = file->comm->simulation_nprocs % file->mpr->proc_num_per_node;
-	int proc_num_last_node = (proc_reminder == 0)? file->mpr->proc_num_per_node: proc_reminder; /* the number of processes of last node */
-	file->mpr->proc_num_last_node = proc_num_last_node;
-
 	for (int v = svi; v < evi; v++)
 	{
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
@@ -136,33 +129,14 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	double cal_count_start = MPI_Wtime();
     int local_patch_num = total_patch_num / procs_num; /* The local number of patches per process */
     int remain_patch_num = total_patch_num % procs_num; /* Remainder */
-    int node_num = ceil((float)procs_num / file->mpr->proc_num_per_node); /* The number of nodes based on the number of processes per node */
-    file->mpr->node_num = node_num;
 
-    /* If all the processes belong to one node */
-    if (node_num == 1)
-    	local_patch_num = (rank < remain_patch_num)? (local_patch_num + 1): local_patch_num;
-    else  /* If they belong to multiple nodes */
+    if (remain_patch_num > 0)
     {
-		int avg_rem_patch_num_per_node = remain_patch_num / node_num; /* The average number of extra patches per node */
-
-		int proc_reminder = procs_num % file->mpr->proc_num_per_node;
-		int proc_num_last_node = (proc_reminder == 0)? file->mpr->proc_num_per_node: proc_reminder; /* the number of processes of last node */
-		file->mpr->proc_num_last_node = proc_num_last_node;
-
-		int rem_patch_assign_array[node_num]; /* extra patches assignment array for nodes */
-		/* calculate the number of extra patches assigned for the last node first */
-		rem_patch_assign_array[node_num-1] = (proc_num_last_node < avg_rem_patch_num_per_node)? proc_num_last_node: avg_rem_patch_num_per_node;
-		remain_patch_num -= rem_patch_assign_array[node_num-1];
-		avg_rem_patch_num_per_node = remain_patch_num / (node_num - 1); /* minus the number of last node */
-		/* calculate the number extra patches assigned for others */
-		for (int i = 0; i < node_num - 1; i++)
-			rem_patch_assign_array[i] = (i < (remain_patch_num % (node_num - 1)))? (avg_rem_patch_num_per_node + 1): avg_rem_patch_num_per_node;
-		/* calculate the number of patches for each process */
-		int id = rank / file->mpr->proc_num_per_node;
-		if (rank % file->mpr->proc_num_per_node < rem_patch_assign_array[id])
+		int gap = procs_num / remain_patch_num;
+		if(rank % gap == 0 && rank < (gap*remain_patch_num))
 			local_patch_num += 1;
     }
+
     int required_local_patch_num[procs_num]; /* The required local number of patches per process */
     MPI_Allgather(&local_patch_num, 1, MPI_INT, required_local_patch_num, 1, MPI_INT, comm);
     double cal_count_end = MPI_Wtime();

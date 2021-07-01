@@ -22,7 +22,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 	MPI_Comm comm = file->comm->simulation_comm; /* The MPI communicator */
 
 	int total_patch_num = file->mpr->total_patches_num; /* The number of total patches */
-	int node_num = file->mpr->node_num; /* the number of nodes */
 
 	int max_pcount = total_patch_num / proc_num; /* max number of patch per process */
 	if (total_patch_num % proc_num > 0)
@@ -110,36 +109,35 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		int patch_count_power2 = 0;  /* z-order count */
 		int* patch_sizes_zorder = NULL;
 		int* patch_ids_zorder = NULL;
-		if (file->mpr->is_z_order == 1)
-		{
-			int next_2_power_xyz[MPR_MAX_DIMENSIONS]; /* (e.g., 3x3x3 -> 4x4x4)*/
-			int max_d = 0;
-			for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
-			{
-				if (patch_count_xyz[i] > max_d)
-					max_d = patch_count_xyz[i];
-			}
-			patch_count_power2 = pow(pow(2, ceil(log2(max_d))), 3); /* 27 -> 64 */
 
-			/* Reorder the patch id array with z-order curve */
-			patch_sizes_zorder = (int*)malloc(patch_count_power2 * sizeof(int)); /* patch size with z-order */
-			memset(patch_sizes_zorder, 0, patch_count_power2 * sizeof(int));
-			patch_ids_zorder = (int*)malloc(patch_count_power2 * sizeof(int));  /* patch id with z-order */
-			memset(patch_ids_zorder, -1, patch_count_power2 * sizeof(int));
-			for (int z = 0; z < patch_count_xyz[2]; z++)
+		int next_2_power_xyz[MPR_MAX_DIMENSIONS]; /* (e.g., 3x3x3 -> 4x4x4)*/
+		int max_d = 0;
+		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+		{
+			if (patch_count_xyz[i] > max_d)
+				max_d = patch_count_xyz[i];
+		}
+		patch_count_power2 = pow(pow(2, ceil(log2(max_d))), 3); /* 27 -> 64 */
+
+		/* Reorder the patch id array with z-order curve */
+		patch_sizes_zorder = (int*)malloc(patch_count_power2 * sizeof(int)); /* patch size with z-order */
+		memset(patch_sizes_zorder, 0, patch_count_power2 * sizeof(int));
+		patch_ids_zorder = (int*)malloc(patch_count_power2 * sizeof(int));  /* patch id with z-order */
+		memset(patch_ids_zorder, -1, patch_count_power2 * sizeof(int));
+		for (int z = 0; z < patch_count_xyz[2]; z++)
+		{
+			for (int y = 0; y < patch_count_xyz[1]; y++)
 			{
-				for (int y = 0; y < patch_count_xyz[1]; y++)
+				for (int x = 0; x < patch_count_xyz[0]; x++)
 				{
-					for (int x = 0; x < patch_count_xyz[0]; x++)
-					{
-						int zorder = calZOrder(x, y, z);  /* Calculate the index with z-order */
-						int index = z * patch_count_xyz[1] * patch_count_xyz[0] + y * patch_count_xyz[0] + x;
-						patch_sizes_zorder[zorder] = patch_sizes[index];
-						patch_ids_zorder[zorder] = index;
-					}
+					int zorder = calZOrder(x, y, z);  /* Calculate the index with z-order */
+					int index = z * patch_count_xyz[1] * patch_count_xyz[0] + y * patch_count_xyz[0] + x;
+					patch_sizes_zorder[zorder] = patch_sizes[index];
+					patch_ids_zorder[zorder] = index;
 				}
 			}
 		}
+
 		double convert_z_end = MPI_Wtime();
 		/**********************************************************/
 
@@ -157,71 +155,43 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		if (file->mpr->is_fixed_file_size == 0) /* fixed number of patches per file mode */
 		{
 			int avg_patch_num = ceil((float)total_patch_num / file->mpr->out_file_num); /* average patches count per file */
-			if (file->mpr->is_z_order == 0)  /* row order */
+
+			int pcount = 0;
+			for (int i = 0; i < patch_count_power2; i++)
 			{
-				for (int i = 0; i < total_patch_num; i++)
+				if (patch_ids_zorder[i] > -1)
 				{
-					if (i == ((cur_agg_count + 1) * avg_patch_num))
+					if (pcount == ((cur_agg_count + 1) * avg_patch_num))
 						cur_agg_count++;
-					patch_assign_array[i] = cur_agg_count;
-					agg_sizes[cur_agg_count] += patch_sizes[i];
+					patch_assign_array[patch_ids_zorder[i]] = cur_agg_count;
+					agg_sizes[cur_agg_count] += patch_sizes_zorder[i];
+					pcount++;
 				}
 			}
-			else /* z-order */
-			{
-				int pcount = 0;
-				for (int i = 0; i < patch_count_power2; i++)
-				{
-					if (patch_ids_zorder[i] > -1)
-					{
-						if (pcount == ((cur_agg_count + 1) * avg_patch_num))
-							cur_agg_count++;
-						patch_assign_array[patch_ids_zorder[i]] = cur_agg_count;
-						agg_sizes[cur_agg_count] += patch_sizes_zorder[i];
-						pcount++;
-					}
-				}
-			}
+
 		}
 		else
 		{
 			long long int average_file_size = total_size / file->mpr->out_file_num; /* The idea average file size*/
 			int pcount = 0;
-			if (file->mpr->is_z_order == 0) /* row-order */
+
+			while (pcount < patch_count_power2 && cur_agg_count < file->mpr->out_file_num)
 			{
-				while (pcount < total_patch_num && cur_agg_count < file->mpr->out_file_num)
+				if (patch_ids_zorder[pcount] > -1)
 				{
 					if (agg_sizes[cur_agg_count] >= average_file_size)
 					{
 						total_size -= agg_sizes[cur_agg_count];
 						cur_agg_count++;
 						average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
-
 					}
-					patch_assign_array[pcount] = cur_agg_count;
-					agg_sizes[cur_agg_count] += patch_sizes[pcount];
-					pcount++;
-				}
-			}
-			else /* z-order */
-			{
-				while (pcount < patch_count_power2 && cur_agg_count < file->mpr->out_file_num)
-				{
-					if (patch_ids_zorder[pcount] > -1)
-					{
-						if (agg_sizes[cur_agg_count] >= average_file_size)
-						{
-							total_size -= agg_sizes[cur_agg_count];
-							cur_agg_count++;
-							average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
-						}
 
-						patch_assign_array[patch_ids_zorder[pcount]] = cur_agg_count;
-						agg_sizes[cur_agg_count] += patch_sizes_zorder[pcount];
-					}
-					pcount++;
+					patch_assign_array[patch_ids_zorder[pcount]] = cur_agg_count;
+					agg_sizes[cur_agg_count] += patch_sizes_zorder[pcount];
 				}
+				pcount++;
 			}
+
 		}
 		free(patch_sizes_zorder);
 		free(patch_ids_zorder);

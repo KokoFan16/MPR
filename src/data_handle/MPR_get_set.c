@@ -78,17 +78,6 @@ MPR_return_code MPR_set_out_file_num(MPR_file file, int num)
 }
 
 
-MPR_return_code MPR_set_procs_num_per_node(MPR_file file, int npro)
-{
-	if (!file)
-      return MPR_err_file;
-
-    file->mpr->proc_num_per_node = npro;
-
-    return MPR_success;
-}
-
-
 MPR_return_code MPR_set_compression_mode(MPR_file file, int mode)
 {
 	if (!file)
@@ -172,17 +161,6 @@ MPR_return_code MPR_set_aggregation_mode(MPR_file file, float mode)
       return MPR_err_file;
 
 	file->mpr->is_fixed_file_size = mode;
-
-    return MPR_success;
-}
-
-
-MPR_return_code MPR_set_aggregation_order(MPR_file file, float order)
-{
-	if (!file)
-      return MPR_err_file;
-
-	file->mpr->is_z_order = order;
 
     return MPR_success;
 }
