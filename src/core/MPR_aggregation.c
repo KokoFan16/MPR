@@ -260,7 +260,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			send_array[i] = agg_ranks[patch_assign_array[pid]];
 		}
 
-		int recv_array[total_patch_num/file->mpr->out_file_num+1];
+		int recv_array[total_patch_num];
 		int recv_num = 0;  /* number of received number of patches per aggregator */
 		for (int i = 0; i < total_patch_num; i++)
 		{
