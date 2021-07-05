@@ -397,8 +397,8 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 	double total_end = MPI_Wtime();
 
-	printf("Partition %d: total %f [ sync %f gather %f cc %f cmc %f assign %f comm %f ] \n", rank, (total_end - total_start), (sync_end - sync_start), (gather_end - gather_start), (cal_count_end - cal_count_start),
-				(max_count_end - max_count_start), (assign_end - assign_start), (comm_end - comm_start));
+//	printf("Partition %d: total %f [ sync %f gather %f cc %f cmc %f assign %f comm %f ] \n", rank, (total_end - total_start), (sync_end - sync_start), (gather_end - gather_start), (cal_count_end - cal_count_start),
+//				(max_count_end - max_count_start), (assign_end - assign_start), (comm_end - comm_start));
 
 	return MPR_success;
 }

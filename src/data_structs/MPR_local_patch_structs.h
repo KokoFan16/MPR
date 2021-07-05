@@ -11,7 +11,7 @@
 struct mpr_local_patch_struct
 {
 	int patch_count;                         /* Number of patches in the local patch */
-	long long int proc_size;                      /* The size per process */
+//	long long int proc_size;                      /* The size per process */
 
 	int bounding_box[MPR_MAX_DIMENSIONS*2];  /* The bounding box for each out file */
 
