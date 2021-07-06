@@ -31,15 +31,15 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
 
-
 		for (int v  = svi; v < evi; v++)
 		{
-			double gather_start = MPI_Wtime();
 			MPR_local_patch local_patch = file->variable[v]->local_patch;
 			int patch_count = local_patch->patch_count; /* the number of patches per process */
 
 			int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 			int patch_size = bytes * file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
+
+			double gather_start = MPI_Wtime();
 
 			local_patch->proc_size = 0;
 			int local_patch_size_id_rank[max_pcount * 3]; /* local information: size, id, own_rank per patch */
@@ -51,6 +51,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				local_patch_size_id_rank[i * 3 + 2] = rank;
 				local_patch->proc_size += local_patch->patch[i]->patch_buffer_size; /* print only */
 			}
+
 			int* patch_size_id = malloc(max_pcount * nprocs * 3 * sizeof(int));
 			MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
 
@@ -66,14 +67,18 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				}
 			}
 			free(patch_size_id);
+			double gather_end = MPI_Wtime();
 
 			long long int total_size = 0; /* The total size of all the patches across all the processes */
 			for (int i = 0; i < total_patch_num; i++)
 				total_size += patch_sizes[i];
-			double gather_end = MPI_Wtime();
-			double gather_time = gather_end - gather_start;
 
-			/****************** Convert to z-order ********************/
+			int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* patch count in each dimension */
+			for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+			{
+				patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
+			}
+
 			double convert_z_start = MPI_Wtime();
 			int patch_count_power2 = 0;  /* z-order count */
 			int* patch_sizes_zorder = NULL;
@@ -87,7 +92,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					max_d = patch_count_xyz[i];
 			}
 			patch_count_power2 = pow(pow(2, ceil(log2(max_d))), 3); /* 27 -> 64 */
-
 			/* Reorder the patch id array with z-order curve */
 			patch_sizes_zorder = (int*)malloc(patch_count_power2 * sizeof(int)); /* patch size with z-order */
 			memset(patch_sizes_zorder, 0, patch_count_power2 * sizeof(int));
@@ -106,17 +110,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					}
 				}
 			}
-
 			double convert_z_end = MPI_Wtime();
-			double convert_z_time = convert_z_end - convert_z_start;
-			/**********************************************************/
 
-			/************************* Assign patches **************************/
 			double assign_start = MPI_Wtime();
-
 			int patch_assign_array[total_patch_num];
 			memset(patch_assign_array, -1, total_patch_num * sizeof(int));
-
 			long long int agg_size = 0; /* the size of aggregator */
 			long long int agg_sizes[file->mpr->out_file_num]; /* the current size of aggregators */
 			memset(agg_sizes, 0, file->mpr->out_file_num * sizeof(long long int));
@@ -125,7 +123,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			if (file->mpr->is_fixed_file_size == 0) /* fixed number of patches per file mode */
 			{
 				int avg_patch_num = ceil((float)total_patch_num / file->mpr->out_file_num); /* average patches count per file */
-
 				int pcount = 0;
 				for (int i = 0; i < patch_count_power2; i++)
 				{
@@ -138,13 +135,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 						pcount++;
 					}
 				}
-
 			}
 			else
 			{
 				long long int average_file_size = total_size / file->mpr->out_file_num; /* The idea average file size*/
 				int pcount = 0;
-
 				while (pcount < patch_count_power2 && cur_agg_count < file->mpr->out_file_num)
 				{
 					if (patch_ids_zorder[pcount] > -1)
@@ -155,22 +150,18 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 							cur_agg_count++;
 							average_file_size = total_size / (file->mpr->out_file_num - cur_agg_count);
 						}
-
 						patch_assign_array[patch_ids_zorder[pcount]] = cur_agg_count;
 						agg_sizes[cur_agg_count] += patch_sizes_zorder[pcount];
 					}
 					pcount++;
 				}
-
 			}
-			free(patch_sizes_zorder);
-			free(patch_ids_zorder);
+
 
 			file->mpr->out_file_num = cur_agg_count + 1;
 
 			int agg_ranks[file->mpr->out_file_num]; /* AGG Array */
 			int gap = nprocs / file->mpr->out_file_num;
-
 			int cagg = 0;
 			for (int i = 0; i < nprocs; i+= gap)
 			{
@@ -191,9 +182,10 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				if (rank == agg_ranks[patch_assign_array[i]])
 					recv_array[recv_num++] = i;
 			}
+			free(patch_sizes_zorder);
+			free(patch_ids_zorder);
 			local_patch->agg_patch_count = recv_num;
 			double assign_end = MPI_Wtime();
-			double assign_time = assign_end - assign_start;
 
 			double comm_start = MPI_Wtime();
 			/* calculate total size per aggregator */
@@ -203,7 +195,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					agg_size = agg_sizes[i];
 			}
 
-			/********************** Point-to-point communication **********************/
 			local_patch->buffer = malloc(agg_size); /* reuse the local buffer per variable */
 			local_patch->out_file_size = agg_size;
 
@@ -211,8 +202,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			MPI_Request* req = malloc(comm_count * sizeof(MPI_Request));
 			MPI_Status* stat = malloc(comm_count * sizeof(MPI_Status));
 			int req_id = 0;
-
 			int offset = 0;
+
 			for (int i = 0; i < patch_count; i++)
 			{
 				int id = local_patch->patch[i]->global_id;
@@ -225,16 +216,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			{
 				MPI_Irecv(&local_patch->buffer[offset], patch_sizes[recv_array[i]], MPI_BYTE, patch_ranks[recv_array[i]], recv_array[i], comm, &req[req_id]);
 				offset += patch_sizes[recv_array[i]];
+				req_id++;
 			}
+			MPI_Waitall(req_id, req, stat);
 			free(patch_ranks);
 			free(patch_sizes);
-			free(req);
-			free(stat);
-			double comm_end = MPI_Wtime();
-			double comm_time = comm_end - comm_start;
-
-			printf("Aggregation %d: [gather %f convert_z %f assign %f comm %f ] \n", rank, gather_time, convert_z_time, assign_time, comm_time);
-
 		}
 	}
 	else if (file->mpr->agg_version == 1)
