@@ -42,7 +42,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			int patch_size = bytes * file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2];
 
 			local_patch->proc_size = 0;
-			int local_patch_size_id_rank[max_pcount * 2]; /* local information: size, id, own_rank per patch */
+			int local_patch_size_id_rank[max_pcount * 3]; /* local information: size, id, own_rank per patch */
 			memset(local_patch_size_id_rank, -1, max_pcount * 3 * sizeof(int));
 			for (int i = 0; i < patch_count; i++)
 			{
@@ -351,7 +351,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			double flat_end = MPI_Wtime();
 			double flat_time = flat_end - flat_start;
 
-
 			double comm_start = MPI_Wtime();
 			MPI_Request req[recv_count];
 			MPI_Status stat[recv_count];
@@ -414,6 +413,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 			int agg_ranks[file->mpr->out_file_num];
 			agg_ranks[0] = 0;
+			if (rank == 0)
+				file->mpr->is_aggregator = 1;
 
 			int pocs_assign_array[nprocs];
 			memset(pocs_assign_array, 0, nprocs*sizeof(int));
@@ -446,6 +447,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 						under = 1 - under;
 						cur_agg_count++;
 						agg_ranks[cur_agg_count] = pcount;
+						if (rank == pcount)
+							file->mpr->is_aggregator = 1;
 					}
 					pocs_assign_array[pcount] = cur_agg_count;
 					agg_sizes[cur_agg_count] += procs_sizes[pcount];
@@ -466,10 +469,13 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			double flat_end = MPI_Wtime();
 			double flat_time = flat_end - flat_start;
 
-			double pre_start = MPI_Wtime();
+			double cre_comm_start = MPI_Wtime();
 			MPI_Comm agg_comm;
 			MPI_Comm_split(comm, pocs_assign_array[rank], rank, &agg_comm);
+			double cre_comm_end = MPI_Wtime();
+			double cre_comm_time = cre_comm_end - cre_comm_start;
 
+			double pre_start = MPI_Wtime();
 			int recv_ranks[nprocs];
 			int recv_sizes[nprocs];
 			int recv_displs[nprocs];
@@ -506,7 +512,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			double comm_end = MPI_Wtime();
 			double comm_time = comm_end - comm_start;
 
-			printf("Aggregation %d: [ gather %f assign %f flat %f pre %f comm %f ] \n", rank, gather_time, assign_time, flat_time, pre_time,
+			printf("Aggregation %d: [ gather %f assign %f flat %f cre_comm %f pre %f comm %f ] \n", rank, gather_time, assign_time, flat_time, cre_comm_time, pre_time,
 					comm_time);
 		}
 	}
