@@ -237,7 +237,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 		}
 	}
-	else
+	else if (file->mpr->agg_version == 1)
 	{
 		for (int v  = svi; v < evi; v++)
 		{
@@ -385,6 +385,186 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 			printf("Aggregation %d: [ gather %f assign %f pre %f flat %f comm %f ] \n", rank, gather_time, assign_time, pre_time, flat_time,
 					comm_time);
+		}
+	}
+	else
+	{
+		for (int v  = svi; v < evi; v++)
+		{
+			double gather_start = MPI_Wtime();
+			MPR_local_patch local_patch = file->variable[v]->local_patch;
+			int patch_count = local_patch->patch_count; /* the number of patches per process */
+
+			int proc_size = 0;
+			for (int i = 0; i < patch_count; i++)
+				proc_size += local_patch->patch[i]->patch_buffer_size;
+
+			int procs_sizes[nprocs];
+			MPI_Allgather(&proc_size, 1, MPI_INT, procs_sizes, 1, MPI_INT, comm);
+			double gather_end = MPI_Wtime();
+			double gather_time = gather_end - gather_start;
+
+			double assign_start = MPI_Wtime();
+			long long int total_size = 0;
+			for (int i = 0; i < nprocs; i++)
+				total_size += procs_sizes[i];
+
+			int agg_sizes[file->mpr->out_file_num];
+			memset(agg_sizes, 0, file->mpr->out_file_num*sizeof(int));
+
+			int pocs_assign_array[nprocs];
+			memset(pocs_assign_array, 0, nprocs*sizeof(int));
+
+			if (file->mpr->is_fixed_file_size == 0) /* fixed number of processes per file mode */
+			{
+				int avg_count = ceil((float)nprocs/file->mpr->out_file_num);
+				for (int i = 0; i < nprocs; i++)
+				{
+					pocs_assign_array[i] = i / avg_count;
+					agg_sizes[i / avg_count] += procs_sizes[i];
+				}
+			}
+			else
+			{
+				int under = 0;
+				int pcount = 0;
+				int cur_agg_count = 0;
+
+				int avg_size = total_size / file->mpr->out_file_num;
+				while (pcount < nprocs && cur_agg_count < file->mpr->out_file_num)
+				{
+					if (agg_sizes[cur_agg_count] > avg_size)
+					{
+						if (under == 0)
+						{
+							agg_sizes[cur_agg_count] -= procs_sizes[--pcount];
+							avg_size = total_size / (file->mpr->out_file_num - cur_agg_count);
+						}
+						under = 1 - under;
+						cur_agg_count++;
+					}
+					pocs_assign_array[pcount] = cur_agg_count;
+					agg_sizes[cur_agg_count] += procs_sizes[pcount];
+					pcount++;
+				}
+			}
+			double assign_end = MPI_Wtime();
+			double assign_time = assign_end - assign_start;
+
+
+			double pre_start = MPI_Wtime();
+			int agg_ranks[file->mpr->out_file_num]; /* AGG Array */
+			int gap = nprocs / file->mpr->out_file_num;
+
+			int cagg = 0;
+			for (int i = 0; i < nprocs; i+= gap)
+			{
+				if (cagg < file->mpr->out_file_num)
+				{
+					agg_ranks[cagg++] = i;
+					if (rank == i)
+						file->mpr->is_aggregator = 1;
+				}
+				else
+					break;
+			}
+
+			int agg_size = 0;
+			for (int i = 0; i < file->mpr->out_file_num; i++)
+			{
+				if (rank == agg_ranks[i])
+					agg_size = agg_sizes[i];
+			}
+
+			int recv_ranks[nprocs];
+			int recv_sizes[nprocs];
+			int recv_count = 0;
+			for (int i = 0; i < nprocs; i++)
+			{
+				if (rank == agg_ranks[pocs_assign_array[i]])
+				{
+					recv_ranks[recv_count] = i;
+					recv_sizes[recv_count] = procs_sizes[i];
+					recv_count++;
+				}
+			}
+
+
+			local_patch->buffer = (unsigned char*)malloc(agg_size); /* reuse the local buffer per variable */
+			local_patch->out_file_size = agg_size;
+			double pre_end = MPI_Wtime();
+			double pre_time = pre_end - pre_start;
+
+
+			double flat_start = MPI_Wtime();
+			unsigned char* flat_buffer = (unsigned char*)malloc(proc_size);
+			int poffset = 0;
+			for (int p = 0; p < patch_count; p++)
+			{
+				memcpy(&flat_buffer[poffset], local_patch->patch[p]->buffer,local_patch->patch[p]->patch_buffer_size);
+				poffset += local_patch->patch[p]->patch_buffer_size;
+			}
+			double flat_end = MPI_Wtime();
+			double flat_time = flat_end - flat_start;
+
+
+			double comm_start = MPI_Wtime();
+
+
+			printf("%d: %d\n", rank, proc_size);
+
+			MPI_Comm agg_comm;
+			MPI_Comm_split(comm, pocs_assign_array[rank], rank, &agg_comm);
+//			if (recv_count > 0)
+//				MPI_Gatherv(flat_buffer, proc_size, MPI_BYTE, local_patch->buffer, procs_sizes, recv_displs, MPI_BYTE, rank, agg_comm);
+
+			int arank, asize;
+			MPI_Comm_rank(agg_comm, &arank);
+			MPI_Comm_size(agg_comm, &asize);
+
+			int agg_gouph_rank[nprocs];
+			MPI_Allgather(&arank, 1, MPI_INT, agg_gouph_rank, 1, MPI_INT, comm);
+
+//			printf("%d: %d %d\n", rank,  agg_ranks[pocs_assign_array[rank]], agg_gouph_rank[agg_ranks[pocs_assign_array[rank]]]);
+//			printf("WORLD RANK/SIZE: %d/%d \t AGG RANK/SIZE: %d/%d\n",
+//				rank, nprocs, arank, asize);
+
+
+			MPI_Request req[recv_count];
+			MPI_Status stat[recv_count];
+			int req_id = 0;
+			int roffset = 0;
+			for (int i = 0; i < recv_count; i++)
+			{
+				if (rank == recv_ranks[i])
+				{
+					memcpy(&local_patch->buffer[roffset], flat_buffer, proc_size);
+					roffset += proc_size;
+				}
+				else
+				{
+//					printf("recv: %d -- %d %d %d %d\n", rank, i, recv_ranks[i], agg_gouph_rank[recv_ranks[i]], recv_sizes[i]);
+					MPI_Irecv(&local_patch->buffer[roffset], recv_sizes[i], MPI_BYTE, i, 0, agg_comm, &req[req_id]);
+					roffset += procs_sizes[recv_ranks[i]];
+					req_id++;
+				}
+			}
+
+			int send_rank = agg_ranks[pocs_assign_array[rank]];
+			if (rank != send_rank)
+			{
+//				printf("send: %d -- %d %d %d\n", rank, send_rank, agg_gouph_rank[send_rank], proc_size);
+				MPI_Isend(flat_buffer, proc_size, MPI_BYTE, agg_gouph_rank[send_rank], 0, agg_comm, &req[req_id]);
+				req_id++;
+			}
+			MPI_Waitall(req_id, req, stat);
+			free(flat_buffer);
+			MPI_Comm_free(&agg_comm);
+			double comm_end = MPI_Wtime();
+			double comm_time = comm_end - comm_start;
+
+//			printf("Aggregation %d: [ gather %f assign %f pre %f flat %f comm %f ] \n", rank, gather_time, assign_time, pre_time, flat_time,
+//					comm_time);
 		}
 	}
 
