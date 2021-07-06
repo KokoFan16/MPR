@@ -21,6 +21,8 @@ char output_file_name[512];
 unsigned char **data;
 static MPR_point patch_box;
 
+int agg_version;
+
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
 static int generate_vars();
@@ -103,7 +105,7 @@ int main(int argc, char **argv)
 /* Parse arguments */
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:l:p:i:f:t:v:n:o:m:e:d:";
+  char flags[] = "g:l:p:i:f:t:v:n:o:m:e:d:a:";
   int one_opt = 0;
 
   while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -172,6 +174,11 @@ static void parse_args(int argc, char **argv)
     case('d'): // is_log
       if (sscanf(optarg, "%d", &logs) < 0 || logs > 1)
         terminate_with_error_msg("Invalid logs parameter (0 or 1)\n%s", usage);
+      break;
+
+    case('a'): // to be delete
+      if (sscanf(optarg, "%d", &agg_version) < 0)
+        terminate_with_error_msg("Invalid aggregation parameter\n%s", usage);
       break;
 
     default:
@@ -350,6 +357,8 @@ static void set_mpr_file(int ts)
   MPR_set_out_file_num(file, out_file_num);
   MPR_set_aggregation_mode(file, is_fixed_file_size);
   MPR_set_logs(file, logs);
+
+  file->mpr->agg_version = agg_version;
 
   return;
 }

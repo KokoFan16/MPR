@@ -112,6 +112,8 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	(*file)->variable_index_tracker = 0;
 	(*file)->fs_block_size = 0;
 
+	(*file)->mpr->agg_version = 0; // to be delete later
+
 	if ((*file)->comm->simulation_rank == 0)
 	{
 		struct stat stat_buf;
