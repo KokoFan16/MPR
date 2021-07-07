@@ -323,6 +323,10 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			int* global_patch_ids = (int*)malloc(max_pcount*proc_num*sizeof(int));
 			MPI_Allgather(&local_patch_ids, max_pcount, MPI_INT, global_patch_ids, max_pcount, MPI_INT, comm);
 
+			free(global_subband_sizes);
+			free(local_subband_sizes);
+			free(subband_sizes);
+
 			double gather_end = MPI_Wtime();
 			double gather_time = gather_end - gather_start;
 
