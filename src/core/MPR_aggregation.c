@@ -289,17 +289,17 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			MPR_local_patch local_patch = file->variable[v]->local_patch;
 			int patch_count = local_patch->patch_count; /* the number of patches per process */
 
-			int* global_subband_sizes = NULL;
-			int* local_subband_sizes = NULL;
-			int* subband_sizes = NULL;
-			int subbands_num = 0;
-			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-			{
-				subbands_num = file->mpr->wavelet_trans_num * 7 + 1;
-				global_subband_sizes = malloc(max_pcount * proc_num * subbands_num * sizeof(int));
-				local_subband_sizes = malloc(max_pcount * subbands_num * sizeof(int));
-				subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
-			}
+//			int* global_subband_sizes = NULL;
+//			int* local_subband_sizes = NULL;
+//			int* subband_sizes = NULL;
+//			int subbands_num = 0;
+//			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//			{
+//				subbands_num = file->mpr->wavelet_trans_num * 7 + 1;
+//				global_subband_sizes = malloc(max_pcount * proc_num * subbands_num * sizeof(int));
+//				local_subband_sizes = malloc(max_pcount * subbands_num * sizeof(int));
+//				subband_sizes = malloc(total_patch_num * subbands_num * sizeof(int));
+//			}
 
 			int proc_size = 0;
 			int local_patch_ids[max_pcount];
@@ -307,12 +307,12 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			{
 				proc_size += local_patch->patch[i]->patch_buffer_size;
 				local_patch_ids[i] = local_patch->patch[i]->global_id;
-				if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-					memcpy(&local_subband_sizes[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
+//				if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//					memcpy(&local_subband_sizes[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
 			}
 
-			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-				MPI_Allgather(local_subband_sizes, max_pcount * subbands_num, MPI_INT, global_subband_sizes, max_pcount * subbands_num, MPI_INT, comm);
+//			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//				MPI_Allgather(local_subband_sizes, max_pcount * subbands_num, MPI_INT, global_subband_sizes, max_pcount * subbands_num, MPI_INT, comm);
 
 			int procs_sizes[proc_num];
 			MPI_Allgather(&proc_size, 1, MPI_INT, procs_sizes, 1, MPI_INT, comm);
@@ -323,9 +323,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			int* global_patch_ids = (int*)malloc(max_pcount*proc_num*sizeof(int));
 			MPI_Allgather(&local_patch_ids, max_pcount, MPI_INT, global_patch_ids, max_pcount, MPI_INT, comm);
 
-			free(global_subband_sizes);
-			free(local_subband_sizes);
-			free(subband_sizes);
+			free(global_patch_ids);
+
+//			free(global_subband_sizes);
+//			free(local_subband_sizes);
+//			free(subband_sizes);
 
 			double gather_end = MPI_Wtime();
 			double gather_time = gather_end - gather_start;
@@ -434,13 +436,13 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			double comm_end = MPI_Wtime();
 			double comm_time = comm_end - comm_start;
 
-			local_patch->agg_patch_id_array = malloc(recv_pcount * sizeof(int));
-			local_patch->agg_patch_disps = malloc(recv_pcount * sizeof(int));
-			local_patch->agg_patch_size = malloc(recv_pcount * sizeof(int));
-			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
-				local_patch->agg_subbands_size = malloc(recv_pcount * subbands_num * sizeof(int));
-
-			free(global_patch_ids);
+//			local_patch->agg_patch_id_array = malloc(recv_pcount * sizeof(int));
+//			local_patch->agg_patch_disps = malloc(recv_pcount * sizeof(int));
+//			local_patch->agg_patch_size = malloc(recv_pcount * sizeof(int));
+//			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
+//				local_patch->agg_subbands_size = malloc(recv_pcount * subbands_num * sizeof(int));
+//
+//
 
 			printf("Aggregation %d: [ gather %f assign %f flat %f cre_comm %f pre %f comm %f ] \n", rank, gather_time, assign_time, flat_time, cre_comm_time, pre_time,
 					comm_time);
