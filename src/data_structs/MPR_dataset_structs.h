@@ -55,6 +55,8 @@ struct mpr_dataset_struct
 	int is_write;                                     /* whether to write out the read chunk */
 
 	int is_fixed_file_size;                           /* whether is fixed file size mode, otherwise, fixed number of patches per file */
+
+	int agg_version;
 };
 typedef struct mpr_dataset_struct* MPR_dataset;
 
