@@ -12,9 +12,9 @@ static int calZOrder(int x, int y, int z);
 MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 {
 	double total_start = MPI_Wtime();
-	double sync_start = MPI_Wtime();
-	MPI_Barrier(file->comm->simulation_comm);
-	double sync_end = MPI_Wtime();
+//	double sync_start = MPI_Wtime();
+//	MPI_Barrier(file->comm->simulation_comm);
+//	double sync_end = MPI_Wtime();
 	int proc_num = file->comm->simulation_nprocs;  /* The number of processes */
 	int rank = file->comm->simulation_rank; /* The rank of each process */
 	MPI_Comm comm = file->comm->simulation_comm; /* The MPI communicator */
@@ -56,8 +56,10 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					memcpy(&local_subband_sizes[i*subbands_num], local_patch->patch[i]->subbands_comp_size, subbands_num*sizeof(int));
 				local_patch->proc_size += local_patch->patch[i]->patch_buffer_size; /* print only */
 			}
+
 			int* patch_size_id = malloc(max_pcount * proc_num * 3 * sizeof(int));
 			MPI_Allgather(local_patch_size_id_rank, max_pcount * 3, MPI_INT, patch_size_id, max_pcount * 3, MPI_INT, comm);
+
 			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 				MPI_Allgather(local_subband_sizes, max_pcount * subbands_num, MPI_INT, global_subband_sizes, max_pcount * subbands_num, MPI_INT, comm);
 			free(local_subband_sizes);
@@ -77,6 +79,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			free(patch_size_id);
 			free(global_subband_sizes);
 			double gather_end = MPI_Wtime();
+
 			/******************************************************************************/
 
 			long long int total_size = 0; /* The total size of all the patches across all the processes */
@@ -277,7 +280,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			}
 			double total_end = MPI_Wtime();
 
-			printf("Aggregation %d: total %f [ sync %f gather %f z %f assign %f comm %f ] \n", rank, (total_end - total_start), (sync_end - sync_start), (gather_end - gather_start), (convert_z_end - convert_z_start),
+			printf("Aggregation %d: total %f [ gather %f z %f assign %f comm %f ] \n", rank, (total_end - total_start), (gather_end - gather_start), (convert_z_end - convert_z_start),
 						(assign_end - assign_start), (comm_end - comm_start));
 		}
 	}
@@ -449,8 +452,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = file->mpr->local_box[i] + 1;
 			}
 
-//			printf("Aggregation %d: [ gather %f assign %f flat %f cre_comm %f pre %f comm %f ] \n", rank, gather_time, assign_time, flat_time, cre_comm_time, pre_time,
-//					comm_time);
+			printf("Aggregation %d: [ gather %f assign %f flat %f cre_comm %f pre %f comm %f ] \n", rank, gather_time, assign_time, flat_time, cre_comm_time, pre_time,
+					comm_time);
 		}
 	}
 	return MPR_success;
