@@ -363,10 +363,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				int avg_size = total_size / file->mpr->out_file_num;
 				while (pcount < proc_num && cur_agg_count < file->mpr->out_file_num)
 				{
-					if (agg_sizes[cur_agg_count] >= avg_size && cur_agg_count < file->mpr->out_file_num -1)
+					if (agg_sizes[cur_agg_count] >= avg_size)
 					{
-						avg_size = total_size / (file->mpr->out_file_num - cur_agg_count);
+						total_size -= agg_sizes[cur_agg_count];
 						cur_agg_count++;
+						avg_size = total_size / (file->mpr->out_file_num - cur_agg_count);
 						agg_ranks[cur_agg_count] = pcount;
 						if (rank == pcount)
 							file->mpr->is_aggregator = 1;
@@ -376,6 +377,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					pcount++;
 				}
 			}
+
 			double assign_end = MPI_Wtime();
 			double assign_time = assign_end - assign_start;
 
@@ -425,6 +427,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			double pre_end = MPI_Wtime();
 			double pre_time = pre_end - pre_start;
 
+			printf("%d: %d\n", rank, agg_size);
+
 			double comm_start = MPI_Wtime();
 			local_patch->buffer = (unsigned char*)malloc(agg_size); /* reuse the local buffer per variable */
 			local_patch->out_file_size = agg_size;
@@ -452,7 +456,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 		}
 	}
 	return MPR_success;
-
 }
 
 
