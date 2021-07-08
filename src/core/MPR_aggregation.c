@@ -280,7 +280,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			}
 			double total_end = MPI_Wtime();
 
-			printf("Aggregation %d: total %f [ gather %f z %f assign %f comm %f ] \n", rank, (total_end - total_start), (gather_end - gather_start), (convert_z_end - convert_z_start),
+			if (file->mpr->is_aggregator == 1)
+				printf("Aggregation %d: total %f [ gather %f z %f assign %f comm %f ] \n", rank, (total_end - total_start), (gather_end - gather_start), (convert_z_end - convert_z_start),
 						(assign_end - assign_start), (comm_end - comm_start));
 		}
 	}
@@ -452,7 +453,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = file->mpr->local_box[i] + 1;
 			}
 
-			printf("Aggregation %d: [ gather %f assign %f flat %f cre_comm %f pre %f comm %f ] \n", rank, gather_time, assign_time, flat_time, cre_comm_time, pre_time,
+			if (file->mpr->is_aggregator == 1)
+				printf("Aggregation %d: [ gather %f assign %f flat %f cre_comm %f pre %f comm %f ] \n", rank, gather_time, assign_time, flat_time, cre_comm_time, pre_time,
 					comm_time);
 		}
 	}
