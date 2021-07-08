@@ -427,8 +427,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			double pre_end = MPI_Wtime();
 			double pre_time = pre_end - pre_start;
 
-			printf("%d: %d\n", rank, agg_size);
-
 			double comm_start = MPI_Wtime();
 			local_patch->buffer = (unsigned char*)malloc(agg_size); /* reuse the local buffer per variable */
 			local_patch->out_file_size = agg_size;
