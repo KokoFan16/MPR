@@ -495,10 +495,29 @@ MPR_return_code MPR_no_aggregation(MPR_file file, int svi, int evi)
 			local_patch->agg_subbands_size = malloc(local_patch->patch_count * subbands_num * sizeof(int));
 		}
 
+		int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* patch count in each dimension */
+		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
+			patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
+
+
+		int max_xyz[MPR_MAX_DIMENSIONS] = {0, 0, 0};
+		int min_xyz[MPR_MAX_DIMENSIONS] = {INT_MAX, INT_MAX, INT_MAX};
+
 		int offset = 0;
 		for (int i = 0; i < local_patch->patch_count; i++)
 		{
-			local_patch->agg_patch_id_array[i] = local_patch->patch[i]->global_id;
+			int pid = local_patch->patch[i]->global_id;
+			int z = pid / (patch_count_xyz[0] * patch_count_xyz[1]);
+			int y = (pid - (z * patch_count_xyz[0] * patch_count_xyz[1])) / patch_count_xyz[0];
+			int x = pid - z * patch_count_xyz[0] * patch_count_xyz[1] - y * patch_count_xyz[0];
+			if (z < min_xyz[2]) min_xyz[2] = z;
+			if (z > max_xyz[2]) max_xyz[2] = z;
+			if (y < min_xyz[1]) min_xyz[1] = y;
+			if (y > max_xyz[1]) max_xyz[1] = y;
+			if (x < min_xyz[0]) min_xyz[0] = x;
+			if (x > max_xyz[0]) max_xyz[0] = x;
+
+			local_patch->agg_patch_id_array[i] = pid;
 			local_patch->agg_patch_disps[i] = offset;
 			local_patch->agg_patch_size[i] = local_patch->patch[i]->patch_buffer_size;
 			memcpy(&local_patch->buffer[offset], local_patch->patch[i]->buffer, local_patch->patch[i]->patch_buffer_size);
@@ -509,8 +528,8 @@ MPR_return_code MPR_no_aggregation(MPR_file file, int svi, int evi)
 
 		for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 		{
-			local_patch->bounding_box[i] = file->mpr->local_offset[i]/file->mpr->patch_box[i];
-			local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = (file->mpr->local_offset[i] + file->mpr->local_box[i])/file->mpr->patch_box[i];
+			local_patch->bounding_box[i] = min_xyz[i];
+			local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = max_xyz[i] + 1;
 		}
 	}
 
