@@ -84,42 +84,58 @@ MPR_return_code MPR_timing_logs(MPR_file file, int svi, int evi)
 
 	if (file->flags == MPR_MODE_RDONLY)
 	{
-		time_buffer = malloc(6*sizeof(float));
+//		time_buffer = malloc(6*sizeof(float));
 
 		double read_time = file->time->read_end - file->time->read_start;
 
-		time_buffer[0] = rank;
-		time_buffer[1] = total_time;
-		time_buffer[2] = read_time;
-		time_buffer[3] = comp_time;
-		time_buffer[4] = wave_time;
-		time_buffer[5] = rst_time;
+		int count = 7;
+		int offset = file->read_ite * count;
 
-		int count = 6;
-		float* total_time_buffer = NULL;
-		if (file->comm->simulation_rank == 0)
-			total_time_buffer = malloc(count*sizeof(float)*file->comm->simulation_nprocs);
 
-		MPI_Gather(time_buffer, count, MPI_FLOAT, total_time_buffer, count, MPI_FLOAT, 0, file->comm->simulation_comm);
+		time_buffer[offset] = file->read_ite;
+		time_buffer[offset + 1] = rank;
+		time_buffer[offset + 2] = total_time;
+		time_buffer[offset + 3] = read_time;
+		time_buffer[offset + 4] = comp_time;
+		time_buffer[offset + 5] = wave_time;
+		time_buffer[offset + 6] = rst_time;
 
-		if (rank == 0)
+//		time_buffer[0] = rank;
+//		time_buffer[1] = total_time;
+//		time_buffer[2] = read_time;
+//		time_buffer[3] = comp_time;
+//		time_buffer[4] = wave_time;
+//		time_buffer[5] = rst_time;
+
+		if (file->read_ite == 9)
 		{
-			char time_log[512];
-			sprintf(time_log, "time_read_%s_log", file->mpr->filename);
+			float* total_time_buffer = NULL;
+			if (file->comm->simulation_rank == 0)
+				total_time_buffer = malloc(count*10*sizeof(float)*file->comm->simulation_nprocs);
 
-			FILE* fp = fopen(time_log, "w"); /* open file */
-			if (!fp) /* Check file handle */
-				fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
+			MPI_Gather(time_buffer, count*10, MPI_FLOAT, total_time_buffer, count*10, MPI_FLOAT, 0, file->comm->simulation_comm);
 
-			int loop_count = file->comm->simulation_nprocs;
-			for (int i = 0; i < loop_count; i++)
-				fprintf(fp,"%d: [%f] >= [read %f comp %f wave %f rst %f]\n", (int)total_time_buffer[i*6+0], total_time_buffer[i*6+1], total_time_buffer[i*6+2], total_time_buffer[i*6+3], total_time_buffer[i*6+4], total_time_buffer[i*6+5]);
+			if (rank == 0)
+			{
+				char time_log[512];
+				sprintf(time_log, "time_read_%s_log", file->outfile);
+//				sprintf(time_log, "time_read_%s_log", file->mpr->filename);
 
-			fclose(fp);
+				FILE* fp = fopen(time_log, "w"); /* open file */
+				if (!fp) /* Check file handle */
+					fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
+
+				int loop_count = file->comm->simulation_nprocs * 10;
+
+				for (int i = 0; i < loop_count; i++)
+					fprintf(fp,"%d %d: [%f] >= [read %f comp %f wave %f rst %f]\n", (int)total_time_buffer[i*count+0], (int)total_time_buffer[i*count+1], total_time_buffer[i*count+2], total_time_buffer[i*count+3], total_time_buffer[i*count+4], total_time_buffer[i*count+5], total_time_buffer[i*count+6]);
+
+				fclose(fp);
+			}
+
+			free(total_time_buffer);
+//			free(time_buffer);
 		}
-
-		free(total_time_buffer);
-		free(time_buffer);
 	}
 
 	return MPR_success;

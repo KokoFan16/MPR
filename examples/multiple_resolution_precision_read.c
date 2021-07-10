@@ -15,6 +15,7 @@ int bits_per_sample = 0;
 int global_offset[NUM_DIMS];
 MPR_variable variable;
 int read_level = 0;
+char out_file[512]; /* out file name */
 
 static void parse_args(int argc, char **argv);
 static void set_mpr_file(int ts);
@@ -43,11 +44,21 @@ int main(int argc, char **argv)
 
 	create_mpr_point_and_access(); 	/* Create MPI access and point */
 
-	set_mpr_file(current_ts); 	/* Set file structure of current time step */
+	int ite = 10;
+	time_buffer = malloc(ite * 7 * sizeof(float));
+	memset(time_buffer, 0, ite * 7 * sizeof(float));
 
-	set_mpr_variable_and_create_buffer();
+	for (int i = 0; i < ite; i++)
+	{
+		set_mpr_file(current_ts); 	/* Set file structure of current time step */
 
-	MPR_close(file);
+		set_mpr_variable_and_create_buffer();
+
+		file->read_ite = i;
+
+		MPR_close(file);
+	}
+	free(time_buffer);
 
 	if (MPR_close_access(p_access) != MPR_success) /* close access */
 		terminate_with_error_msg("MPR_close_access");
@@ -59,7 +70,7 @@ int main(int argc, char **argv)
 
 static void parse_args(int argc, char **argv)
 {
-	char flags[] = "g:l:s:i:t:v:r:w:";
+	char flags[] = "g:l:s:i:t:v:r:w:o:";
 	int one_opt = 0;
 
 	while ((one_opt = getopt(argc, argv, flags)) != EOF)
@@ -110,6 +121,11 @@ static void parse_args(int argc, char **argv)
 					terminate_with_error_msg("Invalid write parameter (0, 1)\n%s", usage);
 				break;
 
+			case('o'): // whether to write the data out
+				if (sprintf(out_file, "%s", optarg) < 0)
+					terminate_with_error_msg("Invalid output file name\n%s", usage);
+				break;
+
 
 	    default:
 	      terminate_with_error_msg("Wrong arguments\n%s", usage);
@@ -143,6 +159,7 @@ static void set_mpr_file(int ts)
 
 	MPR_set_is_write(file, is_write);
 
+	sprintf(file->outfile, "%s", out_file);
 }
 
 static void set_mpr_variable_and_create_buffer()
