@@ -109,7 +109,7 @@ void MPR_timing_output(MPR_file file, int svi, int evi)
 	{
 		double agg_time = file->time->agg_end - file->time->agg_start;
 		double wrt_data_time = file->time->wrt_data_end - file->time->wrt_data_start;
-		double wrt_metadata_time = file->time->wrt_metadata_end - file->time->wrt_metadata_start;
+		double wrt_metadata_time = file->time->wrt_meta_end - file->time->wrt_meta_start;
 
 		if (MODE == MPR_RAW_IO)
 		{

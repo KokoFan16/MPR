@@ -28,6 +28,10 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 	char time_template[512];
 	sprintf(time_template, "%%s/%s", file->mpr->filename_time_template);
 	sprintf(data_set_path, time_template, directory_path, file->mpr->current_time_step);
+
+	char time_folder[512];
+	sprintf(time_folder, "%s_times", directory_path);
+
 	free(directory_path);
 
 	char last_path[PATH_MAX] = {0};
@@ -36,6 +40,13 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 	char* pos;
 	if (file->comm->simulation_rank == 0)
 	{
+		int ret = mkdir(time_folder, S_IRWXU | S_IRWXG | S_IRWXO);
+		if (ret != 0 && errno != EEXIST)
+		{
+			fprintf(stderr, "Error: failed to mkdir %s\n", tmp_path);
+			return MPR_err_file;
+		}
+
 		strcpy(this_path, data_set_path);
 		if ((pos = strrchr(this_path, '/')))
 		{
@@ -71,25 +82,31 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 {
 	/* Write basic information out */
+	file->time->wrt_meta_basic_start = MPI_Wtime();
 	if (MPR_basic_info_metadata_write_out(file) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->wrt_meta_basic_end = MPI_Wtime();
 
 	/* Write bounding box metadata out */
+	file->time->wrt_meta_bound_start = MPI_Wtime();
 	if (MPR_bounding_box_metadata_write_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->wrt_meta_bound_end = MPI_Wtime();
 
 	/* Write file related metadata out */
+	file->time->wrt_meta_file_start = MPI_Wtime();
 	if (MPR_gather_file_metadata(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	file->time->wrt_meta_file_end = MPI_Wtime();
 	return MPR_success;
 }
 

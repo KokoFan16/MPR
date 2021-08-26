@@ -61,8 +61,6 @@ MPR_return_code MPR_file_create(const char* filename, int flags, MPR_access acce
 	(*file)->time->agg_end = 0;
 	(*file)->time->wrt_data_start = 0;
 	(*file)->time->wrt_data_end = 0;
-	(*file)->time->wrt_metadata_start = 0;
-	(*file)->time->wrt_metadata_end = 0;
 
 	if (global != NULL)
 		memcpy((*file)->mpr->global_box, global, MPR_MAX_DIMENSIONS * sizeof(int));
