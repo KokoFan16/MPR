@@ -25,8 +25,7 @@ static char *optarg;                /* argument associated with option */
 * getopt --
 *      Parse argc/argv argument vector.
 */
-static int
-getopt(int nargc, char * const nargv[], const char *ostr)
+static int getopt(int nargc, char * const nargv[], const char *ostr)
 {
   static char *place = EMSG;              /* option letter processing */
   const char *oli;                        /* option letter list index */
