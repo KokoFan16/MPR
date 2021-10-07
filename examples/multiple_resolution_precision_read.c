@@ -45,8 +45,8 @@ int main(int argc, char **argv)
 	create_mpr_point_and_access(); 	/* Create MPI access and point */
 
 	int ite = 10;
-	time_buffer = malloc(ite * 7 * sizeof(float));
-	memset(time_buffer, 0, ite * 7 * sizeof(float));
+//	time_buffer = malloc(ite * 7 * sizeof(float));
+//	memset(time_buffer, 0, ite * 7 * sizeof(float));
 
 	for (int i = 0; i < ite; i++)
 	{
@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 
 		MPR_close(file);
 	}
-	free(time_buffer);
+//	free(time_buffer);
 
 	if (MPR_close_access(p_access) != MPR_success) /* close access */
 		terminate_with_error_msg("MPR_close_access");

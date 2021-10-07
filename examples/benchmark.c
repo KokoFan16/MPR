@@ -111,7 +111,7 @@ int main(int argc, char **argv)
 static int read_size_file(char* input_file)
 {
 	int file_patch_count = patch_box_size[0] * patch_box_size[1] * patch_box_size[2];
-	origin_patch_sizes = malloc(file_patch_count * sizeof(int));
+	origin_patch_sizes = (int*)malloc(file_patch_count * sizeof(int));
 
 	FILE *fp = fopen(input_file, "r");
 	if (fp == NULL)
@@ -133,7 +133,7 @@ static int linear_interpolation()
 {
 	int file_patch_count = patch_box_size[0] * patch_box_size[1] * patch_box_size[2]; // the patch count from original histogram
 	patch_count = global_box_size[0] * global_box_size[1] * global_box_size[2]; // the new patch count
-	patch_sizes = malloc(patch_count * sizeof(int));
+	patch_sizes = (int*)malloc(patch_count * sizeof(int));
 
 	if (patch_count == file_patch_count)
 		memcpy(patch_sizes, origin_patch_sizes, patch_count * sizeof(int));
@@ -198,7 +198,7 @@ static int linear_interpolation()
 
 static int generate_random_local_data()
 {
-	local_buffer = malloc(patch_sizes[rank]);
+	local_buffer = (unsigned char* )malloc(patch_sizes[rank]);
 	for (int i = 0; i < patch_sizes[rank]; i++)
 		local_buffer[i] = 'a' + (random() % 26);
 
@@ -208,7 +208,7 @@ static int generate_random_local_data()
 
 static void write_data(int ts)
 {
-	char* data_set_path = malloc(sizeof(*data_set_path) * 512);
+	char* data_set_path = (char* )malloc(sizeof(*data_set_path) * 512);
 	memset(data_set_path, 0, sizeof(*data_set_path) * 512);
 	sprintf(data_set_path, "%s/time%09d/", output_file_template, ts);
 
@@ -455,13 +455,13 @@ static int aggregation_perform()
 
 	/* Data exchange */
 	int comm_count =  recv_num + 1; /* the maximum transform times */
-	MPI_Request* req = malloc(comm_count * sizeof(MPI_Request));
-	MPI_Status* stat = malloc(comm_count * sizeof(MPI_Status));
+	MPI_Request* req = (MPI_Request*)malloc(comm_count * sizeof(MPI_Request));
+	MPI_Status* stat = (MPI_Status*)malloc(comm_count * sizeof(MPI_Status));
 	int req_id = 0;
 	int offset = 0;
 
 	if (is_aggregator == 1)
-		recv_buffer = malloc(agg_size);
+		recv_buffer = (unsigned char*)malloc(agg_size);
 
 	for (int i = 0; i < recv_num; i++)
 	{

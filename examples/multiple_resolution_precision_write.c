@@ -2,6 +2,8 @@
 #include "../src/utils/MPR_windows_utils.h"
 #include "MPR_example_utils.h"
 
+#include "../include/logging_api.h"
+
 char var_name[MAX_VAR_COUNT][512];
 int bpv[MAX_VAR_COUNT];
 char type_name[MAX_VAR_COUNT][512];
@@ -15,6 +17,7 @@ unsigned char **data;
 static MPR_point patch_box;
 
 int agg_version;
+
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -70,14 +73,20 @@ int main(int argc, char **argv)
 	variable = (MPR_variable*)malloc(sizeof(*variable) * variable_count);
 	memset(variable, 0, sizeof(*variable) * variable_count);
 
-	int time_count = 65; //9
-	time_buffer = malloc(time_step_count * time_count * sizeof(float));
-	memset(time_buffer, 0, time_step_count * time_count * sizeof(float));
-	size_buffer = malloc(time_step_count * 5 * sizeof(long long int));
-	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
+//	int time_count = 65; //9
+//	time_buffer = (float*)malloc(time_step_count * time_count * sizeof(float));
+//	memset(time_buffer, 0, time_step_count * time_count * sizeof(float));
+//	size_buffer = (long long int*)malloc(time_step_count * 5 * sizeof(long long int));
+//	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
 
 	for (ts = 0; ts < time_step_count; ts++)
 	{
+		set_rank(rank, process_count);
+		set_timestep(ts, time_step_count);
+		set_namespath("");
+
+		Events e("main", "null");
+
 		set_mpr_file(ts);
 
 		for (var = 0; var < variable_count; var++)
@@ -85,8 +94,10 @@ int main(int argc, char **argv)
 
 		MPR_close(file);
 	}
-	free(time_buffer);
-	free(size_buffer);
+	std::string filename = "parallel_io_mulResPre_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
+	write_output(filename);
+//	free(time_buffer);
+//	free(size_buffer);
 
 	if (MPR_close_access(p_access) != MPR_success)
 		terminate_with_error_msg("MPR_close_access");
@@ -317,13 +328,13 @@ MPI_Datatype create_subarray()
 /* Read file in parallel */
 static void read_file_parallel()
 {
-	data = malloc(sizeof(*data) * variable_count);
+	data = (unsigned char**)malloc(sizeof(*data) * variable_count);
 	memset(data, 0, sizeof(*data) * variable_count);
 
 	int bytes = (bpv[0]/8) * vps[0];
 	int size = local_box_size[X] * local_box_size[Y] * local_box_size[Z] * bytes; // Local size
 
-	data[0] = malloc(sizeof (*(data[0])) * size); // The first variable
+	data[0] = (unsigned char*)malloc(sizeof (*(data[0])) * size); // The first variable
     MPI_Datatype subarray = create_subarray(); // Self-define MPI data type
     MPI_File fh;
     MPI_Status status;
@@ -349,7 +360,7 @@ static void read_file_parallel()
     // For other variables except first one, just copy the data of first variable.
 	for (int var = 1; var < variable_count; var++)
 	{
-		data[var] = malloc(sizeof(*(data[var])) * size * (bpv[var]/8) * vps[var]);
+		data[var] = (unsigned char*)malloc(sizeof(*(data[var])) * size * (bpv[var]/8) * vps[var]);
 		memcpy(data[var], data[0], sizeof(*(data[var])) * size * (bpv[var]/8) * vps[var]);
 	}
 }
@@ -403,14 +414,14 @@ static void set_mpr_variable(int var)
 static void create_synthetic_simulation_data()
 {
   int var = 0;
-  data = malloc(sizeof(*data) * variable_count);
+  data = (unsigned char**) malloc(sizeof(*data) * variable_count);
   memset(data, 0, sizeof(*data) * variable_count);
 
   // Synthetic simulation data
   for (var = 0; var < variable_count; var++)
   {
     uint64_t i, j, k, val_per_sample = 0;
-    data[var] = malloc(sizeof (*(data[var])) * local_box_size[X] * local_box_size[Y] * local_box_size[Z] * (bpv[var]/8) * vps[var]);
+    data[var] = (unsigned char*) malloc(sizeof (*(data[var])) * local_box_size[X] * local_box_size[Y] * local_box_size[Z] * (bpv[var]/8) * vps[var]);
 
     unsigned char cvalue = 0;
     short svalue = 0;

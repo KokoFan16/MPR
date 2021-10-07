@@ -9,18 +9,18 @@
 
 MPR_return_code MPR_file_open(const char* filename, int flags, MPR_access access_type, MPR_point global, MPR_point local, MPR_point offset, MPR_file* file)
 {
-	*file = malloc(sizeof (*(*file)) );
+	*file = (MPR_file)malloc(sizeof (*(*file)) );
 	memset(*file, 0, sizeof (*(*file)) );
 
 	(*file)->flags = flags;
 
-	(*file)->mpr = malloc(sizeof (*((*file)->mpr)));
+	(*file)->mpr = (MPR_dataset)malloc(sizeof (*((*file)->mpr)));
 	memset((*file)->mpr, 0, sizeof (*((*file)->mpr)));
 
-	(*file)->comm = malloc(sizeof (*((*file)->comm)));
+	(*file)->comm = (MPR_comm)malloc(sizeof (*((*file)->comm)));
 	memset((*file)->comm, 0, sizeof (*((*file)->comm)));
 
-	(*file)->time = malloc(sizeof (*((*file)->time)));
+	(*file)->time = (MPR_time)malloc(sizeof (*((*file)->time)));
 	memset((*file)->time, 0, sizeof (*((*file)->time)));
 
 	(*file)->time->total_start = MPI_Wtime();  /* the start time for this program */
@@ -95,7 +95,7 @@ MPR_return_code MPR_file_open(const char* filename, int flags, MPR_access access
 	{
 		for (int v = 0; v < (*file)->mpr->variable_count; v++)
 		{
-			(*file)->variable[v] = malloc(sizeof (*((*file)->variable[v])));
+			(*file)->variable[v] = (MPR_variable)malloc(sizeof (*((*file)->variable[v])));
 			memset((*file)->variable[v], 0, sizeof (*((*file)->variable[v])));
 		}
 	}

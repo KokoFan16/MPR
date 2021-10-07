@@ -4,6 +4,7 @@
  *  Created on: Jul 2, 2020
  *      Author: kokofan
  */
+#pragma once
 
 #ifndef SRC_MPR_INC_H_
 #define SRC_MPR_INC_H_
@@ -21,6 +22,8 @@
 #include "core/MPR_aggregation.h"
 #include "core/MPR_compression.h"
 #include "core/MPR_wavelet.h"
+
+#include "../include/logging_api.h"
 
 #include <stdarg.h>
 #include <stdio.h>

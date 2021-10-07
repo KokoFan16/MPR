@@ -2,6 +2,9 @@ cmake_minimum_required (VERSION 2.8)
 
 include_directories(${ZFP_INCLUDE_DIR})
 
+file(GLOB_RECURSE CFILES "${PROJECT_SOURCE_DIR}/src/core/*.c")
+SET_SOURCE_FILES_PROPERTIES(${CFILES} PROPERTIES LANGUAGE CXX COMPILE_FLAGS "-std=c++11")
+
 aux_source_directory(. MPR_CORE_SOURCES)
 
 add_library(mpr_core ${MPR_CORE_SOURCES})

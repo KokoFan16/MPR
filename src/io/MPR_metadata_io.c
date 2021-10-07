@@ -13,16 +13,18 @@ static int intersect_patch(int* a_size, int* a_offset, int* b_size, int* b_offse
 
 MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 {
+	Events e("crtStruc", "null");
+
 	char* file_name = file->mpr->filename;
 
 	char *directory_path;
 	char *data_set_path;
 
-	directory_path = malloc(sizeof(*directory_path) * PATH_MAX);
+	directory_path = (char *)malloc(sizeof(*directory_path) * PATH_MAX);
 	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
 	strncpy(directory_path, file_name, strlen(file_name) - 4);
 
-	data_set_path = malloc(sizeof(*data_set_path) * PATH_MAX);
+	data_set_path = (char *)malloc(sizeof(*data_set_path) * PATH_MAX);
 	memset(data_set_path, 0, sizeof(*data_set_path) * PATH_MAX);
 
 	char time_template[512];
@@ -81,38 +83,42 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 /* Write meta-data out */
 MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 {
+	Events e("wrtMeta", "null");
+
 	/* Write basic information out */
-	file->time->wrt_meta_basic_start = MPI_Wtime();
+//	file->time->wrt_meta_basic_start = MPI_Wtime();
 	if (MPR_basic_info_metadata_write_out(file) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-	file->time->wrt_meta_basic_end = MPI_Wtime();
+//	file->time->wrt_meta_basic_end = MPI_Wtime();
 
 	/* Write bounding box metadata out */
-	file->time->wrt_meta_bound_start = MPI_Wtime();
+//	file->time->wrt_meta_bound_start = MPI_Wtime();
 	if (MPR_bounding_box_metadata_write_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-	file->time->wrt_meta_bound_end = MPI_Wtime();
+//	file->time->wrt_meta_bound_end = MPI_Wtime();
 
 	/* Write file related metadata out */
-	file->time->wrt_meta_file_start = MPI_Wtime();
+//	file->time->wrt_meta_file_start = MPI_Wtime();
 	if (MPR_gather_file_metadata(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-	file->time->wrt_meta_file_end = MPI_Wtime();
+//	file->time->wrt_meta_file_end = MPI_Wtime();
 	return MPR_success;
 }
 
 
 MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 {
+	Events e("basic", "io");
+
 	char* file_name = file->mpr->filename; /* file name for */
 	/* Check if the data format is .mpr */
 	if (strncmp(".mpr", &file_name[strlen(file_name) - 4], 4) != 0)
@@ -165,6 +171,8 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 
 MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int evi)
 {
+	Events e("Bounding", "io");
+
 	char directory_path[PATH_MAX]; /* file template */
 	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
 	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
@@ -187,7 +195,7 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 	int meta_id = 0; /* The current meta-data index */
 	if (file->comm->simulation_rank == 0)
 	{
-		meta_buffer = malloc(meta_count * sizeof(int)); /* Allocate memory for meta-data buffer */
+		meta_buffer = (unsigned char *)malloc(meta_count * sizeof(int)); /* Allocate memory for meta-data buffer */
 		for (int i = 0; i < file->comm->simulation_nprocs; i++)
 		{
 			if (agg_ranks[i] == 1)
@@ -204,7 +212,7 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 	{
 		meta_count += meta_count * (file->mpr->variable_count - 1);
 		if (file->comm->simulation_rank == 0) /* re-allocate memory for metadata buffer */
-			meta_buffer = realloc(meta_buffer, meta_count * sizeof(int));
+			meta_buffer = (unsigned char *)realloc(meta_buffer, meta_count * sizeof(int));
 
 		for (int v = svi + 1; v < evi; v++) /* loop all the variables except first one */
 		{
@@ -251,6 +259,8 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 
 MPR_return_code MPR_gather_file_metadata(MPR_file file, int svi, int evi)
 {
+	Events e("gather", "cal");
+
 	if (file->mpr->is_aggregator == 1)
 	{
 		int meta_count = 1; /* the number of needed meta-data */
@@ -259,7 +269,7 @@ MPR_return_code MPR_gather_file_metadata(MPR_file file, int svi, int evi)
 		if (MODE == MPR_RAW_IO || MODE == MPR_MUL_RES_IO) /* No compression involves */
 		{
 			meta_count += file->variable[svi]->local_patch->agg_patch_count; /* the number of patches per file */
-			file->mpr->file_meta_buffer = malloc(meta_count * sizeof(int)); /* allocate memory */
+			file->mpr->file_meta_buffer = (unsigned char *)malloc(meta_count * sizeof(int)); /* allocate memory */
 			memcpy(file->mpr->file_meta_buffer, &meta_count, sizeof(int));
 			for (int i = 1; i < meta_count; i++) /* the patch id */
 				memcpy(&file->mpr->file_meta_buffer[i*sizeof(int)], &file->variable[svi]->local_patch->agg_patch_id_array[i-1], sizeof(int));
@@ -267,7 +277,7 @@ MPR_return_code MPR_gather_file_metadata(MPR_file file, int svi, int evi)
 		else if (MODE == MPR_MUL_PRE_IO || MODE == MPR_MUL_RES_PRE_IO) /* Compression involves */
 		{
 			meta_count += file->mpr->variable_count * 2; /* the patch count for aggregator per variable */
-			file->mpr->file_meta_buffer = malloc(meta_count * sizeof(int));
+			file->mpr->file_meta_buffer = (unsigned char *)malloc(meta_count * sizeof(int));
 			int meta_id = 1; /* the first one should be the total number of meta-data */
 
 			int vars_agg_patch_count = 0; /* the total patch count for the aggregator across all the variables */
@@ -282,7 +292,7 @@ MPR_return_code MPR_gather_file_metadata(MPR_file file, int svi, int evi)
 
 			meta_id += file->mpr->variable_count;
 			meta_count += vars_agg_patch_count * 3; /* Meta-data: patch-id, patch-offset, patch-size */
-			file->mpr->file_meta_buffer = realloc(file->mpr->file_meta_buffer, meta_count * sizeof(int));
+			file->mpr->file_meta_buffer = (unsigned char *)realloc(file->mpr->file_meta_buffer, meta_count * sizeof(int));
 
 			for (int v = svi; v < evi; v++)
 			{
@@ -304,7 +314,7 @@ MPR_return_code MPR_gather_file_metadata(MPR_file file, int svi, int evi)
 			{
 				int subbands_num = file->mpr->wavelet_trans_num * 7 + 1; /* the number of sub-bands per patch */
 				meta_count += vars_agg_patch_count * subbands_num; /* Meta-data: size of each sub-band */
-				file->mpr->file_meta_buffer = realloc(file->mpr->file_meta_buffer, meta_count * sizeof(int));
+				file->mpr->file_meta_buffer = (unsigned char *)realloc(file->mpr->file_meta_buffer, meta_count * sizeof(int));
 
 				for (int v = svi; v < evi; v++)
 				{
@@ -352,7 +362,7 @@ MPR_return_code MPR_basic_metatda_parse(char* file_name, MPR_file* file)
 				if ( fgets(line, sizeof line, fp) == NULL)
 					return MPR_err_file;
 				line[strcspn(line, "\r\n")] = 0;
-				(*file)->mpr->io_type = atoi(line);
+				(*file)->mpr->io_type = (enum MPR_io_type)atoi(line);
 			}
 
 			if (strcmp(line, "(Global box)") == 0)
@@ -413,7 +423,7 @@ MPR_return_code MPR_basic_metatda_parse(char* file_name, MPR_file* file)
 				int variable_counter = 0;
 				while (line[0] != '(')
 				{
-			        (*file)->variable[variable_counter] = malloc(sizeof (*((*file)->variable[variable_counter])));
+			        (*file)->variable[variable_counter] = (MPR_variable)malloc(sizeof (*((*file)->variable[variable_counter])));
 			        if ((*file)->variable[variable_counter] == NULL)
 			        	return MPR_err_file;
 			        memset((*file)->variable[variable_counter], 0, sizeof (*((*file)->variable[variable_counter])));
@@ -516,7 +526,7 @@ MPR_return_code MPR_basic_metatda_parse(char* file_name, MPR_file* file)
 MPR_return_code MPR_bounding_box_metatda_parse(char* file_name, MPR_file file)
 {
 	int count = file->mpr->out_file_num * 7; /* The meta-data count */
-	int* buffer = malloc(count * sizeof(int));  /* buffer for bounding box */
+	int* buffer = (int*) malloc(count * sizeof(int));  /* buffer for bounding box */
 
 	FILE * fp = fopen(file_name, "r"); /* Open bounding box meta-data file */
 	if (fp == NULL)
@@ -553,7 +563,7 @@ MPR_return_code MPR_bounding_box_metatda_parse(char* file_name, MPR_file file)
 	free(buffer);
 
 	file->mpr->open_file_num = file_num;
-	file->mpr->open_file_ids = malloc(file_num * sizeof(int));
+	file->mpr->open_file_ids = (int*)malloc(file_num * sizeof(int));
 	memcpy(file->mpr->open_file_ids, file_id, file_num * sizeof(int));
 
 	return MPR_success;
@@ -565,7 +575,7 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 	memset(patches_offset, -1, file->mpr->total_patches_num * sizeof(int));
 	memset(patches_size, -1, file->mpr->total_patches_num * sizeof(int));
 
-	int* buffer = malloc(sizeof(int));  /* buffer for file meta-data */
+	int* buffer = (int*)malloc(sizeof(int));  /* buffer for file meta-data */
 
 	FILE * fp = fopen(file_name, "r"); /* Open bounding box meta-data file */
 	if (fp == NULL)
@@ -577,7 +587,7 @@ MPR_return_code MPR_file_related_metadata_parse(char* file_name, MPR_file file, 
 	int meta_count = buffer[0]; /* get the size of meta-data*/
 	fseek(fp, 0L, SEEK_SET);
 
-	buffer = realloc(buffer, meta_count * sizeof(int));
+	buffer = (int*)realloc(buffer, meta_count * sizeof(int));
 	int read_count = fread(buffer, sizeof(int), meta_count, fp); /* Read all the meta-data */
 	if (read_count != meta_count)
 	{

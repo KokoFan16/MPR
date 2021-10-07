@@ -94,9 +94,9 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 
 	int subband_num = file->mpr->wavelet_trans_num * 7 + 1;
 
-	int* patches_offset = malloc(file->mpr->total_patches_num * sizeof(int)); /* patch offset array */
-	int* patches_size = malloc(file->mpr->total_patches_num * sizeof(int)); /* patch size array */
-	int* patches_subbands = malloc(file->mpr->total_patches_num * subband_num * sizeof(int)); /* patch sub-bands size array */
+	int* patches_offset = (int*)malloc(file->mpr->total_patches_num * sizeof(int)); /* patch offset array */
+	int* patches_size = (int*)malloc(file->mpr->total_patches_num * sizeof(int)); /* patch size array */
+	int* patches_subbands = (int*)malloc(file->mpr->total_patches_num * subband_num * sizeof(int)); /* patch sub-bands size array */
 
 	for (int i = 0; i < file_num; i++)
 	{
@@ -122,11 +122,11 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 			{
 				if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 				{
-					local_patch->patch[p]->subbands_comp_size = malloc(subband_num * sizeof(int));
+					local_patch->patch[p]->subbands_comp_size = (int*)malloc(subband_num * sizeof(int));
 					memcpy(local_patch->patch[p]->subbands_comp_size, &patches_subbands[global_id * subband_num], subband_num * sizeof(int));
 				}
 				local_patch->patch[p]->patch_buffer_size = patches_size[global_id];
-				local_patch->patch[p]->buffer = malloc(local_patch->patch[p]->patch_buffer_size);
+				local_patch->patch[p]->buffer = (unsigned char*)malloc(local_patch->patch[p]->patch_buffer_size);
 
 				fseek(fp,  patches_offset[global_id], SEEK_SET);  /* set offset */
 				int read_size = fread(local_patch->patch[p]->buffer, sizeof(char), local_patch->patch[p]->patch_buffer_size, fp);
@@ -152,8 +152,8 @@ MPR_return_code MPR_read_data(MPR_file file, int svi)
 MPR_return_code MPR_check_required_patches(MPR_file file, int svi)
 {
 	MPR_local_patch local_patch = file->variable[svi]->local_patch;
-	local_patch->agg_patch_id_array = malloc(file->mpr->total_patches_num * sizeof(int));
-	local_patch->patch = malloc(sizeof(MPR_patch*) * file->mpr->total_patches_num); /* Local patch array per variable */
+	local_patch->agg_patch_id_array = (int*)malloc(file->mpr->total_patches_num * sizeof(int));
+	local_patch->patch = (MPR_patch*)malloc(sizeof(MPR_patch*) * file->mpr->total_patches_num); /* Local patch array per variable */
 
 	int local_offset_xyz[MPR_MAX_DIMENSIONS]; /* The real offset to read in origin dataset */
 	int local_end_xyz[MPR_MAX_DIMENSIONS];    /* The local end coordinate */
@@ -187,8 +187,8 @@ MPR_return_code MPR_check_required_patches(MPR_file file, int svi)
 		}
 	}
 	local_patch->patch_count = required_patch_count;
-	local_patch->patch = realloc(local_patch->patch, sizeof(MPR_patch*) * required_patch_count);
-	local_patch->agg_patch_id_array = realloc(local_patch->agg_patch_id_array, sizeof(int) * required_patch_count);
+	local_patch->patch = (MPR_patch*)realloc(local_patch->patch, sizeof(MPR_patch*) * required_patch_count);
+	local_patch->agg_patch_id_array = (int*)realloc(local_patch->agg_patch_id_array, sizeof(int) * required_patch_count);
 
 	return MPR_success;
 }
@@ -225,7 +225,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	int array_subsize[MPR_MAX_DIMENSIONS] = {file->mpr->patch_box[0] * bytes, file->mpr->patch_box[1], file->mpr->patch_box[2]};
 
 	long long int local_buffer_size = patch_size * local_patch->patch_count;
-	unsigned char* local_buffer =  malloc(local_buffer_size);
+	unsigned char* local_buffer =  (unsigned char*)malloc(local_buffer_size);
 
 	MPI_Request req[local_patch->patch_count*2];
 	MPI_Status stat[local_patch->patch_count*2];
@@ -253,7 +253,7 @@ MPR_return_code MPR_get_local_read_box(MPR_file file, int svi)
 	MPI_Waitall(req_id, req, stat);
 
 	int local_size = file->mpr->local_box[0] * file->mpr->local_box[1] * file->mpr->local_box[2] * bytes;
-	local_patch->buffer = malloc(local_size);
+	local_patch->buffer = (unsigned char *)malloc(local_size);
 
 	int relative_local_offset[MPR_MAX_DIMENSIONS];
 	for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
@@ -294,7 +294,7 @@ MPR_return_code MPR_read_level_samples(MPR_file file, int svi)
 
 	int sample_step = pow(2, file->mpr->read_level);
 	int local_size = ((file->mpr->local_box[0] + 1)/sample_step) * ((file->mpr->local_box[1] + 1)/sample_step) * ((file->mpr->local_box[2] + 1)/sample_step) * bytes;
-	unsigned char* local_level_buffer = malloc(local_size);
+	unsigned char* local_level_buffer = (unsigned char*)malloc(local_size);
 
 	int x = 0, y = 0, z = 0;
 	if (file->mpr->global_offset[0] % sample_step != 0)
@@ -318,7 +318,7 @@ MPR_return_code MPR_read_level_samples(MPR_file file, int svi)
 		}
 	}
 
-	local_patch->buffer = realloc(local_patch->buffer, local_size);
+	local_patch->buffer = (unsigned char*)realloc(local_patch->buffer, local_size);
 	memcpy(local_patch->buffer, local_level_buffer, local_size);
 
 	free(local_level_buffer);

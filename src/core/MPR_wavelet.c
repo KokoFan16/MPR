@@ -19,7 +19,9 @@ static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, char
 
 MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 {
-	file->time->wave_pre_start = MPI_Wtime();
+	Events e("wave", "null");
+
+//	file->time->wave_pre_start = MPI_Wtime();
 	int rank = file->comm->simulation_rank; /* The rank of process */
 	int procs_num = file->comm->simulation_nprocs; /* The number of processes */
 	MPI_Comm comm = file->comm->simulation_comm; /* MPI Communicator */
@@ -32,10 +34,10 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 	}
 	int trans_num = log2(min) - 2; /* Calculate the the number of transforms */
 	file->mpr->wavelet_trans_num = trans_num;
-	file->time->wave_pre_end = MPI_Wtime();
+//	file->time->wave_pre_end = MPI_Wtime();
 
-	file->time->wave_trans_time = 0;
-	file->time->wave_org_time = 0;
+//	file->time->wave_trans_time = 0;
+//	file->time->wave_org_time = 0;
 	for (int v = svi; v < evi; v++)
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch;
@@ -45,18 +47,24 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 
 		for (int i = 0; i < patch_count; i++)
 		{
-			double trans_start = MPI_Wtime();
+//			double trans_start = MPI_Wtime();
+			{
+				Events e("trans", "cal", 0, 2);
 			wavelet_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, file->variable[v]->type_name, trans_num);
-			double trans_end = MPI_Wtime();
-			file->time->wave_trans_time += trans_end - trans_start;
+			}
+//			double trans_end = MPI_Wtime();
+//			file->time->wave_trans_time += trans_end - trans_start;
 
-			double org_start = MPI_Wtime();
-			unsigned char* reg_buffer = malloc(local_patch->patch[i]->patch_buffer_size);
+//			double org_start = MPI_Wtime();
+			{
+				Events e("organ", "cal", 0, 2);
+			unsigned char* reg_buffer = (unsigned char*)malloc(local_patch->patch[i]->patch_buffer_size);
 			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes, 0, 0);
 			memcpy(local_patch->patch[i]->buffer, reg_buffer, local_patch->patch[i]->patch_buffer_size);
 			free(reg_buffer);
-			double org_end = MPI_Wtime();
-			file->time->wave_org_time += org_end - org_start;
+			}
+//			double org_end = MPI_Wtime();
+//			file->time->wave_org_time += org_end - org_start;
 		}
 	}
 
@@ -74,7 +82,7 @@ MPR_return_code MPR_wavelet_decode_perform(MPR_file file, int svi)
 
 	for (int i = 0; i < local_patch->patch_count; i++)
 	{
-		unsigned char* reg_buffer = malloc(patch_size);
+		unsigned char* reg_buffer = (unsigned char*)malloc(patch_size);
 		MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, file->mpr->wavelet_trans_num, bytes, 1, file->mpr->read_level);
 		memcpy(local_patch->patch[i]->buffer, reg_buffer, patch_size);
 		free(reg_buffer);

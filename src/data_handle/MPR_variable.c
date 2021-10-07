@@ -18,7 +18,7 @@ MPR_return_code MPR_variable_create(char* variable_name, unsigned int bits_per_s
   if (!type_name)
     return MPR_err_type;
 
-  *variable = malloc(sizeof *(*variable));
+  *variable = (MPR_variable)malloc(sizeof *(*variable));
   memset(*variable, 0, sizeof *(*variable));
 
   int bits = 0;
@@ -32,7 +32,7 @@ MPR_return_code MPR_variable_create(char* variable_name, unsigned int bits_per_s
   strcpy((*variable)->type_name, type_name);
   strcpy((*variable)->var_name, variable_name);
 
-  (*variable)->local_patch = malloc(sizeof(*((*variable)->local_patch)));
+  (*variable)->local_patch = (MPR_local_patch)malloc(sizeof(*((*variable)->local_patch)));
   memset((*variable)->local_patch, 0, sizeof (*((*variable)->local_patch)));
 
   (*variable)->local_patch->agg_patch_disps = NULL;
@@ -111,7 +111,7 @@ MPR_return_code MPR_get_current_variable(MPR_file file, MPR_variable* variable)
 
 	(*variable) = file->variable[file->variable_index_tracker];
 
-	(*variable)->local_patch = malloc(sizeof(*((*variable)->local_patch)));
+	(*variable)->local_patch = (MPR_local_patch)malloc(sizeof(*((*variable)->local_patch)));
 	memset((*variable)->local_patch, 0, sizeof (*((*variable)->local_patch)));
 
 	return MPR_success;

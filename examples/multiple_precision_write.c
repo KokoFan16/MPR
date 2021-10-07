@@ -72,10 +72,10 @@ int main(int argc, char **argv)
 	variable = (MPR_variable*)malloc(sizeof(*variable) * variable_count);
 	memset(variable, 0, sizeof(*variable) * variable_count);
 
-	time_buffer = malloc(time_step_count * 9 *sizeof(float));
-	memset(time_buffer, 0, time_step_count * 9 * sizeof(float));
-	size_buffer = malloc(time_step_count * 5 * sizeof(long long int));
-	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
+//	time_buffer = malloc(time_step_count * 9 *sizeof(float));
+//	memset(time_buffer, 0, time_step_count * 9 * sizeof(float));
+//	size_buffer = malloc(time_step_count * 5 * sizeof(long long int));
+//	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
 
 	for (ts = 0; ts < time_step_count; ts++)
 	{
@@ -86,8 +86,8 @@ int main(int argc, char **argv)
 
 	    MPR_close(file);
 	}
-	free(time_buffer);
-	free(size_buffer);
+//	free(time_buffer);
+//	free(size_buffer);
 
 	if (MPR_close_access(p_access) != MPR_success)
 		terminate_with_error_msg("MPR_close_access");
@@ -314,13 +314,13 @@ MPI_Datatype create_subarray()
 /* Read file in parallel */
 static void read_file_parallel()
 {
-	data = malloc(sizeof(*data) * variable_count);
+	data = (unsigned char **)malloc(sizeof(*data) * variable_count);
 	memset(data, 0, sizeof(*data) * variable_count);
 
 	int bytes = (bpv[0]/8) * vps[0];
 	int size = local_box_size[X] * local_box_size[Y] * local_box_size[Z] * bytes; // Local size
 
-	data[0] = malloc(sizeof (*(data[0])) * size); // The first variable
+	data[0] = (unsigned char *)malloc(sizeof (*(data[0])) * size); // The first variable
     MPI_Datatype subarray = create_subarray(); // Self-define MPI data type
     MPI_File fh;
     MPI_Status status;
@@ -343,7 +343,7 @@ static void read_file_parallel()
     // For other variables except first one, just copy the data of first variable.
 	for (int var = 1; var < variable_count; var++)
 	{
-		data[var] = malloc(sizeof(*(data[var])) * size * (bpv[var]/8) * vps[var]);
+		data[var] = (unsigned char *)malloc(sizeof(*(data[var])) * size * (bpv[var]/8) * vps[var]);
 		memcpy(data[var], data[0], sizeof(*(data[var])) * size * (bpv[var]/8) * vps[var]);
 	}
 }
@@ -394,14 +394,14 @@ static void set_mpr_variable(int var)
 static void create_synthetic_simulation_data()
 {
   int var = 0;
-  data = malloc(sizeof(*data) * variable_count);
+  data = (unsigned char **)malloc(sizeof(*data) * variable_count);
   memset(data, 0, sizeof(*data) * variable_count);
 
   // Synthetic simulation data
   for (var = 0; var < variable_count; var++)
   {
     uint64_t i, j, k, val_per_sample = 0;
-    data[var] = malloc(sizeof (*(data[var])) * local_box_size[X] * local_box_size[Y] * local_box_size[Z] * (bpv[var]/8) * vps[var]);
+    data[var] = (unsigned char *)malloc(sizeof (*(data[var])) * local_box_size[X] * local_box_size[Y] * local_box_size[Z] * (bpv[var]/8) * vps[var]);
 
     unsigned char cvalue = 0;
     short svalue = 0;

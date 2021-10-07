@@ -7,45 +7,56 @@ static void calculate_res_level_box(int* res_box, int* patch_box, int level);
 
 MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, int evi)
 {
+	Events e("ZFP", "null");
+
 	int subband_num = file->mpr->wavelet_trans_num * 7 + 1;
 
 	for (int v = svi; v < evi; v++)
 	{
-		file->time->zfp_pre_start = MPI_Wtime();
+//		file->time->zfp_pre_start = MPI_Wtime();
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
 		char* type_name = file->variable[v]->type_name;
 		int local_patch_count = local_patch->patch_count;
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		int data_type;
+		{
+			Events e("getDT", "null");
 		if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
 			data_type = 0;
 		else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
 			data_type = 1;
-		file->time->zfp_pre_end = MPI_Wtime();
+		}
+//		file->time->zfp_pre_end = MPI_Wtime();
 
-		file->time->zfp_comp_dc_time = 0;
-		file->time->zfp_comp_bands_time = 0;
+//		file->time->zfp_comp_dc_time = 0;
+//		file->time->zfp_comp_bands_time = 0;
 		for (int p = 0; p < local_patch_count; p++)
 		{
-			double comp_dc_start = MPI_Wtime();
+//			double comp_dc_start = MPI_Wtime();
 
 			int res_box[MPR_MAX_DIMENSIONS]; /* resolution box per each level */
-			calculate_res_level_box(res_box, file->mpr->patch_box, file->mpr->wavelet_trans_num);
 
 			int offset = 0; /* the offset for each sub-band */
 			int comp_offset = 0;  /* the offset for each sun-band after compressed (should be smaller then offset)*/
+			int sid = 0;
+			int size = res_box[0] * res_box[1] * res_box[2]; /* size of resolution box per level */
 
 			MPR_patch reg_patch = local_patch->patch[p];
 			MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
+
+			{
+				Events e("calDC", "cal", 0, 2);
+
 			memset(output, 0, sizeof (*output)); /* Initialization */
 
-			reg_patch->subbands_comp_size = malloc(subband_num * sizeof(int));
-			int sid = 0;
+			calculate_res_level_box(res_box, file->mpr->patch_box, file->mpr->wavelet_trans_num);
+
+			reg_patch->subbands_comp_size = (int*)malloc(subband_num * sizeof(int));
+
 
 			// Compressed DC component
-			int size = res_box[0] * res_box[1] * res_box[2]; /* size of resolution box per level */
-			unsigned char* dc_buf = malloc(size * bytes); /* buffer for DC component */
+			unsigned char* dc_buf = (unsigned char*)malloc(size * bytes); /* buffer for DC component */
 			memcpy(dc_buf, &reg_patch->buffer[offset], size * bytes);
 			MPR_compress_3D_data(dc_buf, res_box[0], res_box[1], res_box[2], file->mpr->compression_type, file->mpr->compression_param, data_type, &output); /* ZFP Compression */
 			free(dc_buf);
@@ -55,15 +66,19 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			offset += size * bytes;
 			reg_patch->subbands_comp_size[sid++] = output->compress_size;
 
-			double comp_dc_end = MPI_Wtime();
-			file->time->zfp_comp_dc_time += comp_dc_end - comp_dc_start;
+			}
 
-			double comp_bands_start = MPI_Wtime();
+//			double comp_dc_end = MPI_time();
+//			file->time->zfp_comp_dc_time += comp_dc_end - comp_dc_start;
+
+//			double comp_bands_start = MPI_Wtime();
+			{
+				Events e("calBands", "cal", 0, 2);
 			for (int i = file->mpr->wavelet_trans_num; i > 0; i--)
 			{
 				calculate_res_level_box(res_box, file->mpr->patch_box, i);
 				size = res_box[0] * res_box[1] * res_box[2];
-				unsigned char* sub_buf = malloc(size * bytes);
+				unsigned char* sub_buf = (unsigned char*)malloc(size * bytes);
 				for (int j = 0; j < 7; j++) /* compresses 7 sub-bands for each level*/
 				{
 					memcpy(sub_buf, &reg_patch->buffer[offset], size * bytes); /* buffer for each sub-band*/
@@ -76,11 +91,12 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 				}
 				free(sub_buf);
 			}
-			reg_patch->buffer = realloc(reg_patch->buffer, comp_offset); /* changed the size of patch buffer */
+			reg_patch->buffer = (unsigned char*)realloc(reg_patch->buffer, comp_offset); /* changed the size of patch buffer */
 			reg_patch->patch_buffer_size = comp_offset; /* the total compressed size per patch */
 			free(output);
-			double comp_bands_end = MPI_Wtime();
-			file->time->zfp_comp_bands_time += comp_bands_end - comp_bands_start;
+			}
+//			double comp_bands_end = MPI_Wtime();
+//			file->time->zfp_comp_bands_time += comp_bands_end - comp_bands_start;
 		}
 	}
 	return MPR_success;
@@ -113,7 +129,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 		MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 		memset(output, 0, sizeof (*output)); /* Initialization */
 
-		unsigned char* tmp_buffer = malloc(read_size);
+		unsigned char* tmp_buffer = (unsigned char*)malloc(read_size);
 
 		int offset = 0; /* the offset for each sub-band */
 		int decomp_offset = 0;  /* the decompressed offset for each sub-band*/
@@ -125,7 +141,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 		output->p = (unsigned char*) malloc(dc_size);
 
 		int dc_comp_size = reg_patch->subbands_comp_size[0];
-		unsigned char* dc_buf = malloc(dc_comp_size); /* buffer for DC component */
+		unsigned char* dc_buf = (unsigned char*)malloc(dc_comp_size); /* buffer for DC component */
 		memcpy(dc_buf, &reg_patch->buffer[offset], dc_comp_size);
 		MPR_decompress_3D_data(dc_buf, dc_comp_size, res_box[0], res_box[1], res_box[2],
 				file->mpr->compression_type, file->mpr->compression_param, data_type, &output);
@@ -145,7 +161,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 			for (int j = 0; j < 7; j++) /* compresses 7 sub-bands for each level*/
 			{
 				int sub_comp_size = reg_patch->subbands_comp_size[id * 7 + j + 1];
-				unsigned char* sub_buf = malloc(sub_comp_size); /* buffer for DC component */
+				unsigned char* sub_buf = (unsigned char*)malloc(sub_comp_size); /* buffer for DC component */
 				memcpy(sub_buf, &reg_patch->buffer[offset], sub_comp_size);
 				MPR_decompress_3D_data(sub_buf, sub_comp_size, res_box[0], res_box[1], res_box[2],
 						file->mpr->compression_type, file->mpr->compression_param, data_type, &output);
@@ -158,7 +174,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 		}
 
 		int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
-		reg_patch->buffer = realloc(reg_patch->buffer, patch_size);
+		reg_patch->buffer = (unsigned char*)realloc(reg_patch->buffer, patch_size);
 		memcpy(reg_patch->buffer, tmp_buffer, read_size);
 
 		free(tmp_buffer);
