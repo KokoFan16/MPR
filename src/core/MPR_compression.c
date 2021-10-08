@@ -36,6 +36,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 //			double comp_dc_start = MPI_Wtime();
 
 			int res_box[MPR_MAX_DIMENSIONS]; /* resolution box per each level */
+			calculate_res_level_box(res_box, file->mpr->patch_box, file->mpr->wavelet_trans_num);
 
 			int offset = 0; /* the offset for each sub-band */
 			int comp_offset = 0;  /* the offset for each sun-band after compressed (should be smaller then offset)*/
@@ -49,11 +50,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 				Events e("calDC", "cal", 0, 2);
 
 			memset(output, 0, sizeof (*output)); /* Initialization */
-
-			calculate_res_level_box(res_box, file->mpr->patch_box, file->mpr->wavelet_trans_num);
-
 			reg_patch->subbands_comp_size = (int*)malloc(subband_num * sizeof(int));
-
 
 			// Compressed DC component
 			unsigned char* dc_buf = (unsigned char*)malloc(size * bytes); /* buffer for DC component */
