@@ -19,11 +19,11 @@
 
 #include "csvWrite.h"
 
-static int ntimestep = 1;
-static int curTs = 0;
-static int nprocs = 1;
-static int curRank = 0;
-static std::string namespath = ""; // call path of functions
+extern int ntimestep;
+extern int curTs;
+extern int nprocs;
+extern int curRank;
+extern std::string namespath; // call path of functions
 
 
 static void set_timestep(int t, int n) {curTs = t; ntimestep = n;} // set the number of timesteps and current timestep
@@ -43,6 +43,7 @@ private:
 	int is_loop = 0;
 	int loop_ite = 0;
 	long bsize = 0;
+
 
 public:
 	Events(std::string n, std::string t, long size=0, int loop=0, int ite=0)
@@ -188,6 +189,8 @@ static void write_output(std::string filename)
 			csv << p1->first << parent << tag << size << loop << times << endrow;
 		}
 	}
+
+	output.clear();
 
 }
 

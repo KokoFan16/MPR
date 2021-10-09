@@ -18,6 +18,11 @@ static MPR_point patch_box;
 
 int agg_version;
 
+int ntimestep = 1;
+int curTs = 0;
+int nprocs = 1;
+int curRank = 0;
+std::string namespath = "";
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
