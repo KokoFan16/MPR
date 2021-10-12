@@ -47,7 +47,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 
 			{
-				Events e("calDC", "cal", 0, 2);
+				Events e("calDC", "comp", 0, 2, p);
 
 			memset(output, 0, sizeof (*output)); /* Initialization */
 			reg_patch->subbands_comp_size = (int*)malloc(subband_num * sizeof(int));
@@ -70,7 +70,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 
 //			double comp_bands_start = MPI_Wtime();
 			{
-				Events e("calBands", "cal", 0, 2);
+				Events e("calBands", "comp", 0, 2, p);
 			for (int i = file->mpr->wavelet_trans_num; i > 0; i--)
 			{
 				calculate_res_level_box(res_box, file->mpr->patch_box, i);

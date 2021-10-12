@@ -259,7 +259,7 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 
 MPR_return_code MPR_gather_file_metadata(MPR_file file, int svi, int evi)
 {
-	Events e("gather", "cal");
+	Events e("gather", "comp");
 
 	if (file->mpr->is_aggregator == 1)
 	{

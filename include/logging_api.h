@@ -72,15 +72,19 @@ public:
 		}
 		else {
 			if (is_loop == 2) {
-				int found = output[namespath].rfind(";");
-				double curTime = std::stod(output[namespath].substr(found+1, output[namespath].length()-found-1)) + elapsed_time;
-				output[namespath].replace(found+1, std::to_string(curTime).length(), std::to_string(curTime));
+				if (loop_ite == 0){ output[namespath] += "-" + std::to_string(elapsed_time); }
+				else {
+					int found = output[namespath].rfind(";");
+					double curTime = std::stod(output[namespath].substr(found+1, output[namespath].length()-found-1)) + elapsed_time;
+					output[namespath].replace(found+1, std::to_string(curTime).length(), std::to_string(curTime));
+				}
 			}
 			else {
 				if (loop_ite == 0){ output[namespath] += "-" + std::to_string(elapsed_time); }
 				else { output[namespath] += "+" + std::to_string(elapsed_time); }
 			}
 		}
+
 		namespath = namespath.substr(0, found); // back to last level
 	}
 };
@@ -95,6 +99,10 @@ static void gather_info()
 	// merging all the times across all the time-steps for each process
 	for (p1 = output.begin(); p1 != output.end(); p1++)  {
 		events.push_back(p1->first);
+
+		if (p1->first ==  "main-wave-trans")
+			std::cout << curRank << ": " << p1->first << ", " << p1->second << "\n";
+
 		std::size_t found = p1->second.rfind(";");
 		std::string times = p1->second.substr(found+1, p1->second.length()-found-1);
 		message += times + ' ';
@@ -102,6 +110,11 @@ static void gather_info()
 	message.pop_back();
 	message += ','; // add comma sat the end of each message
 	strLen = message.length();
+
+//	std::cout << curRank << ": " << message << "\n";
+
+//	if(namespath == "main-wave")
+//		std::cout << curRank << ": " << namespath << ", " << output[namespath] << "\n";
 
 	int* messageLens = (int*)malloc(nprocs * sizeof(int));
 	MPI_Gather(&strLen, 1, MPI_INT, messageLens, 1, MPI_INT, 0, MPI_COMM_WORLD);

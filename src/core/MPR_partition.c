@@ -116,7 +116,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	int local_patch_offset_array[procs_num * MPR_MAX_DIMENSIONS];
 
 	{
-		Events e("gather", "cal");
+		Events e("gather", "comp");
 
 	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 	{
@@ -146,7 +146,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	int required_local_patch_num[procs_num]; /* The required local number of patches per process */
 
 	{
-		Events e("calPc", "cal");
+		Events e("calPc", "comp");
 
     local_patch_num = total_patch_num / procs_num; /* The local number of patches per process */
     remain_patch_num = total_patch_num % procs_num; /* Remainder */
@@ -173,7 +173,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	int global_id = 0; /* The global id for each patch */
 
 	{
-		Events e("maxPshare", "cal", patch_size*sizeof(int));
+		Events e("maxPshare", "comp", patch_size*sizeof(int));
 
 	for (int k = 0; k < global_box[2]; k += patch_box[2])
 	{
@@ -231,7 +231,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //	file->time->part_assign_patch_time = 0;
 //	file->time->part_assign_update_time = 0;
 	{
-		Events e("assign", "cal");
+		Events e("assign", "comp");
 
 	for (int i = 0; i < total_patch_num; i++)
 	{
@@ -351,7 +351,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 			int patch_id = local_assigned_patches[i];
 			int patch_end[MPR_MAX_DIMENSIONS];
 			{
-				Events e("pre", "cal", 0, 2);
+				Events e("pre", "comp", 0, 2, i);
 
 			local_patch->patch[i] = (MPR_patch)malloc(sizeof(*local_patch->patch[i]));
 			local_patch->patch[i]->global_id = patch_id;
@@ -386,7 +386,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 			for (int j = 0; j < shared_processes_count; j++)
 			{
-				Events e("exBox", "comm", 0, 2);
+				Events e("exBox", "comm", 0, 2, i*shared_processes_count+j);
 //				double recv_calbox_start = MPI_Wtime();
 				int process_id = local_shared_patches_ranks[i][j];
 

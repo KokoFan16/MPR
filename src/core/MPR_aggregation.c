@@ -109,7 +109,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* patch count in each dimension */
 
 			{
-				Events e("calInfo", "cal");
+				Events e("calInfo", "comp");
 			for (int i = 0; i < total_patch_num; i++)
 				total_size += patch_sizes[i];
 			local_patch->compression_ratio = total_size / bytes;
@@ -134,7 +134,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			int max_d = 0;
 
 			{
-				Events e("cvrZ", "cal");
+				Events e("cvrZ", "comp");
 
 			for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 			{
@@ -178,7 +178,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			int cur_agg_count = 0;
 
 			{
-				Events e("assign", "cal");
+				Events e("assign", "comp");
 
 			if (file->mpr->is_fixed_file_size == 0) /* fixed number of patches per file mode */
 			{
@@ -233,7 +233,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			int gap = proc_num / file->mpr->out_file_num;
 			int cagg = 0;
 			{
-				Events e("commPre", "cal");
+				Events e("commPre", "comp");
 			file->mpr->out_file_num = cur_agg_count + 1;
 			for (int i = 0; i < proc_num; i+= gap)
 			{
@@ -319,7 +319,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			for (int i = 0; i < recv_num; i++)
 			{
 				{
-					Events e("calBound", "cal", 0, 2);
+					Events e("calBound", "comp", 0, 2, i);
 //				double recv_bound_start = MPI_Wtime();
 				int z = recv_array[i] / (patch_count_xyz[0] * patch_count_xyz[1]);
 				int y = (recv_array[i] - (z * patch_count_xyz[0] * patch_count_xyz[1])) / patch_count_xyz[0];
@@ -336,7 +336,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 //				double recv_act_start = MPI_Wtime();
 				{
-					Events e("comm", "comm", 0, 2);
+					Events e("comm", "comm", 0, 2, i);
 				MPI_Irecv(&local_patch->buffer[offset], patch_sizes[recv_array[i]], MPI_BYTE, patch_ranks[recv_array[i]], recv_array[i], comm, &req[req_id]);
 
 //				double recv_act_end = MPI_Wtime();
