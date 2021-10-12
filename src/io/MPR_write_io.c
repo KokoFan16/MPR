@@ -66,21 +66,21 @@ MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)
 {
 	Events e("wrtData", "io");
 
-	/* the directory patch for out files */
-	char *directory_path;
-	directory_path = (char*)malloc(sizeof(*directory_path) * PATH_MAX);
-	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
-	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
-
-	/* The file name for out files */
-	char file_name[512];
-	memset(file_name, 0, 512 * sizeof(*file_name));
-	sprintf(file_name, "%s/time%09d/%d", directory_path, file->mpr->current_time_step, file->comm->simulation_rank);
-	free(directory_path);
-
 	/* Write file */
 	if (file->mpr->is_aggregator == 1)
 	{
+		/* the directory patch for out files */
+		char *directory_path;
+		directory_path = (char*)malloc(sizeof(*directory_path) * PATH_MAX);
+		memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
+		strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
+
+		/* The file name for out files */
+		char file_name[512];
+		memset(file_name, 0, 512 * sizeof(*file_name));
+		sprintf(file_name, "%s/time%09d/%d", directory_path, file->mpr->current_time_step, file->comm->simulation_rank);
+		free(directory_path);
+
 		int fp = open(file_name, O_CREAT | O_EXCL | O_WRONLY, 0664);
 		if (fp == -1)
 		{
