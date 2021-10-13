@@ -262,11 +262,11 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 					if (rank == process_id)
 						local_own_patch_ids[local_own_patch_count++] = i;
 				}
-		double assign_share_end = MPI_Wtime();
+//		double assign_share_end = MPI_Wtime();
 //		file->time->part_assign_share_time += assign_share_end - assign_share_start;
 
 
-		double assign_patch_start = MPI_Wtime();
+//		double assign_patch_start = MPI_Wtime();
 		int flag = 0; /* If the patch has been assigned to any process */
 		int assigned_rank = 0;
 		for (int p = 0; p < process_count; p++)
@@ -290,10 +290,10 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 				}
 			}
 		}
-		double assign_patch_end = MPI_Wtime();
+//		double assign_patch_end = MPI_Wtime();
 //		file->time->part_assign_patch_time += assign_patch_end - assign_patch_start;
 
-		double assign_update_start = MPI_Wtime();
+//		double assign_update_start = MPI_Wtime();
 		cur_assign_patch_num[assigned_rank] += 1; /* the number of patches of rank a add 1 */
 		patch_assignment[i] = assigned_rank;
 		if (rank == assigned_rank)
@@ -303,7 +303,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 			local_shared_rank_count[local_assigned_count] = process_count;
 			local_assigned_count++;
 		}
-		double assign_update_end = MPI_Wtime();
+//		double assign_update_end = MPI_Wtime();
 //		file->time->part_assign_update_time += assign_update_end - assign_update_start;
 	}
 	}

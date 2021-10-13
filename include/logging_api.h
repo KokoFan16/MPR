@@ -103,12 +103,15 @@ static void gather_info()
 	std::string message = ""; // merged message for sending
 	int strLen = 0;
 	// merging all the times across all the time-steps for each process
+	std::string allevents = "";
 	for (p1 = output.begin(); p1 != output.end(); p1++)  {
 		events.push_back(p1->first);
+		allevents += "---"+p1->first;
 		std::size_t found = p1->second.rfind(";");
 		std::string times = p1->second.substr(found+1, p1->second.length()-found-1);
 		message += times + ' ';
 	}
+	std::cout << curRank << ": " << allevents << "\n";
 	message.pop_back();
 	message += ','; // add comma sat the end of each message
 	strLen = message.length();
