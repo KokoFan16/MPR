@@ -90,39 +90,57 @@ public:
 				else { output[namespath] += "+" + std::to_string(elapsed_time); }
 			}
 		}
-
 		namespath = namespath.substr(0, found); // back to last level
 	}
 };
 
 // gather info from all the processes
-static void gather_info()
+static int gather_info()
 {
 	std::map<std::string, std::string> ::iterator p1; // map pointer
-	std::vector<std::string> events; // get all the events
 	std::string message = ""; // merged message for sending
 	int strLen = 0;
-	// merging all the times across all the time-steps for each process
-	std::string allevents = "";
-	for (p1 = output.begin(); p1 != output.end(); p1++)  {
-		events.push_back(p1->first);
-		allevents += "---"+p1->first;
-		std::size_t found = p1->second.rfind(";");
-		std::string times = p1->second.substr(found+1, p1->second.length()-found-1);
-		message += times + ' ';
-	}
-	std::cout << curRank << ": " << allevents << "\n";
+
+	std::string events;
+	for (p1 = output.begin(); p1 != output.end(); p1++)
+		events += (p1->first) + ' ';
+	events.pop_back();
+
+	int elocal[2] = {int(events.size()), curRank};
+	int eglobal[2];
+	MPI_Allreduce(elocal, eglobal, 1, MPI_2INT, MPI_MAXLOC, MPI_COMM_WORLD);
+	events.resize(eglobal[0]);
+	MPI_Bcast((char*)events.c_str(), eglobal[0], MPI_CHAR, eglobal[1], MPI_COMM_WORLD);
+
+    std::vector<std::string> maxEvents;
+    std::istringstream f(events);
+    std::string s;
+    p1 = output.begin();
+    while (std::getline(f, s, ' ') && p1 != output.end()) {
+    	std::string times;
+    	if ( s != p1->first){
+    		times = "0.000000";
+    		for (int t = 1; t < ntimestep; t++) {times += "-0.000000";}
+    	}
+    	else {
+			std::size_t found = p1->second.rfind(";");
+			times = p1->second.substr(found+1, p1->second.length()-found-1);
+	    	p1++;
+    	}
+    	message += times + ' ';
+    	maxEvents.push_back(s);
+    }
 	message.pop_back();
 	message += ','; // add comma sat the end of each message
 	strLen = message.length();
 
 	int* messageLens = (int*)malloc(nprocs * sizeof(int));
-	MPI_Gather(&strLen, 1, MPI_INT, messageLens, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Gather(&strLen, 1, MPI_INT, messageLens, 1, MPI_INT, eglobal[1], MPI_COMM_WORLD);
 
 	int *displs = NULL;
 	int totalLen = 0;
 	char* gather_buffer = NULL;
-	if (curRank == 0) {
+	if (curRank == eglobal[1]) {
 		displs = (int*)malloc(nprocs * sizeof(int));
 		for (int i = 0; i < nprocs; i++) {
 			displs[i] = totalLen;
@@ -131,44 +149,47 @@ static void gather_info()
 		gather_buffer = (char*)malloc((totalLen+1) * sizeof(char));
 	}
 
-	MPI_Gatherv((char*)message.c_str(), strLen, MPI_CHAR, gather_buffer, messageLens, displs, MPI_CHAR, 0, MPI_COMM_WORLD);
+	MPI_Gatherv((char*)message.c_str(), strLen, MPI_CHAR, gather_buffer, messageLens, displs, MPI_CHAR, eglobal[1], MPI_COMM_WORLD);
 	free(messageLens);
 	free(displs);
 
-	if (curRank == 0)
+
+	if (curRank == eglobal[1])
 	{
+		for (p1 = output.begin(); p1 != output.end(); p1++) {
+			std::size_t loc = p1->second.find(';');
+			p1->second.erase(loc+1, p1->second.size()-loc-1);
+		}
+
 		gather_buffer[totalLen-1] = '\0'; // end symbol of string
 		std::string gather_message = std::string(gather_buffer); // convert it to string
 
-		// ignore the message of rank 0
-		std::size_t pos = gather_message.find(',');
-		gather_message.erase(0, pos+1);
-
-		for (int i = 1; i < nprocs; i++) // loop all the processes expect rank 0
+		std::size_t pos;
+		for (int i = 0; i < nprocs; i++) // loop all the processes expect rank 0
 		{
+			pos = gather_message.find(',');
 			std::string pmessage = gather_message.substr(0, pos); // message from a process
 			std::size_t found;
-			for (int j = 0; j < events.size(); j++) // loop all the events
+			for (int j = 0; j < maxEvents.size(); j++) // loop all the events
 			{
 				found = pmessage.find(' ');
-				output[events[j]] += '|' + pmessage.substr(0, found); // add to corresponding event
+				output[maxEvents[j]] += '|' + pmessage.substr(0, found); // add to corresponding event
 				pmessage.erase(0, found+1);
 			}
-
-			pos = gather_message.find(',');
 			gather_message.erase(0, pos+1);
 		}
 	}
 
 	free(gather_buffer);
-	std::vector<std::string>().swap(events);
+
+	return eglobal[1];
 }
 
-static void write_output(std::string filename)
+static void write_output(std::string filename, int flag=0)
 {
-	gather_info(); // gather info from all the processes
+	int master = gather_info(); // gather info from all the processes
 
-	if (curRank == 0) // rank 0 writes csv file
+	if (curRank == master) // rank 0 writes csv file
 	{
 		std::string filePath = filename + ".csv"; // create file path
 		csvfile csv(filePath); // open CSV file
@@ -204,7 +225,6 @@ static void write_output(std::string filename)
 	}
 
 	output.clear();
-
 }
 
 #endif /* LOGGING_API_H_ */
