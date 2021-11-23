@@ -173,7 +173,7 @@ static int gather_info()
 			for (int j = 0; j < maxEvents.size(); j++) // loop all the events
 			{
 				found = pmessage.find(' ');
-				output[maxEvents[j]] += '|' + pmessage.substr(0, found); // add to corresponding event
+				output[maxEvents[j]] += pmessage.substr(0, found) + "|"; // add to corresponding event
 				pmessage.erase(0, found+1);
 			}
 			gather_message.erase(0, pos+1);
@@ -210,7 +210,7 @@ static void write_output(std::string filename, int flag=0)
 			// get tag and times
 			found = p1->second.find(';');
 			value = p1->second.substr(0, found);
-			times = p1->second.substr(found+1, p1->second.length()-found-1);
+			times = p1->second.substr(found+1, p1->second.length()-found-2);
 
 			found = value.find('-');
 			tag = value.substr(0, found);
