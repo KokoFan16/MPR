@@ -314,7 +314,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 //			file->time->agg_comm_recv_bound_time = 0;
 //			file->time->agg_comm_recv_update_time = 0;
 			{
-				Events e("recv", "comm");
+				Events e("recv", "null");
 
 			for (int i = 0; i < recv_num; i++)
 			{

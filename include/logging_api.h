@@ -66,6 +66,9 @@ public:
 		std::string delimiter = "-";
 		std::size_t found = namespath.rfind(delimiter);
 
+		if (namespath == "main-wrt")
+			std::cout << curTs << ", " << curRank << ", " << namespath << ", " << elapsed_time << std::endl;
+
 		// set value (time and tag) of each function across all the time-steps
 		if (curTs == 0 && output[namespath] == ""){
 			output[namespath] += tags + "-" + std::to_string(bsize) + "-" + std::to_string(is_loop) + ";" + std::to_string(elapsed_time);
