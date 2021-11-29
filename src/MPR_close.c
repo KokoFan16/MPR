@@ -51,11 +51,11 @@ MPR_return_code MPR_flush(MPR_file file)
 //		}
 //	}
 //
-//	if (MPR_timing_logs(file, lvi, (lvi + lvc)) != MPR_success)
-//	{
-//		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
-//		return MPR_err_io;
-//	}
+	if (MPR_timing_logs(file, lvi, (lvi + lvc)) != MPR_success)
+	{
+		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
+		return MPR_err_io;
+	}
 
 	/* buffers cleanup */
 	if (MPR_variable_buffer_cleanup(file, lvi, (lvi + lvc)) != MPR_success)

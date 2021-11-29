@@ -9,137 +9,104 @@
 
 MPR_return_code MPR_timing_logs(MPR_file file, int svi, int evi)
 {
-//	int rank = file->comm->simulation_rank;
-//	int MODE = file->mpr->io_type;
-//
-//	double total_time = file->time->total_end - file->time->total_start;
-//	double rst_time = file->time->rst_end - file->time->rst_start;
-//	double wave_time = file->time->wave_end - file->time->wave_start;
-//	double comp_time = file->time->zfp_end - file->time->zfp_start;
-//
-//	if (file->flags == MPR_MODE_CREATE)
-//	{
-//		int time_count = 65;
-//		int offset = file->mpr->current_time_step * time_count;
-//
-//		double agg_time = file->time->agg_end - file->time->agg_start;
-//		double io_time = file->time->wrt_data_end - file->time->wrt_data_start;
-//
-//		time_buffer[offset] = file->mpr->current_time_step;
-//		time_buffer[offset + 1] = rank;
-//		time_buffer[offset + 2] = file->mpr->is_aggregator;
-//		time_buffer[offset + 3] = total_time;
-//		time_buffer[offset + 4] = file->time->crt_struc_end - file->time->crt_struc_start;
-//		time_buffer[offset + 5] = rst_time;
-//		time_buffer[offset + 6] = file->time->part_status_end - file->time->part_status_start;
-//		time_buffer[offset + 7] = file->time->part_gather_end - file->time->part_gather_start;
-//		time_buffer[offset + 8] = file->time->part_gather_basic_end - file->time->part_gather_basic_start;
-//		time_buffer[offset + 9] = file->time->part_gather_local_end - file->time->part_gather_local_start;
-//		time_buffer[offset + 10] = file->time->part_gather_comm_end - file->time->part_gather_comm_start;
-//		time_buffer[offset + 11] = file->time->part_cal_pcount_end - file->time->part_cal_pcount_start;
-//		time_buffer[offset + 12] = file->time->part_max_pshare_end - file->time->part_max_pshare_start;
-//		time_buffer[offset + 13] = file->time->part_assign_end - file->time->part_assign_start;
-//		time_buffer[offset + 14] = file->time->part_assign_mem_end - file->time->part_assign_mem_start;
-//		time_buffer[offset + 15] = file->time->part_assign_share_time;
-//		time_buffer[offset + 16] = file->time->part_assign_patch_time;
-//		time_buffer[offset + 17] = file->time->part_assign_update_time;
-//		time_buffer[offset + 18] = file->time->part_comm_end - file->time->part_comm_start;
-//		time_buffer[offset + 19] = file->time->part_comm_mem_end - file->time->part_comm_mem_start;
-//		time_buffer[offset + 20] = file->time->part_comm_recv_end - file->time->part_comm_recv_start;
-//		time_buffer[offset + 21] = file->time->part_comm_recv_pre_time;
-//		time_buffer[offset + 22] = file->time->part_comm_recv_calbox_time;
-//		time_buffer[offset + 23] = file->time->part_comm_recv_crtype_time;
-//		time_buffer[offset + 24] = file->time->part_comm_recv_req_time;
-//		time_buffer[offset + 25] = file->time->part_comm_send_end - file->time->part_comm_send_start;
-//		time_buffer[offset + 26] = file->time->part_comm_send_calbox_time;
-//		time_buffer[offset + 27] = file->time->part_comm_send_crtype_time;
-//		time_buffer[offset + 28] = file->time->part_comm_send_req_time;
-//		time_buffer[offset + 29] = file->time->part_comm_wait_end - file->time->part_comm_wait_start;
-//		time_buffer[offset + 30] = wave_time;
-//		time_buffer[offset + 31] = file->time->wave_pre_end - file->time->wave_pre_start;
-//		time_buffer[offset + 32] = file->time->wave_trans_time;
-//		time_buffer[offset + 33] = file->time->wave_org_time;
-//		time_buffer[offset + 34] = comp_time;
-//		time_buffer[offset + 35] = file->time->zfp_pre_end - file->time->zfp_pre_start;
-//		time_buffer[offset + 36] = file->time->zfp_comp_dc_time;
-//		time_buffer[offset + 37] = file->time->zfp_comp_bands_time;
-//		time_buffer[offset + 38] = agg_time;
-//		time_buffer[offset + 39] = file->time->agg_pre_end - file->time->agg_pre_start;
-//		time_buffer[offset + 40] = file->time->agg_gather_end - file->time->agg_gather_start;
-//		time_buffer[offset + 41] = file->time->agg_gather_local_end - file->time->agg_gather_local_start;
-//		time_buffer[offset + 42] = file->time->agg_gather_comm_end - file->time->agg_gather_comm_start;
-//		time_buffer[offset + 43] = file->time->agg_gather_filter_end - file->time->agg_gather_filter_start;
-//		time_buffer[offset + 44] = file->time->agg_calinfo_end - file->time->agg_calinfo_start;
-//		time_buffer[offset + 45] = file->time->agg_convert_z_end - file->time->agg_convert_z_start;
-//		time_buffer[offset + 46] = file->time->agg_assign_end - file->time->agg_assign_start;
-//		time_buffer[offset + 47] = file->time->agg_assign_act_end - file->time->agg_assign_act_start;
-//		time_buffer[offset + 48] = file->time->agg_assign_aggpik_end - file->time->agg_assign_aggpik_start;
-//		time_buffer[offset + 49] = file->time->agg_assign_calrecv_end - file->time->agg_assign_calrecv_start;
-//		time_buffer[offset + 50] = file->time->agg_comm_end - file->time->agg_comm_start;
-//		time_buffer[offset + 51] = file->time->agg_comm_pre_end - file->time->agg_comm_pre_start;
-//		time_buffer[offset + 52] = file->time->agg_comm_send_end - file->time->agg_comm_send_start;
-//		time_buffer[offset + 53] = file->time->agg_comm_recv_end - file->time->agg_comm_recv_start;
-//		time_buffer[offset + 54] = file->time->agg_comm_recv_act_time;
-//		time_buffer[offset + 55] = file->time->agg_comm_recv_bound_time;
-//		time_buffer[offset + 56] = file->time->agg_comm_recv_update_time;
-//		time_buffer[offset + 57] = file->time->agg_comm_wait_end - file->time->agg_comm_wait_start;
-//		time_buffer[offset + 58] = file->time->agg_clean_end - file->time->agg_clean_start;
-//		time_buffer[offset + 59] = io_time;
-//		time_buffer[offset + 60] = file->time->wrt_meta_end - file->time->wrt_meta_start;
-//		time_buffer[offset + 61] = file->time->wrt_meta_basic_end - file->time->wrt_meta_basic_start;
-//		time_buffer[offset + 62] = file->time->wrt_meta_bound_end - file->time->wrt_meta_bound_start;
-//		time_buffer[offset + 63] = file->time->wrt_meta_file_end - file->time->wrt_meta_file_start;
-//		time_buffer[offset + 64] = file->time->wrt_file_end - file->time->wrt_file_start;
-//
-//
-//		if (file->mpr->current_time_step == (file->mpr->last_tstep -1))
-//		{
-//			char* directory_path = (char *)malloc(512);
-//			memset(directory_path, 0, sizeof(*directory_path) * 512);
-//			strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
-//
-//			char time_folder[512];
-//			sprintf(time_folder, "%s_times", directory_path);
-//
-//			char time_log[512];
-//			sprintf(time_log, "%s/time_write_%s_log_%d", time_folder, directory_path, rank);
-//			free(directory_path);
-//
-//			FILE* fp = fopen(time_log, "w"); /* open file */
-//			if (!fp) /* Check file handle */
-//				fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
-//
-//			for (int i = 0; i < file->mpr->last_tstep; i++)
-//			{
-//				fprintf(fp, "%d %d %d total-%f-none {crt_struc-%f-comp partition-%f-none {ck_stat-%f-comp gather-%f-none {basic-%f-comp local-%f-comp comm-%f-comm} "
-//						"cal_pcount-%f-comp max_pshare-%f-comp assign-%f-none {malloc-%f-none find_share-%f-comp apatch-%f-comp update-%f-comp} "
-//						"comm-%f-none {malloc-%f-none recv-%f-none {pre-%f-comp calbox-%f-comp crtype-%f-comm req-%f-comm} "
-//						"send-%f-none {calbox-%f-comp crtype-%f-comm req-%f-comm} wait-%f-comm}} "
-//						"wave-%f-none {pre-%f-comp trans-%f-comp org-%f-comp} "
-//						"comp-%f-none {pre-%f-comp dc-%f-comp subbands-%f-comp} "
-//						"agg-%f-none {pre-%f-comp, gather-%f-none {local-%f-comp comm-%f-comm, filter-%f-comm} calinfo-%f-comp convert_z-%f-comp "
-//						"assign-%f-none {act-%f-comp aggpic-%f-comp calrecv-%f-comp} comm-%f-none {pre-%f-comp send-%f-comm "
-//						"recv-%f-none {act-%f-comm calbound-%f-comp update-%f-none} wait-%f-comm} clean-%f-none} "
-//						" io-%f-none {meta-%f-none {basic-%f-io bound-%f-io file-%f-comp} file-%f-io}}\n",
-//						(int)time_buffer[i*time_count], (int)time_buffer[i*time_count+1], (int)time_buffer[i*time_count+2],
-//						time_buffer[i*time_count+3], time_buffer[i*time_count+4], time_buffer[i*time_count+5], time_buffer[i*time_count+6], time_buffer[i*time_count+7], time_buffer[i*time_count+8],
-//						time_buffer[i*time_count+9], time_buffer[i*time_count+10], time_buffer[i*time_count+11], time_buffer[i*time_count+12], time_buffer[i*time_count+13], time_buffer[i*time_count+14],
-//						time_buffer[i*time_count+15], time_buffer[i*time_count+16], time_buffer[i*time_count+17], time_buffer[i*time_count+18], time_buffer[i*time_count+19], time_buffer[i*time_count+20],
-//						time_buffer[i*time_count+21], time_buffer[i*time_count+22], time_buffer[i*time_count+23], time_buffer[i*time_count+24], time_buffer[i*time_count+25], time_buffer[i*time_count+26],
-//						time_buffer[i*time_count+27], time_buffer[i*time_count+28], time_buffer[i*time_count+29], time_buffer[i*time_count+30], time_buffer[i*time_count+31], time_buffer[i*time_count+32],
-//						time_buffer[i*time_count+33], time_buffer[i*time_count+34], time_buffer[i*time_count+35], time_buffer[i*time_count+36], time_buffer[i*time_count+37], time_buffer[i*time_count+38],
-//						time_buffer[i*time_count+39], time_buffer[i*time_count+40], time_buffer[i*time_count+41], time_buffer[i*time_count+42], time_buffer[i*time_count+43], time_buffer[i*time_count+44],
-//						time_buffer[i*time_count+45], time_buffer[i*time_count+46], time_buffer[i*time_count+47], time_buffer[i*time_count+48], time_buffer[i*time_count+49], time_buffer[i*time_count+50],
-//						time_buffer[i*time_count+51], time_buffer[i*time_count+52], time_buffer[i*time_count+53], time_buffer[i*time_count+54], time_buffer[i*time_count+55], time_buffer[i*time_count+56],
-//						time_buffer[i*time_count+57], time_buffer[i*time_count+58], time_buffer[i*time_count+59], time_buffer[i*time_count+60], time_buffer[i*time_count+61], time_buffer[i*time_count+62],
-//						time_buffer[i*time_count+63], time_buffer[i*time_count+64]);
-//			}
-//
-//			fclose(fp);
-//		}
-//
-//
-//	}
+	int rank = file->comm->simulation_rank;
+	int MODE = file->mpr->io_type;
+
+	double total_time = file->time->total_end - file->time->total_start;
+	double rst_time = file->time->rst_end - file->time->rst_start;
+	double wave_time = file->time->wave_end - file->time->wave_start;
+	double comp_time = file->time->zfp_end - file->time->zfp_start;
+
+	if (file->flags == MPR_MODE_CREATE)
+	{
+		int time_count = 42;
+		int offset = file->mpr->current_time_step * time_count;
+
+		double agg_time = file->time->agg_end - file->time->agg_start;
+		double io_time = file->time->wrt_data_end - file->time->wrt_data_start;
+
+		time_buffer[offset] = file->mpr->current_time_step;
+		time_buffer[offset + 1] = rank;
+		time_buffer[offset + 2] = file->mpr->is_aggregator;
+		time_buffer[offset + 3] = total_time;
+		time_buffer[offset + 4] = file->time->crt_struc_end - file->time->crt_struc_start;
+		time_buffer[offset + 5] = rst_time;
+		time_buffer[offset + 6] = file->time->part_status_end - file->time->part_status_start;
+		time_buffer[offset + 7] = file->time->part_gather_end - file->time->part_gather_start;
+		time_buffer[offset + 8] = file->time->part_cal_pcount_end - file->time->part_cal_pcount_start;
+		time_buffer[offset + 9] = file->time->part_max_pshare_end - file->time->part_max_pshare_start;
+		time_buffer[offset + 10] = file->time->part_assign_end - file->time->part_assign_start;
+		time_buffer[offset + 11] = file->time->part_comm_end - file->time->part_comm_start;
+		time_buffer[offset + 12] = file->time->part_comm_recv_end - file->time->part_comm_recv_start;
+		time_buffer[offset + 13] = file->time->part_comm_recv_pre_time;
+		time_buffer[offset + 14] = file->time->part_comm_recv_exbox_time;
+		time_buffer[offset + 15] = file->time->part_comm_send_end - file->time->part_comm_send_start;
+		time_buffer[offset + 16] = file->time->part_comm_wait_end - file->time->part_comm_wait_start;
+		time_buffer[offset + 17] = wave_time;
+		time_buffer[offset + 18] = file->time->wave_trans_time;
+		time_buffer[offset + 19] = file->time->wave_org_time;
+		time_buffer[offset + 20] = comp_time;
+		time_buffer[offset + 21] = file->time->zfp_pre_end - file->time->zfp_pre_start;
+		time_buffer[offset + 22] = file->time->zfp_comp_dc_time;
+		time_buffer[offset + 23] = file->time->zfp_comp_bands_time;
+		time_buffer[offset + 24] = agg_time;
+		time_buffer[offset + 25] = file->time->agg_gather_end - file->time->agg_gather_start;
+		time_buffer[offset + 26] = file->time->agg_calinfo_end - file->time->agg_calinfo_start;
+		time_buffer[offset + 27] = file->time->agg_convert_z_end - file->time->agg_convert_z_start;
+		time_buffer[offset + 28] = file->time->agg_assign_end - file->time->agg_assign_start;
+		time_buffer[offset + 29] = file->time->agg_comm_pre_end - file->time->agg_comm_pre_start;
+		time_buffer[offset + 30] = file->time->agg_comm_send_end - file->time->agg_comm_send_start;
+		time_buffer[offset + 31] = file->time->agg_comm_recv_end - file->time->agg_comm_recv_start;
+		time_buffer[offset + 32] = file->time->agg_comm_recv_act_time;
+		time_buffer[offset + 33] = file->time->agg_comm_recv_bound_time;
+		time_buffer[offset + 34] = file->time->agg_comm_wait_end - file->time->agg_comm_wait_start;
+		time_buffer[offset + 35] = file->time->agg_bound_end - file->time->agg_bound_start;
+		time_buffer[offset + 36] = io_time;
+		time_buffer[offset + 37] = file->time->wrt_meta_end - file->time->wrt_meta_start;
+		time_buffer[offset + 38] = file->time->wrt_meta_basic_end - file->time->wrt_meta_basic_start;
+		time_buffer[offset + 39] = file->time->wrt_meta_bound_end - file->time->wrt_meta_bound_start;
+		time_buffer[offset + 40] = file->time->wrt_meta_file_end - file->time->wrt_meta_file_start;
+		time_buffer[offset + 41] = file->time->wrt_file_end - file->time->wrt_file_start;
+
+
+		if (file->mpr->current_time_step == (file->mpr->last_tstep -1))
+		{
+			char* directory_path = (char *)malloc(512);
+			memset(directory_path, 0, sizeof(*directory_path) * 512);
+			strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
+
+			char time_folder[512];
+			sprintf(time_folder, "%s_times", directory_path);
+
+			char time_log[512];
+			sprintf(time_log, "%s/time_write_%s_log_%d", time_folder, directory_path, rank);
+			free(directory_path);
+
+			FILE* fp = fopen(time_log, "w"); /* open file */
+			if (!fp) /* Check file handle */
+				fprintf(stderr, " [%s] [%d] mpr_dir is corrupt.\n", __FILE__, __LINE__);
+
+			for (int i = 0; i < file->mpr->last_tstep; i++)
+			{
+				fprintf(fp, "%d, %d, %d, main %f, main-crtStruc %f, main-PART %f, main-PART-other %f, main-PART-gather %f, main-PART-calPc %f, main-PART-maxPshare %f, main-PART-assign %f, " // 11
+						"main-PART-exCell %f, main-PART-exCell-recv %f, main-PART-exCell-recv-pre %f, main-PART-exCell-recv-exBox %f, main-PART-exCell-send %f, main-PART-exCell-wait %f, " // 6
+						"main-wave %f, main-wave-trans %f, main-wave-organ %f, main-ZFP %f, main-ZFP-getDT %f, main-ZFP-calDC %f, main-ZFP-calBands %f, main-AGG %f, main-AGG-gather %f, main-AGG-calInfo %f, " // 10
+						"main-AGG-cvrZ %f, main-AGG-assign %f, main-AGG-commPre %f, main-AGG-send %f, main-AGG-recv %f, main-AGG-recv-comm %f, main-AGG-recv-calBound %f, main-AGG-wait %f, main-AGG-boundBox %f, " // 8
+						"main-wrt %f, main-wrt-wrtMeta %f, main-wrt-wrtMeta-basic %f, main-wrt-wrtMeta-Bounding %f, main-wrt-wrtMeta-gather %f, main-wrt-wrtData %f\n", // 6
+						(int)time_buffer[i*time_count], (int)time_buffer[i*time_count+1], (int)time_buffer[i*time_count+2], time_buffer[i*time_count+3], time_buffer[i*time_count+4], time_buffer[i*time_count+5],
+						time_buffer[i*time_count+6], time_buffer[i*time_count+7], time_buffer[i*time_count+8],time_buffer[i*time_count+9], time_buffer[i*time_count+10], time_buffer[i*time_count+11],
+						time_buffer[i*time_count+12], time_buffer[i*time_count+13], time_buffer[i*time_count+14],time_buffer[i*time_count+15], time_buffer[i*time_count+16], time_buffer[i*time_count+17],
+						time_buffer[i*time_count+18], time_buffer[i*time_count+19], time_buffer[i*time_count+20],time_buffer[i*time_count+21], time_buffer[i*time_count+22], time_buffer[i*time_count+23],
+						time_buffer[i*time_count+24], time_buffer[i*time_count+25], time_buffer[i*time_count+26],time_buffer[i*time_count+27], time_buffer[i*time_count+28], time_buffer[i*time_count+29],
+						time_buffer[i*time_count+30], time_buffer[i*time_count+31], time_buffer[i*time_count+32],time_buffer[i*time_count+33], time_buffer[i*time_count+34], time_buffer[i*time_count+35],
+						time_buffer[i*time_count+36], time_buffer[i*time_count+37], time_buffer[i*time_count+38],time_buffer[i*time_count+39], time_buffer[i*time_count+40], time_buffer[i*time_count+41]);
+			}
+
+			fclose(fp);
+		}
+
+
+	}
 
 	return MPR_success;
 }

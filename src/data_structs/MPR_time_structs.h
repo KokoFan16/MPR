@@ -38,7 +38,7 @@ struct mpr_time_struct
 	double part_comm_mem_start, part_comm_mem_end;
 	double part_comm_recv_start, part_comm_recv_end;
 	double part_comm_recv_pre_time;
-	double part_comm_recv_calbox_time;
+	double part_comm_recv_exbox_time;
 	double part_comm_recv_crtype_time;
 	double part_comm_recv_req_time;
 	double part_comm_send_start, part_comm_send_end;
@@ -74,7 +74,7 @@ struct mpr_time_struct
 	double agg_comm_recv_bound_time;
 	double agg_comm_recv_update_time;
 	double agg_comm_wait_start, agg_comm_wait_end;
-	double agg_clean_start, agg_clean_end;
+	double agg_bound_start, agg_bound_end;
 
 	double wrt_meta_start, wrt_meta_end;
 	double wrt_meta_basic_start, wrt_meta_basic_end;

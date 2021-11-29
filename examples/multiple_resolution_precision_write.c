@@ -24,6 +24,8 @@ int nprocs = 1;
 int curRank = 0;
 std::string namespath = "";
 
+float* time_buffer;
+
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
 static int generate_vars();
@@ -78,9 +80,9 @@ int main(int argc, char **argv)
 	variable = (MPR_variable*)malloc(sizeof(*variable) * variable_count);
 	memset(variable, 0, sizeof(*variable) * variable_count);
 
-//	int time_count = 65; //9
-//	time_buffer = (float*)malloc(time_step_count * time_count * sizeof(float));
-//	memset(time_buffer, 0, time_step_count * time_count * sizeof(float));
+	int time_count = 42; //9
+	time_buffer = (float*)malloc(time_step_count * time_count * sizeof(float));
+	memset(time_buffer, 0, time_step_count * time_count * sizeof(float));
 //	size_buffer = (long long int*)malloc(time_step_count * 5 * sizeof(long long int));
 //	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
 
@@ -90,7 +92,7 @@ int main(int argc, char **argv)
 		set_timestep(ts, time_step_count);
 		set_namespath("");
 
-		Events e("main", "null");
+//		Events e("main", "null");
 
 		set_mpr_file(ts);
 
