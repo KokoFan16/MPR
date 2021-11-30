@@ -68,7 +68,7 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	else
 	{
 		file->time->agg_start = MPI_Wtime();
-//		Events e("AGG", "null");
+		Events e("AGG", "null");
 
 		if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
 		{
@@ -82,8 +82,8 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	file->time->wrt_data_start = MPI_Wtime();
 
 	file->time->wrt_meta_start = MPI_Wtime();
-//	{
-//		Events e("wrt", "null");
+	{
+		Events e("wrt", "null");
 
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
 	{
@@ -100,9 +100,12 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 
-//	}
+	}
 	file->time->wrt_file_end = MPI_Wtime();
-//
+	printf("%d, %d, MPI-wrt_data %f\n", file->mpr->current_time_step, file->comm->simulation_rank,
+				(file->time->wrt_file_end - file->time->wrt_file_start) );
+
+
 	file->time->wrt_data_end = MPI_Wtime();
 
 	return MPR_success;

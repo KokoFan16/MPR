@@ -64,7 +64,7 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 /* Write data out */
 MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)
 {
-//	Events e("wrtData", "io");
+	Events e("wrtData", "io");
 
 	/* Write file */
 	if (file->mpr->is_aggregator == 1)

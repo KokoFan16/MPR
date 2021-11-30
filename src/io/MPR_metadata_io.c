@@ -83,7 +83,7 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 /* Write meta-data out */
 MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 {
-//	Events e("wrtMeta", "null");
+	Events e("wrtMeta", "null");
 
 	/* Write basic information out */
 	file->time->wrt_meta_basic_start = MPI_Wtime();
@@ -93,6 +93,9 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 	file->time->wrt_meta_basic_end = MPI_Wtime();
+
+	printf("%d, %d, MPI-wrt_meta_basic %f\n", file->mpr->current_time_step, file->comm->simulation_rank,
+			(file->time->wrt_meta_basic_end - file->time->wrt_meta_basic_start) );
 
 	/* Write bounding box metadata out */
 	file->time->wrt_meta_bound_start = MPI_Wtime();
@@ -117,7 +120,7 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 
 MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 {
-//	Events e("basic", "io");
+	Events e("basic", "io");
 
 	char* file_name = file->mpr->filename; /* file name for */
 	/* Check if the data format is .mpr */
@@ -171,7 +174,7 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 
 MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int evi)
 {
-//	Events e("Bounding", "io");
+	Events e("Bounding", "io");
 
 	char directory_path[PATH_MAX]; /* file template */
 	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
@@ -259,7 +262,7 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 
 MPR_return_code MPR_gather_file_metadata(MPR_file file, int svi, int evi)
 {
-//	Events e("gather", "comp");
+	Events e("gather", "comp");
 
 	if (file->mpr->is_aggregator == 1)
 	{

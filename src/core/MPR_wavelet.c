@@ -19,9 +19,8 @@ static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, char
 
 MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 {
-//	Events e("wave", "null");
+	Events e("wave", "null");
 
-//	file->time->wave_pre_start = MPI_Wtime();
 	int rank = file->comm->simulation_rank; /* The rank of process */
 	int procs_num = file->comm->simulation_nprocs; /* The number of processes */
 	MPI_Comm comm = file->comm->simulation_comm; /* MPI Communicator */
@@ -34,7 +33,6 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 	}
 	int trans_num = log2(min) - 2; /* Calculate the the number of transforms */
 	file->mpr->wavelet_trans_num = trans_num;
-//	file->time->wave_pre_end = MPI_Wtime();
 
 	file->time->wave_trans_time = 0;
 	file->time->wave_org_time = 0;
@@ -48,21 +46,21 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 		for (int i = 0; i < patch_count; i++)
 		{
 			double trans_start = MPI_Wtime();
-//			{
-//				Events e("trans", "comp", 0, 2, i);
+			{
+				Events e("trans", "comp", 0, 2, i);
 			wavelet_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, file->variable[v]->type_name, trans_num);
-//			}
+			}
 			double trans_end = MPI_Wtime();
 			file->time->wave_trans_time += trans_end - trans_start;
 
 			double org_start = MPI_Wtime();
-//			{
-//				Events e("organ", "comp", 0, 2, i);
+			{
+				Events e("organ", "comp", 0, 2, i);
 			unsigned char* reg_buffer = (unsigned char*)malloc(local_patch->patch[i]->patch_buffer_size);
 			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes, 0, 0);
 			memcpy(local_patch->patch[i]->buffer, reg_buffer, local_patch->patch[i]->patch_buffer_size);
 			free(reg_buffer);
-//			}
+			}
 			double org_end = MPI_Wtime();
 			file->time->wave_org_time += org_end - org_start;
 		}
