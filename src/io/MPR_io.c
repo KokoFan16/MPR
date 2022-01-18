@@ -102,8 +102,6 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 
 	}
 	file->time->wrt_file_end = MPI_Wtime();
-	printf("%d, %d, MPI-wrt_data %f\n", file->mpr->current_time_step, file->comm->simulation_rank,
-				(file->time->wrt_file_end - file->time->wrt_file_start) );
 
 
 	file->time->wrt_data_end = MPI_Wtime();

@@ -38,7 +38,10 @@
 #include <fcntl.h>
 #include <math.h>
 
-#include "../external/zfp/include/zfp.h"
+#include <zfp.h>
+#include <caliper/cali.h>
+
+//#include "../external/zfp/include/zfp.h"
 #include "core/MPR_partition.h"
 
 

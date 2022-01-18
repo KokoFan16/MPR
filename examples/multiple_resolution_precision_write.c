@@ -3,6 +3,8 @@
 #include "MPR_example_utils.h"
 
 #include "../include/logging_api.h"
+#include <caliper/cali.h>
+#include <caliper/cali-manager.h>
 
 char var_name[MAX_VAR_COUNT][512];
 int bpv[MAX_VAR_COUNT];
@@ -51,6 +53,12 @@ char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_pre_write -g 64x64x64 -l 
 
 int main(int argc, char **argv)
 {
+//	cali::ConfigManager mgr;
+//    mgr.add("runtime-report");
+	cali_config_set("CALI_CALIPER_ATTRIBUTE_DEFAULT_SCOPE", "process");
+
+//    mgr.start();
+
 	int ts = 0, var = 0;
 	/* Init MPI and MPI vars (e.g. rank and process_count) */
 	init_mpi(argc, argv);
@@ -105,6 +113,8 @@ int main(int argc, char **argv)
 	write_output(filename);
 //	free(time_buffer);
 //	free(size_buffer);
+//	mgr.flush();
+
 
 	if (MPR_close_access(p_access) != MPR_success)
 		terminate_with_error_msg("MPR_close_access");
@@ -217,6 +227,7 @@ static void parse_args(int argc, char **argv)
 /* parse variable list */
 static int parse_var_list()
 {
+
   FILE *fp = fopen(var_list, "r");
   if (fp == NULL)
   {

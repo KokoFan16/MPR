@@ -94,9 +94,6 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 	}
 	file->time->wrt_meta_basic_end = MPI_Wtime();
 
-	printf("%d, %d, MPI-wrt_meta_basic %f\n", file->mpr->current_time_step, file->comm->simulation_rank,
-			(file->time->wrt_meta_basic_end - file->time->wrt_meta_basic_start) );
-
 	/* Write bounding box metadata out */
 	file->time->wrt_meta_bound_start = MPI_Wtime();
 	if (MPR_bounding_box_metadata_write_out(file, svi, evi) != MPR_success)

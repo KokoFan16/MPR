@@ -46,6 +46,8 @@ static void shutdown_mpi();
 /* MPI Environment Initialization */
 static void init_mpi(int argc, char **argv)
 {
+	CALI_CXX_MARK_FUNCTION;
+
 	if (MPI_Init(&argc, &argv) != MPI_SUCCESS)
 		terminate_with_error_msg("ERROR: MPI_Init error\n");
 	if (MPI_Comm_size(MPI_COMM_WORLD, &process_count) != MPI_SUCCESS)
