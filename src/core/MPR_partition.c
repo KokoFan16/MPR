@@ -28,7 +28,7 @@ MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi)
 
 	{
 		Events e("other", "null");
-	file->time->part_status_start = MPI_Wtime();
+//	file->time->part_status_start = MPI_Wtime();
 	int is_same = 0;
 	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 	{
@@ -40,7 +40,7 @@ MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi)
 	}
 
 	MPI_Allreduce(&is_same, &min_same, 1, MPI_INT, MPI_MIN, file->comm->simulation_comm);
-	file->time->part_status_end = MPI_Wtime();
+//	file->time->part_status_end = MPI_Wtime();
 	}
 
 	if (min_same == MPR_MAX_DIMENSIONS)
@@ -225,7 +225,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	for (int i = 0; i < total_patch_num; i++)
 	{
 
-		double assign_share_start = MPI_Wtime();
+//		double assign_share_start = MPI_Wtime();
 		int start_dimensions[MPR_MAX_DIMENSIONS];
 		int end_dimensions[MPR_MAX_DIMENSIONS];
 		int end[MPR_MAX_DIMENSIONS];
@@ -324,8 +324,8 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //			double recv_pre_start = MPI_Wtime();
 			int patch_id = local_assigned_patches[i];
 			int patch_end[MPR_MAX_DIMENSIONS];
-//			{
-//				Events e("pre", "null", 0, 2, i);
+			{
+				Events e("pre", "null", 0, 2, i);
 
 			local_patch->patch[i] = (MPR_patch)malloc(sizeof(*local_patch->patch[i]));
 			local_patch->patch[i]->global_id = patch_id;
@@ -345,7 +345,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 					patch_end[d] = global_box[d];
 			}
 
-//			}
+			}
 
 			int physical_size[MPR_MAX_DIMENSIONS];
 			int physical_offset[MPR_MAX_DIMENSIONS];
@@ -360,7 +360,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 			for (int j = 0; j < shared_processes_count; j++)
 			{
-//				Events e("exBox", "comm", 0, 2, i*shared_processes_count+j);
+				Events e("exBox", "comm", 0, 2, i*shared_processes_count+j);
 //				double recv_exbox_start = MPI_Wtime();
 
 				int process_id = local_shared_patches_ranks[i][j];

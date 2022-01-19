@@ -30,7 +30,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 			/*************************** Gather required information *************************/
-			double gather_start = MPI_Wtime();
+//			double gather_start = MPI_Wtime();
 			int* global_subband_sizes = NULL;
 			int* local_subband_sizes = NULL;
 			int* subband_sizes = NULL;
@@ -249,7 +249,6 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			local_patch->agg_patch_size = (int*)malloc(recv_num * sizeof(int));
 			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 				local_patch->agg_subbands_size = (int*)malloc(recv_num * subbands_num * sizeof(int));
-
 			}
 //			file->time->agg_comm_pre_end = MPI_Wtime();
 
@@ -293,8 +292,8 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			for (int i = 0; i < recv_num; i++)
 			{
 //				double recv_bound_start = MPI_Wtime();
-//				{
-//					Events e("calBound", "comp", 0, 2, i);
+				{
+					Events e("calBound", "comp", 0, 2, i);
 
 				int z = recv_array[i] / (patch_count_xyz[0] * patch_count_xyz[1]);
 				int y = (recv_array[i] - (z * patch_count_xyz[0] * patch_count_xyz[1])) / patch_count_xyz[0];
@@ -305,13 +304,13 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				if (y > max_xyz[1]) max_xyz[1] = y;
 				if (x < min_xyz[0]) min_xyz[0] = x;
 				if (x > max_xyz[0]) max_xyz[0] = x;
-//				}
+				}
 //				double recv_bound_end = MPI_Wtime();
 //				file->time->agg_comm_recv_bound_time += recv_bound_end - recv_bound_start;
 
 //				double recv_act_start = MPI_Wtime();
-//				{
-//					Events e("comm", "comm", 0, 2, i);
+				{
+					Events e("comm", "comm", 0, 2, i);
 				MPI_Irecv(&local_patch->buffer[offset], patch_sizes[recv_array[i]], MPI_BYTE, patch_ranks[recv_array[i]], recv_array[i], comm, &req[req_id]);
 
 				local_patch->agg_patch_id_array[i] = recv_array[i];
@@ -326,7 +325,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 //				double recv_act_end = MPI_Wtime();
 //				file->time->agg_comm_recv_act_time += recv_act_end - recv_act_start;
-//				}
+				}
 			}
 
 			}

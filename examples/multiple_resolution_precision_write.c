@@ -24,6 +24,9 @@ int nprocs = 1;
 int curRank = 0;
 std::string namespath = "";
 
+double logging_cost = 0;
+double write_cost = 0;
+
 float* time_buffer;
 
 static void parse_args(int argc, char **argv);
