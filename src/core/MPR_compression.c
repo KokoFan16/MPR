@@ -13,7 +13,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 
 	for (int v = svi; v < evi; v++)
 	{
-		file->time->zfp_pre_start = MPI_Wtime();
+//		file->time->zfp_pre_start = MPI_Wtime();
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
 		char* type_name = file->variable[v]->type_name;
 		int local_patch_count = local_patch->patch_count;
@@ -27,10 +27,12 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 		else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
 			data_type = 1;
 		}
-		file->time->zfp_pre_end = MPI_Wtime();
+//		file->time->zfp_pre_end = MPI_Wtime();
 
-		file->time->zfp_comp_dc_time = 0;
-		file->time->zfp_comp_bands_time = 0;
+//		file->time->zfp_comp_dc_time = 0;
+//		file->time->zfp_comp_bands_time = 0;
+		{
+			Events e("compress", "null");
 		for (int p = 0; p < local_patch_count; p++)
 		{
 			double comp_dc_start = MPI_Wtime();
@@ -46,8 +48,8 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			MPR_patch reg_patch = local_patch->patch[p];
 			MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 
-			{
-				Events e("calDC", "comp", 0, 2, p);
+//			{
+//				Events e("calDC", "comp", 0, 2, p);
 
 			memset(output, 0, sizeof (*output)); /* Initialization */
 			reg_patch->subbands_comp_size = (int*)malloc(subband_num * sizeof(int));
@@ -63,14 +65,14 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			offset += size * bytes;
 			reg_patch->subbands_comp_size[sid++] = output->compress_size;
 
-			}
+//			}
 
-			double comp_dc_end = MPI_Wtime();
-			file->time->zfp_comp_dc_time += comp_dc_end - comp_dc_start;
+//			double comp_dc_end = MPI_Wtime();
+//			file->time->zfp_comp_dc_time += comp_dc_end - comp_dc_start;
 
-			double comp_bands_start = MPI_Wtime();
-			{
-				Events e("calBands", "comp", 0, 2, p);
+//			double comp_bands_start = MPI_Wtime();
+//			{
+//				Events e("calBands", "comp", 0, 2, p);
 			for (int i = file->mpr->wavelet_trans_num; i > 0; i--)
 			{
 				calculate_res_level_box(res_box, file->mpr->patch_box, i);
@@ -91,9 +93,10 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			reg_patch->buffer = (unsigned char*)realloc(reg_patch->buffer, comp_offset); /* changed the size of patch buffer */
 			reg_patch->patch_buffer_size = comp_offset; /* the total compressed size per patch */
 			free(output);
-			}
-			double comp_bands_end = MPI_Wtime();
-			file->time->zfp_comp_bands_time += comp_bands_end - comp_bands_start;
+//			}
+//			double comp_bands_end = MPI_Wtime();
+//			file->time->zfp_comp_bands_time += comp_bands_end - comp_bands_start;
+		}
 		}
 	}
 	return MPR_success;

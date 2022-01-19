@@ -110,7 +110,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	int local_end[MPR_MAX_DIMENSIONS];
 	int local_patch_offset_array[procs_num * MPR_MAX_DIMENSIONS];
 
-	file->time->part_gather_start = MPI_Wtime();
+//	file->time->part_gather_start = MPI_Wtime();
 	{
 		Events e("gather", "comp");
 
@@ -128,11 +128,11 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 	}
 
-	file->time->part_gather_end = MPI_Wtime();
+//	file->time->part_gather_end = MPI_Wtime();
 	/***************************************************************************/
 
 	/******************** Calculate local number of patches *********************/
-	file->time->part_cal_pcount_start = MPI_Wtime();
+//	file->time->part_cal_pcount_start = MPI_Wtime();
 	int local_patch_num, remain_patch_num;
 	int required_local_patch_num[procs_num]; /* The required local number of patches per process */
 
@@ -152,11 +152,11 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
     MPI_Allgather(&local_patch_num, 1, MPI_INT, required_local_patch_num, 1, MPI_INT, comm);
 
 	}
-    file->time->part_cal_pcount_end = MPI_Wtime();
+//    file->time->part_cal_pcount_end = MPI_Wtime();
     /***************************************************************************/
 
 	/***************************** Find max shared patches count *******************************/
-    file->time->part_max_pshare_start = MPI_Wtime();
+//    file->time->part_max_pshare_start = MPI_Wtime();
     int patch_offsets[total_patch_num][MPR_MAX_DIMENSIONS];
 
 	int max_owned_patch_count = 0;
@@ -164,7 +164,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	int global_id = 0; /* The global id for each patch */
 
 	{
-		Events e("maxPshare", "comp", patch_size*sizeof(int));
+		Events e("maxPshare", "comp");
 
 	for (int k = 0; k < global_box[2]; k += patch_box[2])
 	{
@@ -195,7 +195,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	}
 
 	}
-	file->time->part_max_pshare_end = MPI_Wtime();
+//	file->time->part_max_pshare_end = MPI_Wtime();
 
     /***************************** Patch assignment *******************************/
 
@@ -216,7 +216,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	int local_shared_rank_count[local_patch_num];
 	int local_shared_patches_ranks[local_patch_num][max_owned_patch_count];
 
-	file->time->part_assign_start = MPI_Wtime();
+//	file->time->part_assign_start = MPI_Wtime();
 
 
 	{
@@ -287,11 +287,11 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 		}
 	}
 	}
-	file->time->part_assign_end = MPI_Wtime();
+//	file->time->part_assign_end = MPI_Wtime();
 	/******************************************************************************/
 
 	/*********************************** Data exchange and merge *********************************/
-	file->time->part_comm_start = MPI_Wtime();
+//	file->time->part_comm_start = MPI_Wtime();
 
 	{
 		Events e("exCell", "null");
@@ -312,20 +312,20 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 		/*********** Receive data (non-blocking point-to-point communication) **********/
 		int receive_array[MPR_MAX_DIMENSIONS] = {patch_box[0] * bytes, patch_box[1], patch_box[2]};
 
-		file->time->part_comm_recv_start = MPI_Wtime();
-		file->time->part_comm_recv_pre_time = 0;
-		file->time->part_comm_recv_exbox_time = 0;
+//		file->time->part_comm_recv_start = MPI_Wtime();
+//		file->time->part_comm_recv_pre_time = 0;
+//		file->time->part_comm_recv_exbox_time = 0;
 
 		{
 			Events e("recv", "null");
 
 		for (int i = 0; i < local_patch_num; i++)
 		{
-			double recv_pre_start = MPI_Wtime();
+//			double recv_pre_start = MPI_Wtime();
 			int patch_id = local_assigned_patches[i];
 			int patch_end[MPR_MAX_DIMENSIONS];
-			{
-				Events e("pre", "null", 0, 2, i);
+//			{
+//				Events e("pre", "null", 0, 2, i);
 
 			local_patch->patch[i] = (MPR_patch)malloc(sizeof(*local_patch->patch[i]));
 			local_patch->patch[i]->global_id = patch_id;
@@ -345,7 +345,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 					patch_end[d] = global_box[d];
 			}
 
-			}
+//			}
 
 			int physical_size[MPR_MAX_DIMENSIONS];
 			int physical_offset[MPR_MAX_DIMENSIONS];
@@ -354,14 +354,14 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 			int shared_processes_count = local_shared_rank_count[i];
 
-			double recv_pre_end = MPI_Wtime();
-			file->time->part_comm_recv_pre_time += recv_pre_end - recv_pre_start;
+//			double recv_pre_end = MPI_Wtime();
+//			file->time->part_comm_recv_pre_time += recv_pre_end - recv_pre_start;
 
 
 			for (int j = 0; j < shared_processes_count; j++)
 			{
-				Events e("exBox", "comm", 0, 2, i*shared_processes_count+j);
-				double recv_exbox_start = MPI_Wtime();
+//				Events e("exBox", "comm", 0, 2, i*shared_processes_count+j);
+//				double recv_exbox_start = MPI_Wtime();
 
 				int process_id = local_shared_patches_ranks[i][j];
 
@@ -398,16 +398,16 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 				req_i++;
 				MPI_Type_free(&recv_type);
 
-				double recv_exbox_end = MPI_Wtime();
-				file->time->part_comm_recv_exbox_time += recv_exbox_end - recv_exbox_start;
+//				double recv_exbox_end = MPI_Wtime();
+//				file->time->part_comm_recv_exbox_time += recv_exbox_end - recv_exbox_start;
 
 			}
 		}
 
 		}
-		file->time->part_comm_recv_end = MPI_Wtime();
-
-		file->time->part_comm_send_start = MPI_Wtime();
+//		file->time->part_comm_recv_end = MPI_Wtime();
+//
+//		file->time->part_comm_send_start = MPI_Wtime();
 		/*********** Send data (non-blocking point-to-point communication) **********/
 		{
 			Events e("send", "comm");
@@ -459,19 +459,19 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 		}
 
 		}
-		file->time->part_comm_send_end = MPI_Wtime();
-
-		file->time->part_comm_wait_start = MPI_Wtime();
+//		file->time->part_comm_send_end = MPI_Wtime();
+//
+//		file->time->part_comm_wait_start = MPI_Wtime();
 		{
 			Events e("wait", "comm");
 		MPI_Waitall(req_i, req, stat); /* Wait all the send and receive to be finished */
 		}
-		file->time->part_comm_wait_end = MPI_Wtime();
+//		file->time->part_comm_wait_end = MPI_Wtime();
 	}
 
 	}
 
-	file->time->part_comm_end = MPI_Wtime();
+//	file->time->part_comm_end = MPI_Wtime();
 	/**********************************************************************************************/
 
 //	printf("Partition %d: total %f [ sync %f gather %f cc %f cmc %f assign %f comm %f ] \n", rank, (total_end - total_start), (sync_end - sync_start), (gather_end - gather_start), (cal_count_end - cal_count_start),
