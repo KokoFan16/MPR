@@ -2,7 +2,7 @@
 #include "../src/utils/MPR_windows_utils.h"
 #include "MPR_example_utils.h"
 
-#include "../include/logging_api.h"
+//#include "../include/logging_api.h"
 #include <caliper/cali.h>
 #include <caliper/cali-manager.h>
 
@@ -25,6 +25,8 @@ int curTs = 0;
 int nprocs = 1;
 int curRank = 0;
 std::string namespath = "";
+
+char configstr[512];
 
 float* time_buffer;
 
@@ -53,11 +55,8 @@ char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_pre_write -g 64x64x64 -l 
 
 int main(int argc, char **argv)
 {
-//	cali::ConfigManager mgr;
-//    mgr.add("runtime-report");
 	cali_config_set("CALI_CALIPER_ATTRIBUTE_DEFAULT_SCOPE", "process");
-
-//    mgr.start();
+	cali::ConfigManager mgr;
 
 	int ts = 0, var = 0;
 	/* Init MPI and MPI vars (e.g. rank and process_count) */
@@ -65,6 +64,9 @@ int main(int argc, char **argv)
 
 	/* Parse input arguments and initialize */
 	parse_args(argc, argv);
+
+	mgr.add(configstr);
+    mgr.start();
 
 	/* Check arguments */
 	check_args();
@@ -94,13 +96,16 @@ int main(int argc, char **argv)
 //	size_buffer = (long long int*)malloc(time_step_count * 5 * sizeof(long long int));
 //	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
 
+//	CALI_CXX_MARK_LOOP_BEGIN(mainloop, "main");
 	for (ts = 0; ts < time_step_count; ts++)
 	{
+		CALI_MARK_BEGIN("main");
+//		CALI_CXX_MARK_LOOP_ITERATION(mainloop, ts);
 		set_rank(rank, process_count);
 		set_timestep(ts, time_step_count);
 		set_namespath("");
 
-		Events e("main", "null");
+//		Events e("main", "null");
 
 		set_mpr_file(ts);
 
@@ -108,12 +113,15 @@ int main(int argc, char **argv)
 			set_mpr_variable(var);
 
 		MPR_close(file);
+		CALI_MARK_END("main");
 	}
-	std::string filename = "parallel_io_mulResPre_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
-	write_output(filename);
+//	CALI_CXX_MARK_LOOP_END(mainloop);
+
+//	std::string filename = "parallel_io_mulResPre_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
+//	write_output(filename);
 //	free(time_buffer);
 //	free(size_buffer);
-//	mgr.flush();
+	mgr.flush();
 
 
 	if (MPR_close_access(p_access) != MPR_success)
@@ -132,7 +140,7 @@ int main(int argc, char **argv)
 /* Parse arguments */
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:l:p:i:f:t:v:o:z:c:m:d:a:";
+  char flags[] = "g:l:p:i:f:t:v:o:z:c:m:d:a:P:";
   int one_opt = 0;
 
   while ((one_opt = myGetopt(argc, argv, flags)) != EOF)
@@ -217,6 +225,13 @@ static void parse_args(int argc, char **argv)
       if (sscanf(optarg, "%d", &agg_version) < 0)
         terminate_with_error_msg("Invalid aggregation parameter\n%s", usage);
       break;
+
+    case('P'): // output file name
+      if (sprintf(configstr, "%s", optarg) < 0)
+        terminate_with_error_msg("Invalid caliper config string \n%s", usage);
+      break;
+
+      printf("%d: %s\n", rank, configstr);
 
     default:
       terminate_with_error_msg("Wrong arguments\n%s", usage);

@@ -18,22 +18,26 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 
-	file->time->crt_struc_start = MPI_Wtime();
+//	file->time->crt_struc_start = MPI_Wtime();
+	CALI_MARK_BEGIN("crtStruc");
 	/* Create metadata layout (folder) */
 	if (MPR_create_folder_structure(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-	file->time->crt_struc_end = MPI_Wtime();
+	CALI_MARK_END("crtStruc");
+//	file->time->crt_struc_end = MPI_Wtime();
 
-	file->time->rst_start = MPI_Wtime();
+//	file->time->rst_start = MPI_Wtime();
+	CALI_MARK_BEGIN("PART");
 	if (MPR_is_partition(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-	file->time->rst_end = MPI_Wtime();
+	CALI_MARK_END("PART");
+//	file->time->rst_end = MPI_Wtime();
 
 	/* Write Mode: write data out */
 	int ret = 0;
@@ -67,44 +71,50 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	}
 	else
 	{
-		file->time->agg_start = MPI_Wtime();
-		Events e("AGG", "null");
-
+//		file->time->agg_start = MPI_Wtime();
+//		Events e("AGG", "null");
+		CALI_MARK_BEGIN("AGG");
 		if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
 		{
 			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 			return MPR_err_file;
 		}
-		file->time->agg_end = MPI_Wtime();
+		CALI_MARK_END("AGG");
+//		file->time->agg_end = MPI_Wtime();
 	}
 
 	/* Write metadata out */
-	file->time->wrt_data_start = MPI_Wtime();
+//	file->time->wrt_data_start = MPI_Wtime();
 
-	file->time->wrt_meta_start = MPI_Wtime();
-	{
-		Events e("wrt", "null");
-
+//	file->time->wrt_meta_start = MPI_Wtime();
+//	{
+//		Events e("wrt", "null");
+	CALI_MARK_BEGIN("wrt");
+	CALI_MARK_BEGIN("wrtMeta");
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-	file->time->wrt_meta_end = MPI_Wtime();
+	CALI_MARK_END("wrtMeta");
+//	file->time->wrt_meta_end = MPI_Wtime();
 
 	/* write data out */
-	file->time->wrt_file_start = MPI_Wtime();
+//	file->time->wrt_file_start = MPI_Wtime();
+	CALI_MARK_BEGIN("wrtData");
 	if (MPR_write_data_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+	CALI_MARK_END("wrtData");
 
-	}
-	file->time->wrt_file_end = MPI_Wtime();
+//	}
+//	file->time->wrt_file_end = MPI_Wtime();
+	CALI_MARK_END("wrt");
 
 
-	file->time->wrt_data_end = MPI_Wtime();
+//	file->time->wrt_data_end = MPI_Wtime();
 
 	return MPR_success;
 }
