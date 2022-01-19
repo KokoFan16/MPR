@@ -38,7 +38,10 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 			int *patch_size_id, *patch_sizes, *patch_ranks;
 
+			double start = MPI_Wtime();
 			CALI_MARK_BEGIN("gather");
+			double end = MPI_Wtime();
+			cali_cost += (end - start);
 //			{
 //				Events e("gather", "comm");
 
@@ -86,7 +89,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			free(global_subband_sizes);
 
 //			}
+
+			start = MPI_Wtime();
 			CALI_MARK_END("gather");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			file->time->agg_gather_end = MPI_Wtime();
 
 			/******************************************************************************/
@@ -95,7 +102,10 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			long long int total_size = 0; /* The total size of all the patches across all the processes */
 			int patch_count_xyz[MPR_MAX_DIMENSIONS]; /* patch count in each dimension */
 
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("calInfo");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			{
 //				Events e("calInfo", "comp");
 			for (int i = 0; i < total_patch_num; i++)
@@ -107,12 +117,21 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				patch_count_xyz[i] = ceil((float)file->mpr->global_box[i] / file->mpr->patch_box[i]);
 				local_patch->compression_ratio /= file->mpr->global_box[i];
 			}
+
+			start = MPI_Wtime();
 			CALI_MARK_END("calInfo");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			}
 //			file->time->agg_calinfo_end = MPI_Wtime();
 
 			/****************** Convert to z-order ********************/
+
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("cvrZ");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
+
 //			file->time->agg_convert_z_start = MPI_Wtime();
 			int patch_count_power2 = 0;  /* z-order count */
 			int* patch_sizes_zorder = NULL;
@@ -148,7 +167,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 					}
 				}
 			}
+
+			start = MPI_Wtime();
 			CALI_MARK_END("cvrZ");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			}
 //			file->time->agg_convert_z_end = MPI_Wtime();
 			/**********************************************************/
@@ -163,7 +186,11 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			memset(agg_sizes, 0, file->mpr->out_file_num * sizeof(long long int));
 			int cur_agg_count = 0;
 
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("assign");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
+
 //			{
 //				Events e("assign", "comp");
 
@@ -207,12 +234,20 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				}
 
 			}
+			start = MPI_Wtime();
 			CALI_MARK_END("assign");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			}
 //			file->time->agg_assign_end = MPI_Wtime();
 
 //			file->time->agg_comm_pre_start = MPI_Wtime();
+
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("commPre");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
+
 
 			int recv_array[total_patch_num]; /* Local receive array per process */
 			int recv_num = 0;  /* number of received number of patches per aggregator */
@@ -255,13 +290,21 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 			if (file->mpr->io_type == MPR_MUL_RES_PRE_IO)
 				local_patch->agg_subbands_size = (int*)malloc(recv_num * subbands_num * sizeof(int));
 
+			start = MPI_Wtime();
 			CALI_MARK_END("commPre");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
+
 //			}
 //			file->time->agg_comm_pre_end = MPI_Wtime();
 
 			/********************** Point-to-point communication **********************/
 //			file->time->agg_comm_send_start = MPI_Wtime();
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("send");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
+
 			local_patch->buffer = (unsigned char*)malloc(agg_size); /* reuse the local buffer per variable */
 			local_patch->out_file_size = agg_size;
 
@@ -280,12 +323,19 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				MPI_Isend(local_patch->patch[i]->buffer, buffer_size, MPI_BYTE, agg_ranks[patch_assign_array[id]], id, comm, &req[req_id]);
 				req_id++;
 			}
+			start = MPI_Wtime();
 			CALI_MARK_END("send");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			}
 //			file->time->agg_comm_send_end = MPI_Wtime();
 
 //			file->time->agg_comm_recv_start = MPI_Wtime();
+
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("recv");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 
 			/* Recv data */
 			int max_xyz[MPR_MAX_DIMENSIONS] = {0, 0, 0};
@@ -299,8 +349,10 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 			for (int i = 0; i < recv_num; i++)
 			{
-
+				start = MPI_Wtime();
 				CALI_MARK_BEGIN("calBound");
+				end = MPI_Wtime();
+				cali_cost += (end - start);
 //				{
 //					Events e("calBound", "comp", 0, 2, i);
 				int z = recv_array[i] / (patch_count_xyz[0] * patch_count_xyz[1]);
@@ -313,12 +365,20 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 				if (x < min_xyz[0]) min_xyz[0] = x;
 				if (x > max_xyz[0]) max_xyz[0] = x;
 //				}
+
+				start = MPI_Wtime();
 				CALI_MARK_END("calBound");
+				end = MPI_Wtime();
+				cali_cost += (end - start);
 //				double recv_bound_end = MPI_Wtime();
 //				if (rank == 0) { printf("%d, %d, %f\n", rank, i, (recv_bound_end - recv_bound_start)); }
 //				file->time->agg_comm_recv_bound_time += recv_bound_end - recv_bound_start;
 
+				start = MPI_Wtime();
 				CALI_MARK_BEGIN("comm");
+				end = MPI_Wtime();
+				cali_cost += (end - start);
+
 //				double recv_act_start = MPI_Wtime();
 //				{
 //					Events e("comm", "comm", 0, 2, i);
@@ -334,21 +394,36 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 				req_id++;
 
+				start = MPI_Wtime();
 				CALI_MARK_END("comm");
+				end = MPI_Wtime();
+				cali_cost += (end - start);
 //				double recv_act_end = MPI_Wtime();
 //				file->time->agg_comm_recv_act_time += recv_act_end - recv_act_start;
 //				}
 			}
+			start = MPI_Wtime();
 			CALI_MARK_END("recv");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			}
 //			file->time->agg_comm_recv_end = MPI_Wtime();
 
 //			file->time->agg_comm_wait_start = MPI_Wtime();
 //			{
 //				Events e("wait", "comm");
+
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("wait");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
+
 			MPI_Waitall(req_id, req, stat);
+
+			start = MPI_Wtime();
 			CALI_MARK_END("wait");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 
 //			file->time->agg_comm_wait_end = MPI_Wtime();
 
@@ -362,13 +437,22 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 //			file->time->agg_bound_start = MPI_Wtime();
 //			{
 //				Events e("boundBox", "null");
+
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("boundBox");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
+
 			for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 			{
 				local_patch->bounding_box[i] = min_xyz[i];
 				local_patch->bounding_box[i + MPR_MAX_DIMENSIONS] = max_xyz[i] + 1;
 			}
+
+			start = MPI_Wtime();
 			CALI_MARK_END("boundBox");
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			file->time->agg_bound_end = MPI_Wtime();
 //			}
 

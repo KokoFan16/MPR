@@ -9,6 +9,8 @@
 #ifndef SRC_MPR_INC_H_
 #define SRC_MPR_INC_H_
 
+extern double cali_cost;
+
 #include "../include/MPR_define.h"
 #include "utils/MPR_error_code.h"
 #include "utils/MPR_point.h"

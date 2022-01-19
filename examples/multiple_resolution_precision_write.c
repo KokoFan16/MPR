@@ -30,6 +30,8 @@ char configstr[512];
 
 float* time_buffer;
 
+double cali_cost = 0;
+
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
 static int generate_vars();
@@ -56,7 +58,6 @@ char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_pre_write -g 64x64x64 -l 
 int main(int argc, char **argv)
 {
 	cali_config_set("CALI_CALIPER_ATTRIBUTE_DEFAULT_SCOPE", "process");
-	cali::ConfigManager mgr;
 
 	int ts = 0, var = 0;
 	/* Init MPI and MPI vars (e.g. rank and process_count) */
@@ -65,8 +66,12 @@ int main(int argc, char **argv)
 	/* Parse input arguments and initialize */
 	parse_args(argc, argv);
 
+	double start = MPI_Wtime();
+	cali::ConfigManager mgr;
 	mgr.add(configstr);
     mgr.start();
+	double end = MPI_Wtime();
+	cali_cost += (end - start);
 
 	/* Check arguments */
 	check_args();
@@ -99,7 +104,10 @@ int main(int argc, char **argv)
 //	CALI_CXX_MARK_LOOP_BEGIN(mainloop, "main");
 	for (ts = 0; ts < time_step_count; ts++)
 	{
+		double start = MPI_Wtime();
 		CALI_MARK_BEGIN("main");
+		double end = MPI_Wtime();
+		cali_cost += (end - start);
 //		CALI_CXX_MARK_LOOP_ITERATION(mainloop, ts);
 		set_rank(rank, process_count);
 		set_timestep(ts, time_step_count);
@@ -113,7 +121,11 @@ int main(int argc, char **argv)
 			set_mpr_variable(var);
 
 		MPR_close(file);
+
+		start = MPI_Wtime();
 		CALI_MARK_END("main");
+		end = MPI_Wtime();
+		cali_cost += (end - start);
 	}
 //	CALI_CXX_MARK_LOOP_END(mainloop);
 
@@ -121,7 +133,15 @@ int main(int argc, char **argv)
 //	write_output(filename);
 //	free(time_buffer);
 //	free(size_buffer);
+	start = MPI_Wtime();
 	mgr.flush();
+	end = MPI_Wtime();
+	cali_cost += (end - start);
+
+	double max_cost;
+	MPI_Reduce(&cali_cost, &max_cost, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+	if (rank == 0) { printf("caliper cost: %f\n", cali_cost); }
 
 
 	if (MPR_close_access(p_access) != MPR_success)

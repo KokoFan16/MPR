@@ -40,7 +40,7 @@ MPR_return_code MPR_flush(MPR_file file)
 			return MPR_err_io;
 		}
 	}
-	file->time->total_end = MPI_Wtime(); /* the end time for the program */
+//	file->time->total_end = MPI_Wtime(); /* the end time for the program */
 //
 //	if (file->mpr->is_logs == 1)
 //	{

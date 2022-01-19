@@ -87,35 +87,62 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 
 	/* Write basic information out */
 //	file->time->wrt_meta_basic_start = MPI_Wtime();
+	double start = MPI_Wtime();
 	CALI_MARK_BEGIN("basic");
+	double end = MPI_Wtime();
+	cali_cost += (end - start);
+
 	if (MPR_basic_info_metadata_write_out(file) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+
+	start = MPI_Wtime();
 	CALI_MARK_END("basic");
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 //	file->time->wrt_meta_basic_end = MPI_Wtime();
 
 	/* Write bounding box metadata out */
 //	file->time->wrt_meta_bound_start = MPI_Wtime();
+
+	start = MPI_Wtime();
 	CALI_MARK_BEGIN("Bounding");
+	end = MPI_Wtime();
+	cali_cost += (end - start);
+
 	if (MPR_bounding_box_metadata_write_out(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+
+	start = MPI_Wtime();
 	CALI_MARK_END("Bounding");
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 //	file->time->wrt_meta_bound_end = MPI_Wtime();
 
 	/* Write file related metadata out */
 //	file->time->wrt_meta_file_start = MPI_Wtime();
+
+	start = MPI_Wtime();
 	CALI_MARK_BEGIN("gather");
+	end = MPI_Wtime();
+	cali_cost += (end - start);
+
 	if (MPR_gather_file_metadata(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
+
+	start = MPI_Wtime();
 	CALI_MARK_END("gather");
+	end = MPI_Wtime();
+	cali_cost += (end - start);
+
 //	file->time->wrt_meta_file_end = MPI_Wtime();
 	return MPR_success;
 }
@@ -177,7 +204,7 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 
 MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int evi)
 {
-	Events e("Bounding", "io");
+//	Events e("Bounding", "io");
 
 	char directory_path[PATH_MAX]; /* file template */
 	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
