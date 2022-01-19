@@ -83,12 +83,11 @@ MPR_return_code MPR_processing(MPR_file file, int svi, int evi)
 
 MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int end_var_index)
 {
-
-	double total_start = MPI_Wtime();
-
-	double sync_start = MPI_Wtime();
-	MPI_Barrier(file->comm->simulation_comm);
-	double sync_end = MPI_Wtime();
+//	double total_start = MPI_Wtime();
+//
+//	double sync_start = MPI_Wtime();
+//	MPI_Barrier(file->comm->simulation_comm);
+//	double sync_end = MPI_Wtime();
 
 	/************************** Basic information *******************************/
 	int rank = file->comm->simulation_rank; /* The rank of process */
@@ -104,7 +103,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	/***************************************************************************/
 
 	/******************** Calculate total number of patches *********************/
-	double gather_start = MPI_Wtime();
+//	double gather_start = MPI_Wtime();
 	int patch_dimensional_counts[MPR_MAX_DIMENSIONS];
 	int process_dimensional_counts[MPR_MAX_DIMENSIONS];
 	int local_end[MPR_MAX_DIMENSIONS];
@@ -122,11 +121,11 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	/************************ Gather local patch info **************************/
 	int local_patch_offset_array[procs_num * MPR_MAX_DIMENSIONS];
 	MPI_Allgather(local_offset, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_offset_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
-	double gather_end = MPI_Wtime();
+//	double gather_end = MPI_Wtime();
 	/***************************************************************************/
 
 	/******************** Calculate local number of patches *********************/
-	double cal_count_start = MPI_Wtime();
+//	double cal_count_start = MPI_Wtime();
     int local_patch_num = total_patch_num / procs_num; /* The local number of patches per process */
     int remain_patch_num = total_patch_num % procs_num; /* Remainder */
 
@@ -139,11 +138,11 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
     int required_local_patch_num[procs_num]; /* The required local number of patches per process */
     MPI_Allgather(&local_patch_num, 1, MPI_INT, required_local_patch_num, 1, MPI_INT, comm);
-    double cal_count_end = MPI_Wtime();
+//    double cal_count_end = MPI_Wtime();
     /***************************************************************************/
 
 	/***************************** Find max shared patches count *******************************/
-    double max_count_start = MPI_Wtime();
+//    double max_count_start = MPI_Wtime();
     int patch_offsets[total_patch_num][MPR_MAX_DIMENSIONS];
 
 	int max_owned_patch_count = 0;
@@ -176,10 +175,10 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 			}
 		}
 	}
-	double max_count_end = MPI_Wtime();
+//	double max_count_end = MPI_Wtime();
 
     /***************************** Patch assignment *******************************/
-	double assign_start = MPI_Wtime();
+//	double assign_start = MPI_Wtime();
 	int local_own_patch_count = 0;
 	int local_own_patch_ids[total_patch_num]; /* the array of current number of patches per process */
 	memset(local_own_patch_ids, -1, total_patch_num * sizeof(int)); /* Initialization */
@@ -259,11 +258,11 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 			local_assigned_count++;
 		}
 	}
-	double assign_end = MPI_Wtime();
+//	double assign_end = MPI_Wtime();
 	/******************************************************************************/
 
 	/*********************************** Data exchange and merge *********************************/
-	double comm_start = MPI_Wtime();
+//	double comm_start = MPI_Wtime();
 	for (int v = start_var_index; v < end_var_index; v++)
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
@@ -392,10 +391,10 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 		}
 		MPI_Waitall(req_i, req, stat); /* Wait all the send and receive to be finished */
 	}
-	double comm_end = MPI_Wtime();
+//	double comm_end = MPI_Wtime();
 	/**********************************************************************************************/
 
-	double total_end = MPI_Wtime();
+//	double total_end = MPI_Wtime();
 
 //	printf("Partition %d: total %f [ sync %f gather %f cc %f cmc %f assign %f comm %f ] \n", rank, (total_end - total_start), (sync_end - sync_start), (gather_end - gather_start), (cal_count_end - cal_count_start),
 //				(max_count_end - max_count_start), (assign_end - assign_start), (comm_end - comm_start));

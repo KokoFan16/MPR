@@ -41,22 +41,22 @@ MPR_return_code MPR_multi_pre_write(MPR_file file, int svi, int evi)
 MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 {
 	/* Wavelet transform */
-	file->time->wave_start = MPI_Wtime();
+//	file->time->wave_start = MPI_Wtime();
 	if (MPR_wavelet_transform_perform(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-	file->time->wave_end = MPI_Wtime();
+//	file->time->wave_end = MPI_Wtime();
 
 	/* compressed each sub-bands after wavelet transform*/
-	file->time->zfp_start = MPI_Wtime();
+//	file->time->zfp_start = MPI_Wtime();
 	if (MPR_ZFP_multi_res_compression_perform(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-	file->time->zfp_end = MPI_Wtime();
+//	file->time->zfp_end = MPI_Wtime();
 
 	return MPR_success;
 }
