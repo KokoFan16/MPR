@@ -45,23 +45,27 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 
 		for (int i = 0; i < patch_count; i++)
 		{
-			double trans_start = MPI_Wtime();
+//			double trans_start = MPI_Wtime();
 //			{
 //				Events e("trans", "comp", 0, 2, i);
+			CALI_MARK_BEGIN("trans");
 			wavelet_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, file->variable[v]->type_name, trans_num);
+			CALI_MARK_END("trans");
 //			}
-			double trans_end = MPI_Wtime();
+//			double trans_end = MPI_Wtime();
 //			file->time->wave_trans_time += trans_end - trans_start;
 
-			double org_start = MPI_Wtime();
+//			double org_start = MPI_Wtime();
 //			{
 //				Events e("organ", "comp", 0, 2, i);
+			CALI_MARK_BEGIN("organ");
 			unsigned char* reg_buffer = (unsigned char*)malloc(local_patch->patch[i]->patch_buffer_size);
 			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes, 0, 0);
 			memcpy(local_patch->patch[i]->buffer, reg_buffer, local_patch->patch[i]->patch_buffer_size);
 			free(reg_buffer);
+			CALI_MARK_END("organ");
 //			}
-			double org_end = MPI_Wtime();
+//			double org_end = MPI_Wtime();
 //			file->time->wave_org_time += org_end - org_start;
 		}
 	}
