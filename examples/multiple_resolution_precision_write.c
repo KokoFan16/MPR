@@ -86,7 +86,10 @@ int main(int argc, char **argv)
 		MPR_close(file);
 	}
 	double end_time = MPI_Wtime();
-	printf("%d: %f\n", rank, (end_time-start_time));
+	double time = (end_time-start_time);
+	double max_time;
+	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	if (rank == 0) { printf("%f\n", max_time); }
 
 //	free(time_buffer);
 //	free(size_buffer);
