@@ -103,13 +103,13 @@ int main(int argc, char **argv)
 //	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
 
 //	CALI_CXX_MARK_LOOP_BEGIN(mainloop, "main");
+	start = MPI_Wtime();
+	CALI_MARK_BEGIN("main");
+	end = MPI_Wtime();
+	cali_cost += (end - start);
+
 	for (ts = 0; ts < time_step_count; ts++)
 	{
-		double start = MPI_Wtime();
-		CALI_MARK_BEGIN("main");
-		double end = MPI_Wtime();
-		cali_cost += (end - start);
-//		CALI_CXX_MARK_LOOP_ITERATION(mainloop, ts);
 		set_rank(rank, process_count);
 		set_timestep(ts, time_step_count);
 		set_namespath("");
@@ -122,13 +122,12 @@ int main(int argc, char **argv)
 			set_mpr_variable(var);
 
 		MPR_close(file);
-
-		start = MPI_Wtime();
-		CALI_MARK_END("main");
-		end = MPI_Wtime();
-		cali_cost += (end - start);
 	}
-//	CALI_CXX_MARK_LOOP_END(mainloop);
+
+	start = MPI_Wtime();
+	CALI_MARK_END("main");
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 
 //	std::string filename = "parallel_io_mulResPre_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 //	write_output(filename);
