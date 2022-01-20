@@ -31,6 +31,7 @@ char configstr[512];
 float* time_buffer;
 
 double cali_cost = 0;
+double write_cost = 0;
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -136,12 +137,13 @@ int main(int argc, char **argv)
 	start = MPI_Wtime();
 	mgr.flush();
 	end = MPI_Wtime();
-	cali_cost += (end - start);
+	write_cost += (end - start);
 
+	double total_time = write_cost + cali_cost;
 	double max_cost;
-	MPI_Reduce(&cali_cost, &max_cost, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	MPI_Allreduce(&total_time, &max_cost, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (rank == 0) { printf("caliper cost: %f\n", cali_cost); }
+	if (total_time == max_cost) { printf("caliper cost: %f(%f, %f)\n", max_cost, cali_cost, write_cost); }
 
 
 	if (MPR_close_access(p_access) != MPR_success)
