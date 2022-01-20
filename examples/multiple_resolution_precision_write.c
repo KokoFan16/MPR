@@ -89,6 +89,7 @@ int main(int argc, char **argv)
 //	size_buffer = (long long int*)malloc(time_step_count * 5 * sizeof(long long int));
 //	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
 
+	double start_time = MPI_Wtime();
 	for (ts = 0; ts < time_step_count; ts++)
 	{
 		set_rank(rank, process_count);
@@ -104,6 +105,13 @@ int main(int argc, char **argv)
 
 		MPR_close(file);
 	}
+	double end_time = MPI_Wtime();
+	double time = (end_time-start_time);
+	double max_time;
+	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	if (rank == 0) { printf("vis_total_time: %f\n", max_time); }
+
+
 	std::string filename = std::string(output_file_template) + "_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 	write_output(filename);
 //	free(time_buffer);
