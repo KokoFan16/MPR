@@ -104,7 +104,7 @@ int main(int argc, char **argv)
 
 		MPR_close(file);
 	}
-	std::string filename = "parallel_io_mulResPre_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
+	std::string filename = std::string(output_file_template) + "_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 	write_output(filename);
 //	free(time_buffer);
 //	free(size_buffer);
