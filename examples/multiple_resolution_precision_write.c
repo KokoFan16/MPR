@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 	mgr.add(configstr);
     mgr.start();
 	double end = MPI_Wtime();
-	cali_cost += (end - start);
+	write_cost += (end - start);
 
 	/* Check arguments */
 	check_args();
@@ -103,6 +103,8 @@ int main(int argc, char **argv)
 //	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
 
 //	CALI_CXX_MARK_LOOP_BEGIN(mainloop, "main");
+	double start_time = MPI_Wtime();
+
 	start = MPI_Wtime();
 	CALI_MARK_BEGIN("main");
 	end = MPI_Wtime();
@@ -122,6 +124,7 @@ int main(int argc, char **argv)
 			set_mpr_variable(var);
 
 		MPR_close(file);
+
 	}
 
 	start = MPI_Wtime();
@@ -129,21 +132,28 @@ int main(int argc, char **argv)
 	end = MPI_Wtime();
 	cali_cost += (end - start);
 
-//	std::string filename = "parallel_io_mulResPre_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
-//	write_output(filename);
-//	free(time_buffer);
-//	free(size_buffer);
+	double end_time = MPI_Wtime();
+	double total_time = (end_time-start_time);
+
+	double max_time;
+	MPI_Reduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	if (rank == 0) { printf("Caliper-time: %f\n", max_time); }
+
 	start = MPI_Wtime();
 	mgr.flush();
 	end = MPI_Wtime();
 	write_cost += (end - start);
 
-	double total_time = write_cost + cali_cost;
+	double cost_time = write_cost + cali_cost;
 	double max_cost;
-	MPI_Allreduce(&total_time, &max_cost, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+	MPI_Allreduce(&cost_time, &max_cost, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (total_time == max_cost) { printf("caliper cost: %f(%f, %f)\n", max_cost, cali_cost, write_cost); }
+	if (cost_time == max_cost) { printf("caliper-cost: %f(%f, %f)\n", max_cost, cali_cost, write_cost); }
 
+	//	std::string filename = "parallel_io_mulResPre_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
+	//	write_output(filename);
+	//	free(time_buffer);
+	//	free(size_buffer);
 
 	if (MPR_close_access(p_access) != MPR_success)
 		terminate_with_error_msg("MPR_close_access");
