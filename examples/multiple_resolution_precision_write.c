@@ -136,7 +136,8 @@ int main(int argc, char **argv)
 	double total_time = (end_time-start_time);
 	double max_time;
 	MPI_Reduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-	if (rank == 0) { printf("Caliper-time: %f\n", max_time); }
+
+	if (rank == 0) { printf("Caliper-time(%d): %f\n", process_count, max_time); }
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -149,7 +150,7 @@ int main(int argc, char **argv)
 	double max_cost;
 	MPI_Allreduce(&cost_time, &max_cost, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (cost_time == max_cost) { printf("caliper-cost: %f(%f, %f)\n", max_cost, cali_cost, write_cost); }
+	if (cost_time == max_cost) { printf("caliper-cost(%d): %f(%f, %f)\n", process_count, max_cost, cali_cost, write_cost); }
 
 	//	std::string filename = "parallel_io_mulResPre_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 	//	write_output(filename);
