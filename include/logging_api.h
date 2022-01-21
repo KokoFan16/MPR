@@ -27,6 +27,7 @@ extern std::string namespath; // call path of functions
 
 extern double logging_cost;
 extern double write_cost;
+extern double agg_cost;
 
 static void set_timestep(int t, int n) {curTs = t; ntimestep = n;} // set the number of timesteps and current timestep
 static void set_rank(int r, int n) {curRank = r; nprocs = n;} // set the number of processes and the current rank
@@ -205,10 +206,12 @@ static int gather_info()
 
 static void write_output(std::string filename, int flag=0)
 {
-	double scost = MPI_Wtime();
-
+	double t0 = MPI_Wtime();
 	int master = gather_info(); // gather info from all the processes
+	double t1 = MPI_Wtime();
+	agg_cost += t1 - t0;
 
+	double scost = MPI_Wtime();
 	if (curRank == master) // rank 0 writes csv file
 	{
 		std::string filePath = filename + ".csv"; // create file path
@@ -249,12 +252,12 @@ static void write_output(std::string filename, int flag=0)
 	double ecost = MPI_Wtime();
 	write_cost += (ecost - scost);
 
-	double total_time = write_cost + logging_cost;
+	double total_time = write_cost + logging_cost + agg_cost;
 	double max_time;
 	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
 	if (total_time == max_time) {
-		std::cout << "ours cost: " << max_time << "(" << logging_cost << ", " << write_cost << ")\n";
+		std::cout << "ours cost: " << max_time << "(" << logging_cost << ", "  << agg_cost << ", " << write_cost  << ")\n";
 	}
 
 

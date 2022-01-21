@@ -26,6 +26,7 @@ std::string namespath = "";
 
 double logging_cost = 0;
 double write_cost = 0;
+double agg_cost = 0;
 
 float* time_buffer;
 
