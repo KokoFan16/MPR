@@ -30,8 +30,8 @@ char configstr[512];
 
 float* time_buffer;
 
-double cali_cost = 0;
-double write_cost = 0;
+//double cali_cost = 0;
+//double write_cost = 0;
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -67,12 +67,12 @@ int main(int argc, char **argv)
 	/* Parse input arguments and initialize */
 	parse_args(argc, argv);
 
-	double start = MPI_Wtime();
+//	double start = MPI_Wtime();
 	cali::ConfigManager mgr;
 	mgr.add(configstr);
     mgr.start();
-	double end = MPI_Wtime();
-	write_cost += (end - start);
+//	double end = MPI_Wtime();
+//	write_cost += (end - start);
 
 	/* Check arguments */
 	check_args();
@@ -105,10 +105,10 @@ int main(int argc, char **argv)
 //	CALI_CXX_MARK_LOOP_BEGIN(mainloop, "main");
 	double start_time = MPI_Wtime();
 
-	start = MPI_Wtime();
+//	start = MPI_Wtime();
 	CALI_MARK_BEGIN("main");
-	end = MPI_Wtime();
-	cali_cost += (end - start);
+//	end = MPI_Wtime();
+//	cali_cost += (end - start);
 
 	for (ts = 0; ts < time_step_count; ts++)
 	{
@@ -127,30 +127,29 @@ int main(int argc, char **argv)
 
 	}
 
-	start = MPI_Wtime();
+//	start = MPI_Wtime();
 	CALI_MARK_END("main");
-	end = MPI_Wtime();
-	cali_cost += (end - start);
+//	end = MPI_Wtime();
+//	cali_cost += (end - start);
 
 	double end_time = MPI_Wtime();
 	double total_time = (end_time-start_time);
 	double max_time;
 	MPI_Reduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-	if (rank == 0) { printf("Caliper-time(%d): %f\n", process_count, max_time); }
-
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	start = MPI_Wtime();
+	double start = MPI_Wtime();
 	mgr.flush();
-	end = MPI_Wtime();
-	write_cost += (end - start);
+	double end = MPI_Wtime();
+	double write_cost = (end - start);
 
-	double cost_time = write_cost + cali_cost;
 	double max_cost;
-	MPI_Allreduce(&cost_time, &max_cost, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+	MPI_Reduce(&write_cost, &max_cost, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-	if (cost_time == max_cost) { printf("caliper-cost(%d): %f(%f, %f)\n", process_count, max_cost, cali_cost, write_cost); }
+	if (rank == 0) { printf("Caliper-time(%d): %f, %f\n", process_count, max_time, max_cost); }
+
+//	if (write_cost == max_cost) { printf("caliper-cost(%d): %f(%f, %f)\n", process_count, max_cost, cali_cost, write_cost); }
 
 	//	std::string filename = "parallel_io_mulResPre_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 	//	write_output(filename);
