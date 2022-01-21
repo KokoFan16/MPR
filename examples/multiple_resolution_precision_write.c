@@ -112,6 +112,7 @@ int main(int argc, char **argv)
 	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	if (rank == 0) { printf("vis_total_time: %f\n", max_time); }
 
+	MPI_Barrier(MPI_COMM_WORLD);
 
 	std::string filename = std::string(output_file_template) + "_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 	write_output(filename);
