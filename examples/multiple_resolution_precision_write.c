@@ -134,10 +134,11 @@ int main(int argc, char **argv)
 
 	double end_time = MPI_Wtime();
 	double total_time = (end_time-start_time);
-
 	double max_time;
 	MPI_Reduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	if (rank == 0) { printf("Caliper-time: %f\n", max_time); }
+
+	MPI_Barrier(MPI_COMM_WORLD);
 
 	start = MPI_Wtime();
 	mgr.flush();
