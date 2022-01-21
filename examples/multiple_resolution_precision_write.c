@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 	double time = (end_time-start_time);
 	double max_time;
 	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-	if (rank == 0) { printf("%f\n", max_time); }
+	if (rank == 0) { printf("time_without_logging(%d): %f\n", process_count, max_time); }
 
 //	free(time_buffer);
 //	free(size_buffer);
