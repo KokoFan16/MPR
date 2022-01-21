@@ -110,12 +110,18 @@ int main(int argc, char **argv)
 	double time = (end_time-start_time);
 	double max_time;
 	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-	if (rank == 0) { printf("vis_total_time: %f\n", max_time); }
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
+	double swt = MPI_Wtime();
 	std::string filename = std::string(output_file_template) + "_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 	write_output(filename);
+	double ewt = MPI_Wtime();
+	double write_cost = (ewt - swt);
+	double max_cost;
+	MPI_Reduce(&write_cost, &max_cost, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+	if (rank == 0) { printf("vis_total_time(%d): %f, %f\n", process_count, max_time, max_cost); }
 //	free(time_buffer);
 //	free(size_buffer);
 
