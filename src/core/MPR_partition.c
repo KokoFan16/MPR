@@ -357,10 +357,12 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //			double recv_pre_end = MPI_Wtime();
 //			file->time->part_comm_recv_pre_time += recv_pre_end - recv_pre_start;
 
+			{
+				Events e("exBox", "comm");
 
 			for (int j = 0; j < shared_processes_count; j++)
 			{
-				Events e("exBox", "comm", 0, 2, i*shared_processes_count+j);
+//				Events e("exBox", "comm", 0, 2, i*shared_processes_count+j);
 //				double recv_exbox_start = MPI_Wtime();
 
 				int process_id = local_shared_patches_ranks[i][j];
@@ -401,6 +403,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //				double recv_exbox_end = MPI_Wtime();
 //				file->time->part_comm_recv_exbox_time += recv_exbox_end - recv_exbox_start;
 
+			}
 			}
 		}
 

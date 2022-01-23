@@ -24,9 +24,10 @@ int nprocs = 1;
 int curRank = 0;
 std::string namespath = "";
 
-double logging_cost = 0;
-double write_cost = 0;
-double agg_cost = 0;
+//double logging_cost = 0;
+//double write_cost = 0;
+//double agg_cost = 0;
+long call_count = 0;
 
 float* time_buffer;
 
@@ -121,7 +122,7 @@ int main(int argc, char **argv)
 	double max_cost;
 	MPI_Reduce(&write_cost, &max_cost, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-	if (rank == 0) { printf("vis_total_time(%d): %f, %f\n", process_count, max_time, max_cost); }
+	if (rank == 0) { printf("vis_total_time(%d): %f, %f, %ld\n", process_count, max_time, max_cost, call_count); }
 //	free(time_buffer);
 //	free(size_buffer);
 

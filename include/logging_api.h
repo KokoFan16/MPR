@@ -29,6 +29,8 @@ extern std::string namespath; // call path of functions
 //extern double write_cost;
 //extern double agg_cost;
 
+extern long call_count;
+
 static void set_timestep(int t, int n) {curTs = t; ntimestep = n;} // set the number of timesteps and current timestep
 static void set_rank(int r, int n) {curRank = r; nprocs = n;} // set the number of processes and the current rank
 static void set_namespath(std::string name) {namespath = name;} // set the call path of functions
@@ -62,6 +64,8 @@ public:
 		start_time = start; // get start time
 		if (namespath == "") { namespath += name; } // set name-path as key
 		else { namespath += "-" + name; }
+
+		call_count += 1;
 
 //		double ecost = MPI_Wtime();
 //		logging_cost += (ecost - scost);
@@ -107,6 +111,8 @@ public:
 			}
 		}
 		namespath = namespath.substr(0, found); // back to last level
+
+		call_count += 1;
 
 //		double ecost = MPI_Wtime();
 //		logging_cost += (ecost - scost);
