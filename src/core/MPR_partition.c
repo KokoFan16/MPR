@@ -358,7 +358,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //			file->time->part_comm_recv_pre_time += recv_pre_end - recv_pre_start;
 
 			{
-				Events e("exBox", "comm");
+				Events e("exBox", "comm", 0, 2, i);
 
 			for (int j = 0; j < shared_processes_count; j++)
 			{
