@@ -30,6 +30,7 @@ char configstr[512];
 
 float* time_buffer;
 
+long call_count = 0;
 //double cali_cost = 0;
 //double write_cost = 0;
 
@@ -107,9 +108,9 @@ int main(int argc, char **argv)
 
 //	start = MPI_Wtime();
 	CALI_MARK_BEGIN("main");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
-
 	for (ts = 0; ts < time_step_count; ts++)
 	{
 		set_rank(rank, process_count);
@@ -129,6 +130,7 @@ int main(int argc, char **argv)
 
 //	start = MPI_Wtime();
 	CALI_MARK_END("main");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -147,7 +149,7 @@ int main(int argc, char **argv)
 	double max_cost;
 	MPI_Reduce(&write_cost, &max_cost, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-	if (rank == 0) { printf("Caliper-time(%d): %f, %f\n", process_count, max_time, max_cost); }
+	if (rank == 0) { printf("Caliper-time(%d): %f, %f, %ld\n", process_count, max_time, max_cost, call_count); }
 
 //	if (write_cost == max_cost) { printf("caliper-cost(%d): %f(%f, %f)\n", process_count, max_cost, cali_cost, write_cost); }
 
