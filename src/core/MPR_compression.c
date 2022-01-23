@@ -25,6 +25,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 
 //		double start = MPI_Wtime();
 		CALI_MARK_BEGIN("getDT");
+		call_count += 1;
 //		double end = MPI_Wtime();
 //		cali_cost += (end - start);
 
@@ -35,6 +36,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 
 //		start = MPI_Wtime();
 		CALI_MARK_END("getDT");
+		call_count += 1;
 //		end = MPI_Wtime();
 //		cali_cost += (end - start);
 
@@ -63,6 +65,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 
 //			start = MPI_Wtime();
 			CALI_MARK_BEGIN("calDC");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 
@@ -83,6 +86,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 
 //			start = MPI_Wtime();
 			CALI_MARK_END("calDC");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 //			double comp_dc_end = MPI_Wtime();
@@ -94,6 +98,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 
 //			start = MPI_Wtime();
 			CALI_MARK_BEGIN("calBands");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 
@@ -120,6 +125,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 
 //			start = MPI_Wtime();
 			CALI_MARK_END("calBands");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 

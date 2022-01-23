@@ -9,7 +9,7 @@
 #ifndef SRC_MPR_INC_H_
 #define SRC_MPR_INC_H_
 
-//extern double cali_cost;
+extern long call_count;
 
 #include "../include/MPR_define.h"
 #include "utils/MPR_error_code.h"

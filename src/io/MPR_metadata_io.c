@@ -89,6 +89,7 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 //	file->time->wrt_meta_basic_start = MPI_Wtime();
 //	double start = MPI_Wtime();
 	CALI_MARK_BEGIN("basic");
+	call_count += 1;
 //	double end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -100,6 +101,7 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 
 //	start = MPI_Wtime();
 	CALI_MARK_END("basic");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 //	file->time->wrt_meta_basic_end = MPI_Wtime();
@@ -109,6 +111,7 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 
 //	start = MPI_Wtime();
 	CALI_MARK_BEGIN("Bounding");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -120,6 +123,7 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 
 //	start = MPI_Wtime();
 	CALI_MARK_END("Bounding");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 //	file->time->wrt_meta_bound_end = MPI_Wtime();
@@ -129,6 +133,7 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 
 //	start = MPI_Wtime();
 	CALI_MARK_BEGIN("gather");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -140,6 +145,7 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 
 //	start = MPI_Wtime();
 	CALI_MARK_END("gather");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 

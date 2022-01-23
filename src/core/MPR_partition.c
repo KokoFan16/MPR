@@ -30,6 +30,7 @@ MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi)
 //		Events e("other", "null");
 //	double start = MPI_Wtime();
 	CALI_MARK_BEGIN("other");
+	call_count += 1;
 //	double end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -48,6 +49,7 @@ MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi)
 //	file->time->part_status_end = MPI_Wtime();
 //	start = MPI_Wtime();
 	CALI_MARK_END("other");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 //	}
@@ -124,6 +126,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //		Events e("gather", "comp");
 //	double start = MPI_Wtime();
 	CALI_MARK_BEGIN("gather");
+	call_count += 1;
 //	double end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -141,6 +144,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 //	start = MPI_Wtime();
 	CALI_MARK_END("gather");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 //	}
@@ -157,6 +161,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //		Events e("calPc", "comp");
 //	start = MPI_Wtime();
 	CALI_MARK_BEGIN("calPc");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -174,6 +179,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 //    start = MPI_Wtime();
     CALI_MARK_END("calPc");
+    call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 //	}
@@ -190,6 +196,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 //	start = MPI_Wtime();
 	CALI_MARK_BEGIN("maxPshare");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 //	{
@@ -224,6 +231,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	}
 //	start = MPI_Wtime();
 	CALI_MARK_END("maxPshare");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -256,6 +264,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //		Events e("assign", "comp");
 //	start = MPI_Wtime();
 	CALI_MARK_BEGIN("assign");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -324,6 +333,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	}
 //	start = MPI_Wtime();
 	CALI_MARK_END("assign");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 //	}
@@ -337,6 +347,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //		Events e("exCell", "null");
 //	start = MPI_Wtime();
 	CALI_MARK_BEGIN("exCell");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -364,6 +375,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //			Events e("recv", "null");
 //		start = MPI_Wtime();
 		CALI_MARK_BEGIN("recv");
+		call_count += 1;
 //		end = MPI_Wtime();
 //		cali_cost += (end - start);
 
@@ -377,6 +389,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //				Events e("pre", "null", 0, 2, i);
 //			start = MPI_Wtime();
 			CALI_MARK_BEGIN("pre");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 
@@ -409,6 +422,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 //			start = MPI_Wtime();
 			CALI_MARK_END("pre");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 //			double recv_pre_end = MPI_Wtime();
@@ -417,6 +431,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 //			start = MPI_Wtime();
 			CALI_MARK_BEGIN("exBox");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 
@@ -466,12 +481,14 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 //			start = MPI_Wtime();
 			CALI_MARK_END("exBox");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 
 		}
 //		start = MPI_Wtime();
 		CALI_MARK_END("recv");
+		call_count += 1;
 //		end = MPI_Wtime();
 //		cali_cost += (end - start);
 //		}
@@ -484,6 +501,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 //		start = MPI_Wtime();
 		CALI_MARK_BEGIN("send");
+		call_count += 1;
 //		end = MPI_Wtime();
 //		cali_cost += (end - start);
 
@@ -534,6 +552,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 		}
 //		start = MPI_Wtime();
 		CALI_MARK_END("send");
+		call_count += 1;
 //		end = MPI_Wtime();
 //		cali_cost += (end - start);
 
@@ -546,6 +565,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 //		start = MPI_Wtime();
 		CALI_MARK_BEGIN("wait");
+		call_count += 1;
 //		end = MPI_Wtime();
 //		cali_cost += (end - start);
 //			Events e("wait", "comm");
@@ -554,11 +574,13 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //		file->time->part_comm_wait_end = MPI_Wtime();
 //		start = MPI_Wtime();
 		CALI_MARK_END("wait");
+		call_count += 1;
 //		end = MPI_Wtime();
 //		cali_cost += (end - start);
 	}
 //	start = MPI_Wtime();
 	CALI_MARK_END("exCell");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 

@@ -44,6 +44,7 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 //	file->time->wave_start = MPI_Wtime();
 //	double start = MPI_Wtime();
 	CALI_MARK_BEGIN("wave");
+	call_count += 1;
 //	double end = MPI_Wtime();
 //	cali_cost += (end - start);
 
@@ -54,6 +55,7 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 	}
 //	start = MPI_Wtime();
 	CALI_MARK_END("wave");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 //	file->time->wave_end = MPI_Wtime();
@@ -62,6 +64,7 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 //	file->time->zfp_start = MPI_Wtime();
 //	start = MPI_Wtime();
 	CALI_MARK_BEGIN("ZFP");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 	if (MPR_ZFP_multi_res_compression_perform(file, svi, evi) != MPR_success)
@@ -71,6 +74,7 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 	}
 //	start = MPI_Wtime();
 	CALI_MARK_END("ZFP");
+	call_count += 1;
 //	end = MPI_Wtime();
 //	cali_cost += (end - start);
 //	file->time->zfp_end = MPI_Wtime();

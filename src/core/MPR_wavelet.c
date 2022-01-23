@@ -50,6 +50,7 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 //				Events e("trans", "comp", 0, 2, i);
 //			double start = MPI_Wtime();
 			CALI_MARK_BEGIN("trans");
+			call_count += 1;
 //			double end = MPI_Wtime();
 //			cali_cost += (end - start);
 
@@ -57,6 +58,7 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 
 //			start = MPI_Wtime();
 			CALI_MARK_END("trans");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 //			}
@@ -68,6 +70,7 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 //				Events e("organ", "comp", 0, 2, i);
 //			start = MPI_Wtime();
 			CALI_MARK_BEGIN("organ");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 
@@ -78,6 +81,7 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 
 //			start = MPI_Wtime();
 			CALI_MARK_END("organ");
+			call_count += 1;
 //			end = MPI_Wtime();
 //			cali_cost += (end - start);
 //			}
