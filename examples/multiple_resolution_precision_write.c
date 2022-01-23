@@ -135,9 +135,9 @@ int main(int argc, char **argv)
 //	cali_cost += (end - start);
 
 	double end_time = MPI_Wtime();
-	double total_time = (end_time-start_time);
-	double max_time;
-	MPI_Reduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	double time = (end_time-start_time);
+//	double max_time;
+//	MPI_Reduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -146,10 +146,11 @@ int main(int argc, char **argv)
 	double end = MPI_Wtime();
 	double write_cost = (end - start);
 
-	double max_cost;
-	MPI_Reduce(&write_cost, &max_cost, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	double total_time = time + write_cost;
+	double max_time;
+	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (rank == 0) { printf("Caliper-time(%d): %f, %f, %ld\n", process_count, max_time, max_cost, call_count); }
+	if (total_time == max_time) { printf("Caliper-time(%d): %f, %f, %ld\n", process_count, time, write_cost, call_count); }
 
 //	if (write_cost == max_cost) { printf("caliper-cost(%d): %f(%f, %f)\n", process_count, max_cost, cali_cost, write_cost); }
 
