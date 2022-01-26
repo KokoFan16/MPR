@@ -24,9 +24,9 @@ int nprocs = 1;
 int curRank = 0;
 std::string namespath = "";
 
-//double logging_cost = 0;
-//double write_cost = 0;
-//double agg_cost = 0;
+double logging_cost = 0;
+double write_cost = 0;
+double agg_cost = 0;
 long call_count = 0;
 
 float* time_buffer;
@@ -116,16 +116,16 @@ int main(int argc, char **argv)
 
 	std::string filename = std::string(output_file_template) + "_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 
-	double swt = MPI_Wtime();
+//	double swt = MPI_Wtime();
 	write_output(filename);
-	double ewt = MPI_Wtime();
-	double write_cost = (ewt - swt);
+//	double ewt = MPI_Wtime();
+//	double write_cost = (ewt - swt);
 
-	double total_time = time + write_cost;
+	double total_time = time + agg_cost + write_cost;
 	double max_time;
 	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (total_time == max_time) { printf("vis_total_time(%d): %f, %f, %ld\n", process_count, time, write_cost, call_count); }
+	if (total_time == max_time) { printf("vis_total_time(%d): %f, %f, %f, %f, %ld\n", process_count, time, logging_cost, agg_cost, write_cost, call_count); }
 //	free(time_buffer);
 //	free(size_buffer);
 

@@ -25,9 +25,9 @@ extern int nprocs;
 extern int curRank;
 extern std::string namespath; // call path of functions
 
-//extern double logging_cost;
-//extern double write_cost;
-//extern double agg_cost;
+extern double logging_cost;
+extern double write_cost;
+extern double agg_cost;
 
 extern long call_count;
 
@@ -53,7 +53,7 @@ private:
 public:
 	Events(std::string n, std::string t, long size=0, int loop=0, int ite=0)
 	{
-//		double scost = MPI_Wtime();
+		double scost = MPI_Wtime();
 
 		name = n;
 		tags = t;
@@ -67,11 +67,11 @@ public:
 
 		call_count += 1;
 
-//		double ecost = MPI_Wtime();
-//		logging_cost += (ecost - scost);
+		double ecost = MPI_Wtime();
+		logging_cost += (ecost - scost);
 	}
 	~Events() {
-//		double scost = MPI_Wtime();
+		double scost = MPI_Wtime();
 
 		auto end_time = std::chrono::system_clock::now();
 		std::chrono::duration<double> elapsed_seconds = end_time-start_time; // calculate duration
@@ -212,12 +212,12 @@ static int gather_info()
 
 static void write_output(std::string filename, int flag=0)
 {
-//	double t0 = MPI_Wtime();
+	double t0 = MPI_Wtime();
 	int master = gather_info(); // gather info from all the processes
-//	double t1 = MPI_Wtime();
-//	agg_cost += t1 - t0;
+	double t1 = MPI_Wtime();
+	agg_cost += t1 - t0;
 
-//	double scost = MPI_Wtime();
+	double scost = MPI_Wtime();
 	if (curRank == master) // rank 0 writes csv file
 	{
 		std::string filePath = filename + ".csv"; // create file path
@@ -255,13 +255,13 @@ static void write_output(std::string filename, int flag=0)
 
 	output.clear();
 
-//	double ecost = MPI_Wtime();
-//	write_cost += (ecost - scost);
-//
+	double ecost = MPI_Wtime();
+	write_cost += (ecost - scost);
+
 //	double total_time = write_cost + logging_cost + agg_cost;
 //	double max_time;
 //	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-//
+
 //	if (total_time == max_time) {
 //		std::cout << "ours cost: " << max_time << "(" << logging_cost << ", "  << agg_cost << ", " << write_cost  << ")\n";
 //	}
