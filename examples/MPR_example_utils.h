@@ -13,7 +13,7 @@
 #define MAX_VAR_COUNT 256
 enum { X, Y, Z, NUM_DIMS };
 
-static int process_count = 1, rank = 0;
+static int process_count = 1;
 static int global_box_size[NUM_DIMS];
 static int local_box_offset[NUM_DIMS];
 static int local_box_size[NUM_DIMS];

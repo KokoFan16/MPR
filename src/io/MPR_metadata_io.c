@@ -13,7 +13,7 @@ static int intersect_patch(int* a_size, int* a_offset, int* b_size, int* b_offse
 
 MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 {
-	Events e("crtStruc", "null");
+	Events e("crtStruc");
 
 	char* file_name = file->mpr->filename;
 
@@ -83,7 +83,7 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 /* Write meta-data out */
 MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 {
-	Events e("wrtMeta", "null");
+	Events e("wrtMeta");
 
 	/* Write basic information out */
 //	file->time->wrt_meta_basic_start = MPI_Wtime();

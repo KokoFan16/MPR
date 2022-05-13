@@ -287,13 +287,13 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 //			file->time->agg_comm_recv_bound_time = 0;
 
 			{
-				Events e("recv", "null");
+				Events e("recv");
 
 			for (int i = 0; i < recv_num; i++)
 			{
 //				double recv_bound_start = MPI_Wtime();
 				{
-					Events e("calBound", "comp", 0, 2, i);
+					Events e("calBound", "comp", 2, i);
 
 				int z = recv_array[i] / (patch_count_xyz[0] * patch_count_xyz[1]);
 				int y = (recv_array[i] - (z * patch_count_xyz[0] * patch_count_xyz[1])) / patch_count_xyz[0];
@@ -310,7 +310,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 //				double recv_act_start = MPI_Wtime();
 				{
-					Events e("comm", "comm", 0, 2, i);
+					Events e("comm", "comm", 2, i);
 				MPI_Irecv(&local_patch->buffer[offset], patch_sizes[recv_array[i]], MPI_BYTE, patch_ranks[recv_array[i]], recv_array[i], comm, &req[req_id]);
 
 				local_patch->agg_patch_id_array[i] = recv_array[i];
@@ -347,7 +347,7 @@ MPR_return_code MPR_aggregation_perform(MPR_file file, int svi, int evi)
 
 //			file->time->agg_bound_start = MPI_Wtime();
 			{
-				Events e("boundBox", "null");
+				Events e("boundBox");
 			for (int i = 0; i < MPR_MAX_DIMENSIONS; i++)
 			{
 				local_patch->bounding_box[i] = min_xyz[i];

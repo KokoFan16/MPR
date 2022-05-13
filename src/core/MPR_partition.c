@@ -23,11 +23,11 @@ MPR_return_code MPR_set_patch_box_size(MPR_file file, int svi)
 
 MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi)
 {
-	Events e("PART", "null");
+	Events e("PART");
 	int min_same = 0;
 
 	{
-		Events e("other", "null");
+		Events e("other");
 //	file->time->part_status_start = MPI_Wtime();
 	int is_same = 0;
 	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
@@ -294,7 +294,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //	file->time->part_comm_start = MPI_Wtime();
 
 	{
-		Events e("exCell", "null");
+		Events e("exCell");
 
 	for (int v = start_var_index; v < end_var_index; v++)
 	{
@@ -317,7 +317,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //		file->time->part_comm_recv_exbox_time = 0;
 
 		{
-			Events e("recv", "null");
+			Events e("recv");
 
 		for (int i = 0; i < local_patch_num; i++)
 		{
@@ -325,7 +325,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 			int patch_id = local_assigned_patches[i];
 			int patch_end[MPR_MAX_DIMENSIONS];
 			{
-				Events e("pre", "null", 0, 2, i);
+				Events e("pre", 2, i);
 
 			local_patch->patch[i] = (MPR_patch)malloc(sizeof(*local_patch->patch[i]));
 			local_patch->patch[i]->global_id = patch_id;
@@ -358,7 +358,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //			file->time->part_comm_recv_pre_time += recv_pre_end - recv_pre_start;
 
 			{
-				Events e("exBox", "comm", 0, 2, i);
+				Events e("exBox", "comm", 2, i);
 
 			for (int j = 0; j < shared_processes_count; j++)
 			{
@@ -467,7 +467,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 //		file->time->part_comm_wait_start = MPI_Wtime();
 		{
 			Events e("wait", "comm");
-		MPI_Waitall(req_i, req, stat); /* Wait all the send and receive to be finished */
+			MPI_Waitall(req_i, req, stat); /* Wait all the send and receive to be finished */
 		}
 //		file->time->part_comm_wait_end = MPI_Wtime();
 	}

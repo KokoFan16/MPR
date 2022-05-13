@@ -68,7 +68,7 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	else
 	{
 //		file->time->agg_start = MPI_Wtime();
-		Events e("AGG", "null");
+		Events e("AGG");
 
 		if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
 		{
@@ -83,7 +83,7 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 //
 //	file->time->wrt_meta_start = MPI_Wtime();
 	{
-		Events e("wrt", "null");
+		Events e("wrt");
 
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
 	{

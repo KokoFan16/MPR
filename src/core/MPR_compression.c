@@ -7,7 +7,7 @@ static void calculate_res_level_box(int* res_box, int* patch_box, int level);
 
 MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, int evi)
 {
-	Events e("ZFP", "null");
+	Events e("ZFP");
 
 	int subband_num = file->mpr->wavelet_trans_num * 7 + 1;
 
@@ -21,7 +21,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 
 		int data_type;
 		{
-			Events e("getDT", "null");
+			Events e("getDT");
 		if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
 			data_type = 0;
 		else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
@@ -48,7 +48,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 
 			{
-				Events e("calDC", "comp", 0, 2, p);
+				Events e("calDC", "comp", 2, p);
 
 			memset(output, 0, sizeof (*output)); /* Initialization */
 			reg_patch->subbands_comp_size = (int*)malloc(subband_num * sizeof(int));
@@ -71,7 +71,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 
 //			double comp_bands_start = MPI_Wtime();
 			{
-				Events e("calBands", "comp", 0, 2, p);
+				Events e("calBands", "comp", 2, p);
 			for (int i = file->mpr->wavelet_trans_num; i > 0; i--)
 			{
 				calculate_res_level_box(res_box, file->mpr->patch_box, i);
