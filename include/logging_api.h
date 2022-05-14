@@ -129,8 +129,108 @@ inline static CSVWrite& endrow(CSVWrite& file) {
     return file;
 }
 
+static int myceil(int x, int y) { return (x/y + (x % y != 0)); }
+
+static std::string syncEvents() {
+	std::map<std::string, std::string> ::iterator p1; // map pointer
+	std::string events;
+
+	// calculate total size of events ( e.g., "main" + " " + "comm")
+	for (p1 = output.begin(); p1 != output.end(); p1++) {
+			int found = p1->second.find(';');
+			events += p1->first + ":" + p1->second.substr(0, found) + ' ';
+	}
+	events.pop_back();
+
+	// find the max total size of events among all processes and the corrsponding rank
+	int elocal[2] = {int(events.size()), rank};
+	int eglobal[2];
+	MPI_Allreduce(elocal, eglobal, 1, MPI_2INT, MPI_MAXLOC, MPI_COMM_WORLD);
+
+	events.resize(eglobal[0]);
+	// bcast the events string from the rank with max events to others
+	MPI_Bcast((char*)events.c_str(), eglobal[0], MPI_CHAR, eglobal[1], MPI_COMM_WORLD);
+	return events;
+}
+
+// gather info from all the processes
+static int gather_info(int aggcount) {
+
+	std::map<std::string, std::string> ::iterator p1; // map pointer
+	std::string message = ""; // merged message for sending
+
+	std::string events = syncEvents();
+
+	std::vector<std::string> maxEvents;
+    std::istringstream f(events);
+    std::string s;
+    p1 = output.begin();
+    while (std::getline(f, s, ' ') && p1 != output.end()) {
+    	int found = s.find(":");
+    	std::string e = s.substr(0, found);
+
+    	std::string times;
+    	// loop all the events, and set the time of this event to be "0.000000" if a process doesn't have it
+    	if ( e != p1->first) {
+    		output[e] = s.substr(found+1, e.size()) + ";";
+    		times = "0.000000";
+    		for (int t = 1; t < ntimestep; t++) {times += "-0.000000";}
+    	}
+    	else { // else calculate times for all events
+			found = p1->second.rfind(";");
+			times = p1->second.substr(found+1, p1->second.length()-found-1);
+			p1->second.erase(p1->second.find(';')+1);
+	    	p1++;
+    	}
+    	message += times + ' ';
+    	maxEvents.push_back(e);
+    }
+	message.pop_back(); message += ",";
+	int strLen = int(message.size());
+
+	/// split communicator
+	int spliter = myceil(nprocs, aggcount);
+	int color = rank / spliter;
+
+	MPI_Comm split_comm;
+	MPI_Comm_split(MPI_COMM_WORLD, color, rank, &split_comm);
+
+	int split_rank, split_size;
+	MPI_Comm_rank(split_comm, &split_rank);
+	MPI_Comm_size(split_comm, &split_size);
+
+	// meta-data for gathering
+	char* gather_buffer = NULL;
+	long gatherSize = strLen * split_size;
+	if (split_rank == 0) { gather_buffer = (char*)malloc((gatherSize + 1) * sizeof(char)); }
+	MPI_Gather(message.data(), strLen, MPI_CHAR, gather_buffer, strLen, MPI_CHAR, 0, split_comm);
+
+	if (split_rank == 0) { 
+		gather_buffer[gatherSize] = '\0'; 	// end symbol of string
+
+		std::string gather_message = std::string(gather_buffer); // convert it to string
+		free(gather_buffer);
+
+		int pos;
+		for (int i = 0; i < split_size; i++) { // loop all the processes expect rank 0 
+			pos = gather_message.find(',');
+			std::string pmessage = gather_message.substr(0, pos); // message from a process
+			int found;
+			for (int j = 0; j < maxEvents.size(); j++) { // loop all the events
+				found = pmessage.find(' ');
+				output[maxEvents[j]] += pmessage.substr(0, found); // add to corresponding event
+				if (i < split_size - 1) { output[maxEvents[j]] += "|"; }
+				pmessage.erase(0, found+1);
+			}
+			gather_message.erase(0, pos+1);
+		}
+	}
+
+	return split_rank;
+}
+
 /// write csv file out
-static void write_output(std::string filename, int flag=0) {
+static void write_output(std::string filename, int aggcount) {
 
 	if (rank == 0) {
 		int ret = mkdir(filename.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
@@ -140,33 +240,37 @@ static void write_output(std::string filename, int flag=0) {
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	// file name for each process
-	std::string file = filename + "_" + std::to_string(ntimestep) + "_" + std::to_string(nprocs) + "_" + std::to_string(rank) + ".csv"; 
-	std::string filePath = filename + "/" + file;
+	int split_rank = gather_info(aggcount); // gather info from all the processes
 
-	CSVWrite csv(filePath); // open CSV file
+	if (split_rank == 0) { // rank 0 writes csv file
 
-	// set CSV file Hearer
-	csv << "id" << "tag" << "is_loop" << "times" << endrow;
+		// file name for each aggregator
+		std::string file = filename + "_" + std::to_string(ntimestep) + "_" + std::to_string(nprocs) + "_" + std::to_string(rank) + ".csv"; 
+		std::string filePath = filename + "/" + file;
 
-	std::map<std::string, std::string> ::iterator p1;
-	std::size_t found;
-	
-	// set CSV file content
-	for (p1 = output.begin(); p1 != output.end(); p1++)  {
-		std::string value, tag, loop, times;
+		CSVWrite csv(filePath); // open CSV file
 
-		// get tag and times
-		found = p1->second.find(';');
-		value = p1->second.substr(0, found);
-		times = p1->second.substr(found+1, p1->second.length()-found-2);
+		// set CSV file Hearer
+		csv << "id" << "tag" << "is_loop" << "times" << endrow;
 
-		found = value.find('/');
-		tag = value.substr(0, found);
-		loop = value.substr(found+1, 1);
-
+		std::map<std::string, std::string> ::iterator p1;
+		std::size_t found;
 		// set CSV file content
-		csv << p1->first << tag << loop << times << endrow;
+		for (p1 = output.begin(); p1 != output.end(); p1++)  {
+			std::string value, tag, loop, times;
+
+			// get tag and times
+			found = p1->second.find(';');
+			value = p1->second.substr(0, found);
+			times = p1->second.substr(found+1, p1->second.length()-found-2);
+
+			found = value.find('/');
+			tag = value.substr(0, found);
+			loop = value.substr(found+1, 1);
+
+			// set CSV file content
+			csv << p1->first << tag << loop << times << endrow;
+		}
 	}
 
 	output.clear();

@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 	std::string filename = std::string(output_file_template) + "_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 
 	double swt = MPI_Wtime();
-	write_output(filename);
+	write_output(filename, process_count/8);
 	double ewt = MPI_Wtime();
 	double write_cost = (ewt - swt);
 
