@@ -17,6 +17,7 @@ unsigned char **data;
 static MPR_point patch_box;
 
 int agg_version;
+int log_agg_count;
 
 int ntimestep = 1;
 int curTs = 0;
@@ -117,7 +118,7 @@ int main(int argc, char **argv)
 	std::string filename = std::string(output_file_template) + "_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 
 	double swt = MPI_Wtime();
-	write_output(filename, out_file_num);
+	write_output(filename, log_agg_count);
 	double ewt = MPI_Wtime();
 	double write_cost = (ewt - swt);
 
@@ -145,7 +146,7 @@ int main(int argc, char **argv)
 /* Parse arguments */
 static void parse_args(int argc, char **argv)
 {
-  char flags[] = "g:l:p:i:f:t:v:o:z:c:m:d:a:";
+  char flags[] = "g:l:p:i:f:t:v:o:z:c:m:d:a:e:";
   int one_opt = 0;
 
   while ((one_opt = myGetopt(argc, argv, flags)) != EOF)
@@ -229,6 +230,11 @@ static void parse_args(int argc, char **argv)
     case('a'): // to be delete
       if (sscanf(optarg, "%d", &agg_version) < 0)
         terminate_with_error_msg("Invalid aggregation parameter\n%s", usage);
+      break;
+
+    case('e'): // The number of agg for logging
+      if (sscanf(optarg, "%d", &log_agg_count) < 0 || log_agg_count > process_count)
+        terminate_with_error_msg("Invalid number of aggregators for logging\n%s", usage);
       break;
 
     default:
