@@ -26,6 +26,9 @@ extern int nprocs;
 extern int rank;
 extern std::string namespath; // call path of functions
 
+extern double agg_cost;
+extern double logging_cost;
+
 
 static void set_timestep(int t, int n) {curTs = t; ntimestep = n;} // set the number of timesteps and current timestep
 static void set_rank(int r, int n) {rank = r; nprocs = n;} // set the number of processes and the current rank
@@ -45,10 +48,13 @@ private:
 	int loop_ite = 0; // the iteration in a loop
 
 	void constr_help(std::string name) {
+		double s = MPI_Wtime();
 		auto start = std::chrono::system_clock::now(); // get start time of a event
 		start_time = start;
 		if (namespath == "") { namespath += name; } // set name-path as key
 		else { namespath += ">" + name; } // concatenate name-path (e.g., main<computation)
+		double e = MPI_Wtime();
+		logging_cost += e - s;
 	}
 
 public:
@@ -60,6 +66,7 @@ public:
 	
 	// destructor 
 	~Events() {
+		double s = MPI_Wtime();
 		auto end_time = std::chrono::system_clock::now();
 		std::chrono::duration<double> elapsed_seconds = end_time-start_time; // calculate duration
 		elapsed_time = elapsed_seconds.count();
@@ -89,6 +96,8 @@ public:
 			}
 		}
 		namespath = namespath.substr(0, found); // back to last level
+		double e = MPI_Wtime();
+		logging_cost += e - s;
 	}
 };
 
@@ -240,7 +249,11 @@ static void write_output(std::string filename, int aggcount) {
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 
+
+	double s = MPI_Wtime();
 	int split_rank = gather_info(aggcount); // gather info from all the processes
+	double e = MPI_Wtime();
+	agg_cost += e - s;
 
 	if (split_rank == 0) { // rank 0 writes csv file
 
