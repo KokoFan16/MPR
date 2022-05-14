@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 	std::string filename = std::string(output_file_template) + "_" + std::to_string(time_step_count) + "_" + std::to_string(process_count);
 
 	double swt = MPI_Wtime();
-	write_output(filename);
+	write_output(filename, out_file_num);
 	double ewt = MPI_Wtime();
 	double write_cost = (ewt - swt);
 
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 	double max_time;
 	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (total_time == max_time) { printf("fpp-time (%d): %f, %f, %f, %f, %ld\n", process_count, time, logging_cost, agg_cost, write_cost, call_count); }
+	if (total_time == max_time) { printf("agg-time (%d): %f, %f, %f, %f, %ld\n", process_count, time, logging_cost, agg_cost, write_cost, call_count); }
 //	free(time_buffer);
 //	free(size_buffer);
 
