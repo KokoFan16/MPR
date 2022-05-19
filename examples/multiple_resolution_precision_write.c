@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 	double max_time;
 	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (total_time == max_time) { printf("agg-time (%d): %f, %f, %f, %f, %f, %f, %f, %f, %ld\n", process_count, time, logging_cost, syncE_cost, pad_cost, split_cost, agg_cost, filter_cost, write_cost); }
+	if (total_time == max_time) { printf("agg-time (%d): %f, %f, %f, %f, %f, %f, %f, %f\n", process_count, time, logging_cost, syncE_cost, pad_cost, split_cost, agg_cost, filter_cost, write_cost); }
 //	free(time_buffer);
 //	free(size_buffer);
 

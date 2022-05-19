@@ -252,8 +252,8 @@ static int gather_info(int aggcount) {
 			gather_message.erase(0, pos+1);
 		}
 	}
-	filter_cost = et - st;
 	et = MPI_Wtime();
+	filter_cost = et - st;
 
 	return split_rank;
 }
