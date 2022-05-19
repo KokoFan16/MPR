@@ -28,6 +28,11 @@ extern std::string namespath; // call path of functions
 
 extern double agg_cost;
 extern double logging_cost;
+extern double syncE_cost;
+extern double pad_cost;
+extern double split_cost;
+extern double filter_cost;
+extern double write_cost;
 
 
 static void set_timestep(int t, int n) {curTs = t; ntimestep = n;} // set the number of timesteps and current timestep
@@ -48,13 +53,13 @@ private:
 	int loop_ite = 0; // the iteration in a loop
 
 	void constr_help(std::string name) {
-		double s = MPI_Wtime();
+		double st = MPI_Wtime();
 		auto start = std::chrono::system_clock::now(); // get start time of a event
 		start_time = start;
 		if (namespath == "") { namespath += name; } // set name-path as key
 		else { namespath += ">" + name; } // concatenate name-path (e.g., main<computation)
-		double e = MPI_Wtime();
-		logging_cost += e - s;
+		double et = MPI_Wtime();
+		logging_cost += et - st;
 	}
 
 public:
@@ -66,7 +71,7 @@ public:
 	
 	// destructor 
 	~Events() {
-		double s = MPI_Wtime();
+		double st = MPI_Wtime();
 		auto end_time = std::chrono::system_clock::now();
 		std::chrono::duration<double> elapsed_seconds = end_time-start_time; // calculate duration
 		elapsed_time = elapsed_seconds.count();
@@ -96,8 +101,8 @@ public:
 			}
 		}
 		namespath = namespath.substr(0, found); // back to last level
-		double e = MPI_Wtime();
-		logging_cost += e - s;
+		double et = MPI_Wtime();
+		logging_cost += et - st;
 	}
 };
 
@@ -168,8 +173,12 @@ static int gather_info(int aggcount) {
 	std::map<std::string, std::string> ::iterator p1; // map pointer
 	std::string message = ""; // merged message for sending
 
+	double st = MPI_Wtime();
 	std::string events = syncEvents();
+	double et = MPI_Wtime();
+	syncE_cost = et - st;
 
+	st = MPI_Wtime();
 	std::vector<std::string> maxEvents;
     std::istringstream f(events);
     std::string s;
@@ -196,8 +205,11 @@ static int gather_info(int aggcount) {
     }
 	message.pop_back(); message += ",";
 	int strLen = int(message.size());
+	et = MPI_Wtime();
+	pad_cost = et - st;
 
 	/// split communicator
+	st = MPI_Wtime();
 	int spliter = myceil(nprocs, aggcount);
 	int color = rank / spliter;
 
@@ -207,13 +219,19 @@ static int gather_info(int aggcount) {
 	int split_rank, split_size;
 	MPI_Comm_rank(split_comm, &split_rank);
 	MPI_Comm_size(split_comm, &split_size);
+	et = MPI_Wtime();
+	split_cost = et - st;
 
 	// meta-data for gathering
+	st = MPI_Wtime();
 	char* gather_buffer = NULL;
 	long gatherSize = strLen * split_size;
 	if (split_rank == 0) { gather_buffer = (char*)malloc((gatherSize + 1) * sizeof(char)); }
 	MPI_Gather(message.data(), strLen, MPI_CHAR, gather_buffer, strLen, MPI_CHAR, 0, split_comm);
+	et = MPI_Wtime();
+	agg_cost = et - st;
 
+	st = MPI_Wtime();
 	if (split_rank == 0) { 
 		gather_buffer[gatherSize] = '\0'; 	// end symbol of string
 
@@ -234,6 +252,8 @@ static int gather_info(int aggcount) {
 			gather_message.erase(0, pos+1);
 		}
 	}
+	filter_cost = et - st;
+	et = MPI_Wtime();
 
 	return split_rank;
 }
@@ -241,6 +261,10 @@ static int gather_info(int aggcount) {
 /// write csv file out
 static void write_output(std::string filename, int aggcount) {
 
+
+	int split_rank = gather_info(aggcount); // gather info from all the processes
+
+	double st = MPI_Wtime();
     if (rank == 0) {
             int ret = mkdir(filename.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
             if (ret != 0 && errno != EEXIST) {
@@ -249,10 +273,6 @@ static void write_output(std::string filename, int aggcount) {
     }
     MPI_Barrier(MPI_COMM_WORLD);
 
-	double s = MPI_Wtime();
-	int split_rank = gather_info(aggcount); // gather info from all the processes
-	double e = MPI_Wtime();
-	agg_cost += e - s;
 
 	if (split_rank == 0) { // rank 0 writes csv file
 
@@ -284,6 +304,8 @@ static void write_output(std::string filename, int aggcount) {
 			csv << p1->first << tag << loop << times << endrow;
 		}
 	}
+	double et = MPI_Wtime();
+	write_cost = et - st;
 
 	output.clear();
 }

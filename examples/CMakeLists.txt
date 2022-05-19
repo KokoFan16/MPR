@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 2.8)
 #set_source_files_properties(multiple_resolution_precision_write.c PROPERTIES LANGUAGE CXX COMPILE_FLAGS "-std=c++11")
 
 file(GLOB_RECURSE CFILES "${PROJECT_SOURCE_DIR}/examples/*.c")
-SET_SOURCE_FILES_PROPERTIES(${CFILES} PROPERTIES LANGUAGE CXX COMPILE_FLAGS "-std=c++11")
+SET_SOURCE_FILES_PROPERTIES(${CFILES} PROPERTIES LANGUAGE CXX COMPILE_FLAGS "-std=c++17")
 
 
 #add_executable(raw_write ./raw_write.c)
