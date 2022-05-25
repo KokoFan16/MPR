@@ -79,25 +79,30 @@ public:
 		std::string delimiter = ">";
 		std::size_t found = namespath.rfind(delimiter);
 
+		std::string timeStr = std::to_string(elapsed_time);
+		if (timeStr.length() > 8) { timeStr.substr(0, 8); }
+
 		// // set value (time and tag) of each function across all the time-steps
 		if (curTs == 0 && output[namespath] == ""){
-			output[namespath] += tags + "/" + std::to_string(is_loop) + ";" + std::to_string(elapsed_time);
+			output[namespath] += tags + "/" + std::to_string(is_loop) + ";" + timeStr;
 		}
 		else {
 			if (is_loop == 2) { // mode for summing up time of loop events
-				if (loop_ite == 0){ output[namespath] += "-" + std::to_string(elapsed_time); }
+				if (loop_ite == 0){ output[namespath] += "-" + timeStr; }
 				else {
 					if (curTs == 0) { delimiter = ";"; }
 					else { delimiter = "-"; }
 					int pos = output[namespath].rfind(delimiter); // find the position of current time
 					// calculate the sum of the loop events
 					double curTime = std::stod(output[namespath].substr(pos+1, output[namespath].length()-pos-1)) + elapsed_time;
-					output[namespath].replace(pos+1, std::to_string(curTime).length(), std::to_string(curTime));
+					timeStr = std::to_string(curTime);
+					if (timeStr.length() > 8) { timeStr.substr(0, 8); }
+					output[namespath].replace(pos+1, timeStr.length(), timeStr);
 				}
 			}
 			else { // mode for storing all time of loop events
-				if (loop_ite == 0){ output[namespath] += "-" + std::to_string(elapsed_time); }
-				else { output[namespath] += "+" + std::to_string(elapsed_time); }
+				if (loop_ite == 0){ output[namespath] += "-" + timeStr; }
+				else { output[namespath] += "+" + timeStr; }
 			}
 		}
 		namespath = namespath.substr(0, found); // back to last level
@@ -294,7 +299,7 @@ static void write_output(std::string filename, int aggcount) {
 			// get tag and times
 			found = p1->second.find(';');
 			value = p1->second.substr(0, found);
-			times = p1->second.substr(found+1, p1->second.length()-found-2);
+			times = p1->second.substr(found+1, p1->second.length()-found-1);
 
 			found = value.find('/');
 			tag = value.substr(0, found);

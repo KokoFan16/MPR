@@ -87,6 +87,14 @@ int main(int argc, char **argv)
 
 	for (int i = 0; i < 10; i++){
 
+		agg_cost = 0;
+		logging_cost = 0;
+		syncE_cost = 0;
+		pad_cost = 0;
+		split_cost = 0;
+		filter_cost = 0;
+		write_cost = 0;
+
 	/* Set variables */
 	variable = (MPR_variable*)malloc(sizeof(*variable) * variable_count);
 	memset(variable, 0, sizeof(*variable) * variable_count);
