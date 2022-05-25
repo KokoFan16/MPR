@@ -81,7 +81,7 @@ MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)
 		sprintf(file_name, "%s/time%09d/%d", directory_path, file->mpr->current_time_step, file->comm->simulation_rank);
 		free(directory_path);
 
-		int fp = open(file_name, O_CREAT | O_EXCL | O_WRONLY, 0664);
+		int fp = open(file_name, O_CREAT | O_WRONLY, 0664);
 		if (fp == -1)
 		{
 			fprintf(stderr, "File %s is existed, please delete it.\n", file_name);

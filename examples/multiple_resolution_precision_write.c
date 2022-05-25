@@ -85,6 +85,8 @@ int main(int argc, char **argv)
 
 	create_mpr_point_and_access();
 
+	for (int i = 0; i < 10; i++){
+
 	/* Set variables */
 	variable = (MPR_variable*)malloc(sizeof(*variable) * variable_count);
 	memset(variable, 0, sizeof(*variable) * variable_count);
@@ -128,12 +130,15 @@ int main(int argc, char **argv)
 	if (total_time == max_time) { printf("agg-time (%d): %f, %f, %f, %f, %f, %f, %f, %f\n", process_count, time, logging_cost, syncE_cost, pad_cost, split_cost, agg_cost, filter_cost, write_cost); }
 //	free(time_buffer);
 //	free(size_buffer);
+	}
 
 	if (MPR_close_access(p_access) != MPR_success)
 		terminate_with_error_msg("MPR_close_access");
 
 	free(variable);
 	variable = 0;
+
+
 
 	destroy_data();
 
