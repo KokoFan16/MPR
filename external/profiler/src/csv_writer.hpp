@@ -5,8 +5,6 @@
 #include <string>
 #include <fstream>
 
-using namespace std;
-
 class CSVWrite {
 
 private:
@@ -15,10 +13,10 @@ private:
     bool begin;
 
     /// write string
-	CSVWrite& write (const string & val);
+	CSVWrite& write (const std::string & val);
 
 public:
-	CSVWrite(const string filename, const string deli = ",");
+	CSVWrite(const std::string filename, const std::string deli = ",");
 
     ~CSVWrite(); // flush and close file
 

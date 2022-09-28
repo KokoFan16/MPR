@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     int wm = atoi(argv[3]);
     int na = atoi(argv[4]);
 
-	Profiler ctx = Profiler("lifeGame_loop100", 0.2, rank, nprocs, ntimestep);
+    Profiler ctx = Profiler("lifeGame_loop100", 0.2, rank, nprocs, ntimestep);
     for (int t = 0; t < ntimestep; t++) {
     	ctx.set_context("", t, wm, na);
 

@@ -1,8 +1,8 @@
 #include "profiler.hpp"
 #include "events.hpp"
 
-void Events::constr_help(string name) {
-    auto start = chrono::system_clock::now(); // get start time of a event
+void Events::constr_help(std::string name) {
+    auto start = std::chrono::system_clock::now(); // get start time of a event
     start_time = start;
 
     // get unique code for each name
@@ -12,7 +12,7 @@ void Events::constr_help(string name) {
 			(*context).name_encodes[name] = (*context).name_id;
     	}
     }
-    string nameEncode = (comEvent == 1)? to_string((*context).name_encodes[name]): name;
+    std::string nameEncode = (comEvent == 1)? std::to_string((*context).name_encodes[name]): name;
 
     if ((*context).namespath == "") { (*context).namespath += nameEncode; } // set name-path as key
     else { (*context).namespath += ">" + nameEncode; } // concatenate name-path (e.g., main<computation)
@@ -23,31 +23,31 @@ void Events::constr_help(string name) {
 }
 
 // constructors with different parameters
-Events::Events(Profiler* ctx, string n, int ce): name(n), comEvent(ce), context(ctx) { constr_help(n); }
+Events::Events(Profiler* ctx, std::string n, int ce): name(n), comEvent(ce), context(ctx) { constr_help(n); }
 
-Events::Events(Profiler* ctx, string n, int ce, string t):
+Events::Events(Profiler* ctx, std::string n, int ce, std::string t):
 		name(n), comEvent(ce), tags(t), context(ctx) { constr_help(n); }
 
-Events::Events(Profiler* ctx, string n, int ce, int loop, int ite):
+Events::Events(Profiler* ctx, std::string n, int ce, int loop, int ite):
 		name(n), comEvent(ce), is_loop(loop), loop_ite(ite), context(ctx) { constr_help(n); }
 
-Events::Events(Profiler* ctx, string n, int ce, string t, int loop, int ite):
+Events::Events(Profiler* ctx, std::string n, int ce, std::string t, int loop, int ite):
 		name(n), comEvent(ce), tags(t), is_loop(loop), loop_ite(ite), context(ctx) { constr_help(n); }
 	
 // destructor 
 Events::~Events() {
-    auto end_time = chrono::system_clock::now();
-    chrono::duration<double> elapsed_seconds = end_time-start_time; // calculate duration
+    auto end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end_time-start_time; // calculate duration
     elapsed_time = elapsed_seconds.count();
 
-    string& callpath = (*context).namespath;
-    string delimiter = ">";
+    std::string& callpath = (*context).namespath;
+    std::string delimiter = ">";
     size_t found = callpath.rfind(delimiter);
-    map<string, Params>& restore = (*context).output;
+    std::map<std::string, Params>& restore = (*context).output;
 
     // set value (time and tag) of each function across all the time-steps
     if ((*context).curTs == 0 && restore.find(callpath) == restore.end()){
-    	restore[callpath].tagloop = tags + '/' + to_string(is_loop);
+    	restore[callpath].tagloop = tags + '/' + std::to_string(is_loop);
     	restore[callpath].times.push_back(elapsed_time);
         restore[callpath].nloop = 1;
     }
@@ -69,8 +69,8 @@ Events::~Events() {
     /* check if dump output */
     if ((*context).timegap > 0 && comEvent == 1) {
 
-		auto pend = chrono::system_clock::now();
-		chrono::duration<double> pelapsed = pend-(*context).pstart; // calculate duration
+		auto pend = std::chrono::system_clock::now();
+		std::chrono::duration<double> pelapsed = pend-(*context).pstart; // calculate duration
 		double ptime = pelapsed.count();
 		double max_ptime;
 		MPI_Allreduce(&ptime, &max_ptime, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
@@ -78,7 +78,7 @@ Events::~Events() {
 		// dump files every n seconds
 		if (max_ptime >= (*context).timegap) {
 			(*context).dump();
-			(*context).pstart = chrono::system_clock::now();
+			(*context).pstart = std::chrono::system_clock::now();
 			(*context).dump_count += 1;
 		}
     }

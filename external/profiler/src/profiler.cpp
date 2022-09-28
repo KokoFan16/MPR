@@ -7,19 +7,19 @@ Profiler::Profiler(std::string outname, double tg, int p, int np, int nts):
 	filename(outname), write_mode(0), timegap(tg), ntimestep(nts), curTs(0), nprocs(np), rank(p), dump_count(0), name_id(0)
 {}
 
-void Profiler::set_context(string name, int t, int wmode, int na) {
+void Profiler::set_context(std::string name, int t, int wmode, int na) {
 	namespath = name;
 	curTs = t;
 	write_mode = wmode;
-	pstart = chrono::system_clock::now();
+	pstart = std::chrono::system_clock::now();
 	nagg = na;
 }
 
 void Profiler::sync_events () {
 
 	/* find out local non-common events */
-	string events;
-	for (string e: noncomEvents){
+	std::string events;
+	for (std::string e: noncomEvents){
 		events += e + ":" + output[e].tagloop + ' ';
 	}
 
@@ -42,7 +42,7 @@ void Profiler::sync_events () {
 	gather_events[total_events_size] = '\0';
 
 	/* split events from gathered events */
-	set<string> all_noncom_events;
+	std::set<std::string> all_noncom_events;
 	char *token;
 	const char s[2] = " ";
 	token = strtok(gather_events, s);
@@ -55,7 +55,7 @@ void Profiler::sync_events () {
 	/* add non-common events to all processes */
 	for (auto str: all_noncom_events) {
 		int pos = str.find(':');
-		string e = str.substr(0, pos);
+		std::string e = str.substr(0, pos);
 		// if the rank doesn't have this event
 		if (output.find(e) == output.end()) {
 			output[e].tagloop = str.substr(pos+1);
@@ -65,15 +65,15 @@ void Profiler::sync_events () {
 	}
 }
 
-void Profiler::write(char* buf, string fp, int n) {
-	string gather_message = string(buf); // convert it to string
+void Profiler::write(char* buf, std::string fp, int n) {
+	std::string gather_message = std::string(buf); // convert it to string
 
 	int found;
-	vector<string> timeGather(output.size());
-	map<string, Params> ::iterator p1; // map pointer
+	std::vector<std::string> timeGather(output.size());
+	std::map<std::string, Params> ::iterator p1; // map pointer
 	for (int i = 0; i < n; i++) {
 		int pos = gather_message.find(',');
-		string pmessage = gather_message.substr(0, pos); // message from a process
+		std::string pmessage = gather_message.substr(0, pos); // message from a process
 		int c = 0;
 		for (p1 = output.begin(); p1 != output.end(); p1++) {
 			found = pmessage.find(" ");
@@ -85,10 +85,18 @@ void Profiler::write(char* buf, string fp, int n) {
 
 	CSVWrite csv(fp); // open CSV file
 
+	if (rank == 0) {
+		std::map<std::string, int> ::iterator p2; // map pointer
+		for (p2 = name_encodes.begin(); p2 != name_encodes.end(); p2++) {
+			csv << p2->first << std::to_string(p2->second);
+		}
+		csv << endrow;
+	}
+
 	// set CSV file Hearer
 	csv << "id" << "tag" << "is_loop" << "times" << endrow;
 
-	string loop, tag;
+	std::string loop, tag;
 	int c = 0;
 	for (p1 = output.begin(); p1 != output.end(); p1++) {
 		timeGather[c].pop_back();
@@ -114,8 +122,8 @@ void Profiler::dump() {
 //	double et = MPI_Wtime();
 
 	/* generate the exchanged message */
-	string message = "";
-	map<string, Params> ::iterator p1; // map pointer
+	std::string message = "";
+	std::map<std::string, Params> ::iterator p1; // map pointer
 	for (p1 = output.begin(); p1 != output.end(); p1++) {
 		int cur_tc = p1->second.times.size();
 
@@ -125,7 +133,7 @@ void Profiler::dump() {
 				delimiter = '+';
 				if (i % p1->second.nloop == p1->second.nloop - 1) delimiter = '-';
 			}
-			message += to_string(p1->second.times[i]) + delimiter;
+			message += std::to_string(p1->second.times[i]) + delimiter;
 		}
 		message.back() = ' ';
 	}
@@ -149,7 +157,7 @@ void Profiler::dump() {
 
 		if (rank == 0) {
 			// create file path
-			string filePath = filename + "_" + to_string(ntimestep) + "_" + to_string(nprocs) + ".csv"; //+ to_string(dump_count)
+			std::string filePath = filename + "_" + std::to_string(ntimestep) + "_" + std::to_string(nprocs) + ".csv"; //+ to_string(dump_count)
 			gather_buffer[totalLen - 1] = '\0';
 			write(gather_buffer, filePath, nprocs);
 		}
@@ -173,14 +181,14 @@ void Profiler::dump() {
 		MPI_Gather((char*)message.c_str(), max_strlen, MPI_CHAR, gather_buffer, max_strlen, MPI_CHAR, 0, split_comm);
 
 		if (split_rank == 0) {
-			string filePath = filename + "_" + to_string(ntimestep) + "_" + to_string(nprocs) + "_" + std::to_string(rank) + ".csv";
+			std::string filePath = filename + "_" + std::to_string(ntimestep) + "_" + std::to_string(nprocs) + "_" + std::to_string(rank) + ".csv";
 			gather_buffer[totalLen - 1] = '\0';
 			write(gather_buffer, filePath, split_size);
 		}
 
 	}
 	else { // file-per-process IO
-		string filePath = filename + "_" + to_string(ntimestep) + "_" + to_string(nprocs) + "_" + std::to_string(rank) + ".csv";
+		std::string filePath = filename + "_" + std::to_string(ntimestep) + "_" + std::to_string(nprocs) + "_" + std::to_string(rank) + ".csv";
 		write((char*)message.c_str(), filePath, 1);
 	}
 	free(gather_buffer);
