@@ -68,13 +68,13 @@ MPR_return_code MPR_processing(MPR_file file, int svi, int evi)
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
-		local_patch->patch = malloc(sizeof(MPR_patch*));
+		local_patch->patch = (MPR_patch*)malloc(sizeof(MPR_patch*));
 		local_patch->patch_count = 1;
 		local_patch->patch[0] = (MPR_patch)malloc(sizeof(*local_patch->patch[0]));
 		local_patch->patch[0]->global_id = file->comm->simulation_rank;
 		local_patch->patch[0]->patch_buffer_size = patch_size * bytes;
 
-		local_patch->patch[0]->buffer = malloc(patch_size * bytes);
+		local_patch->patch[0]->buffer = (unsigned char*) malloc(patch_size * bytes);
 		memcpy(local_patch->patch[0]->buffer, local_patch->buffer, patch_size*bytes);
 	}
 	return MPR_success;
@@ -267,7 +267,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
 		local_patch->patch_count = local_patch_num;
-		local_patch->patch = malloc(sizeof(MPR_patch*)*local_patch_num);
+		local_patch->patch = (MPR_patch*)malloc(sizeof(MPR_patch*)*local_patch_num);
 
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
@@ -283,7 +283,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 			local_patch->patch[i] = (MPR_patch)malloc(sizeof(*local_patch->patch[i]));
 			local_patch->patch[i]->global_id = patch_id;
 
-			local_patch->patch[i]->buffer = malloc(patch_size * bytes);
+			local_patch->patch[i]->buffer = (unsigned char*)malloc(patch_size * bytes);
 			memset(local_patch->patch[i]->buffer, 0, patch_size * bytes);
 			local_patch->patch[i]->patch_buffer_size = patch_size * bytes;
 

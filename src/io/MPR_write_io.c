@@ -66,7 +66,7 @@ MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)
 {
 	/* the directory patch for out files */
 	char *directory_path;
-	directory_path = malloc(sizeof(*directory_path) * PATH_MAX);
+	directory_path = (char*) malloc(sizeof(*directory_path) * PATH_MAX);
 	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
 	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
 
