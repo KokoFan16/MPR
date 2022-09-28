@@ -35,12 +35,12 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 			memset(output, 0, sizeof (*output)); /* Initialization */
 
-			reg_patch->subbands_comp_size = malloc(subband_num * sizeof(int));
+			reg_patch->subbands_comp_size = (int*)malloc(subband_num * sizeof(int));
 			int sid = 0;
 
 			// Compressed DC component
 			int size = res_box[0] * res_box[1] * res_box[2]; /* size of resolution box per level */
-			unsigned char* dc_buf = malloc(size * bytes); /* buffer for DC component */
+			unsigned char* dc_buf = (unsigned char*)malloc(size * bytes); /* buffer for DC component */
 			memcpy(dc_buf, &reg_patch->buffer[offset], size * bytes);
 			MPR_compress_3D_data(dc_buf, res_box[0], res_box[1], res_box[2], file->mpr->compression_type, file->mpr->compression_param, data_type, &output); /* ZFP Compression */
 			free(dc_buf);
@@ -54,7 +54,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			{
 				calculate_res_level_box(res_box, file->mpr->patch_box, i);
 				size = res_box[0] * res_box[1] * res_box[2];
-				unsigned char* sub_buf = malloc(size * bytes);
+				unsigned char* sub_buf = (unsigned char*)malloc(size * bytes);
 				for (int j = 0; j < 7; j++) /* compresses 7 sub-bands for each level*/
 				{
 					memcpy(sub_buf, &reg_patch->buffer[offset], size * bytes); /* buffer for each sub-band*/
@@ -67,7 +67,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 				}
 				free(sub_buf);
 			}
-			reg_patch->buffer = realloc(reg_patch->buffer, comp_offset); /* changed the size of patch buffer */
+			reg_patch->buffer = (unsigned char*)realloc(reg_patch->buffer, comp_offset); /* changed the size of patch buffer */
 			reg_patch->patch_buffer_size = comp_offset; /* the total compressed size per patch */
 			free(output);
 		}
@@ -102,7 +102,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 		MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 		memset(output, 0, sizeof (*output)); /* Initialization */
 
-		unsigned char* tmp_buffer = malloc(read_size);
+		unsigned char* tmp_buffer = (unsigned char*) malloc(read_size);
 
 		int offset = 0; /* the offset for each sub-band */
 		int decomp_offset = 0;  /* the decompressed offset for each sub-band*/
@@ -114,7 +114,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 		output->p = (unsigned char*) malloc(dc_size);
 
 		int dc_comp_size = reg_patch->subbands_comp_size[0];
-		unsigned char* dc_buf = malloc(dc_comp_size); /* buffer for DC component */
+		unsigned char* dc_buf = (unsigned char*) malloc(dc_comp_size); /* buffer for DC component */
 		memcpy(dc_buf, &reg_patch->buffer[offset], dc_comp_size);
 		MPR_decompress_3D_data(dc_buf, dc_comp_size, res_box[0], res_box[1], res_box[2],
 				file->mpr->compression_type, file->mpr->compression_param, data_type, &output);
@@ -134,7 +134,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 			for (int j = 0; j < 7; j++) /* compresses 7 sub-bands for each level*/
 			{
 				int sub_comp_size = reg_patch->subbands_comp_size[id * 7 + j + 1];
-				unsigned char* sub_buf = malloc(sub_comp_size); /* buffer for DC component */
+				unsigned char* sub_buf = (unsigned char*) malloc(sub_comp_size); /* buffer for DC component */
 				memcpy(sub_buf, &reg_patch->buffer[offset], sub_comp_size);
 				MPR_decompress_3D_data(sub_buf, sub_comp_size, res_box[0], res_box[1], res_box[2],
 						file->mpr->compression_type, file->mpr->compression_param, data_type, &output);
@@ -147,7 +147,7 @@ MPR_return_code MPR_ZFP_multi_res_decompression_perform(MPR_file file, int svi)
 		}
 
 		int patch_size = file->mpr->patch_box[0] * file->mpr->patch_box[1] * file->mpr->patch_box[2] * bytes;
-		reg_patch->buffer = realloc(reg_patch->buffer, patch_size);
+		reg_patch->buffer = (unsigned char*)realloc(reg_patch->buffer, patch_size);
 		memcpy(reg_patch->buffer, tmp_buffer, read_size);
 
 		free(tmp_buffer);
