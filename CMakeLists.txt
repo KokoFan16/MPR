@@ -2,6 +2,9 @@ cmake_minimum_required (VERSION 2.8)
 
 project (MPR)
 
+#add_compile_options(--std=c++17 -Wno-strict-aliasing -Werror=class-varargs -fpermissive)
+#set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++17 -Werror=class-varargs -fpermissive")
+
 message("Configuring MPR with MPI support")
 find_package(MPI REQUIRED)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})

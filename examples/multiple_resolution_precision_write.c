@@ -2,6 +2,8 @@
 #include "../src/utils/MPR_windows_utils.h"
 #include "MPR_example_utils.h"
 
+#include "profiler.hpp"
+
 char var_name[MAX_VAR_COUNT][512];
 int bpv[MAX_VAR_COUNT];
 char type_name[MAX_VAR_COUNT][512];
@@ -42,7 +44,7 @@ char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_pre_write -g 64x64x64 -l 
 int main(int argc, char **argv)
 {
 	int ts = 0, var = 0;
-	/* Init MPI and MPI vars (e.g. rank and process_count) */
+	/* Init MPI and MPI vars (e.g. prank and process_count) */
 	init_mpi(argc, argv);
 
 	/* Parse input arguments and initialize */
@@ -59,7 +61,7 @@ int main(int argc, char **argv)
 		create_synthetic_simulation_data();  /* Create local simulation data */
 	else
 	{
-		if (rank == 0)
+		if (prank == 0)
 			printf("Read data from file %s\n", input_file);
 		read_file_parallel();   /* Read file in parallel */
 	}
@@ -89,7 +91,7 @@ int main(int argc, char **argv)
 	double time = (end_time-start_time);
 	double max_time;
 	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-	if (rank == 0) { printf("time_without_logging(%d): %f\n", process_count, max_time); }
+	if (prank == 0) { printf("time_without_logging(%d): %f\n", process_count, max_time); }
 
 //	free(time_buffer);
 //	free(size_buffer);
@@ -323,13 +325,13 @@ MPI_Datatype create_subarray()
 /* Read file in parallel */
 static void read_file_parallel()
 {
-	data = malloc(sizeof(*data) * variable_count);
+	data = (unsigned char **)malloc(sizeof(*data) * variable_count);
 	memset(data, 0, sizeof(*data) * variable_count);
 
 	int bytes = (bpv[0]/8) * vps[0];
 	int size = local_box_size[X] * local_box_size[Y] * local_box_size[Z] * bytes; // Local size
 
-	data[0] = malloc(sizeof (*(data[0])) * size); // The first variable
+	data[0] = (unsigned char *)malloc(sizeof (*(data[0])) * size); // The first variable
     MPI_Datatype subarray = create_subarray(); // Self-define MPI data type
     MPI_File fh;
     MPI_Status status;
@@ -346,7 +348,7 @@ static void read_file_parallel()
     }
     else
     {
-    	if (rank == 0)
+    	if (prank == 0)
     		printf("The file %s has been read successful!\n", input_file);
     }
 
@@ -355,7 +357,7 @@ static void read_file_parallel()
     // For other variables except first one, just copy the data of first variable.
 	for (int var = 1; var < variable_count; var++)
 	{
-		data[var] = malloc(sizeof(*(data[var])) * size * (bpv[var]/8) * vps[var]);
+		data[var] = (unsigned char *)malloc(sizeof(*(data[var])) * size * (bpv[var]/8) * vps[var]);
 		memcpy(data[var], data[0], sizeof(*(data[var])) * size * (bpv[var]/8) * vps[var]);
 	}
 }
@@ -409,14 +411,14 @@ static void set_mpr_variable(int var)
 static void create_synthetic_simulation_data()
 {
   int var = 0;
-  data = malloc(sizeof(*data) * variable_count);
+  data = (unsigned char **)malloc(sizeof(*data) * variable_count);
   memset(data, 0, sizeof(*data) * variable_count);
 
   // Synthetic simulation data
   for (var = 0; var < variable_count; var++)
   {
     uint64_t i, j, k, val_per_sample = 0;
-    data[var] = malloc(sizeof (*(data[var])) * local_box_size[X] * local_box_size[Y] * local_box_size[Z] * (bpv[var]/8) * vps[var]);
+    data[var] = (unsigned char *)malloc(sizeof (*(data[var])) * local_box_size[X] * local_box_size[Y] * local_box_size[Z] * (bpv[var]/8) * vps[var]);
 
     unsigned char cvalue = 0;
     short svalue = 0;

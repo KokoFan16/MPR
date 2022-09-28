@@ -13,7 +13,7 @@
 #define MAX_VAR_COUNT 256
 enum { X, Y, Z, NUM_DIMS };
 
-static int process_count = 1, rank = 0;
+static int process_count = 1, prank = 0;
 static int global_box_size[NUM_DIMS];
 static int local_box_offset[NUM_DIMS];
 static int local_box_size[NUM_DIMS];
@@ -50,7 +50,7 @@ static void init_mpi(int argc, char **argv)
 		terminate_with_error_msg("ERROR: MPI_Init error\n");
 	if (MPI_Comm_size(MPI_COMM_WORLD, &process_count) != MPI_SUCCESS)
 	    terminate_with_error_msg("ERROR: MPI_Comm_size error\n");
-	if (MPI_Comm_rank(MPI_COMM_WORLD, &rank) != MPI_SUCCESS)
+	if (MPI_Comm_rank(MPI_COMM_WORLD, &prank) != MPI_SUCCESS)
 	    terminate_with_error_msg("ERROR: MPI_Comm_rank error\n");
 }
 
@@ -99,8 +99,8 @@ static void calculate_per_process_offsets()
   sub_div[X] = ceil(global_box_size[X] / (float)local_box_size[X]);
   sub_div[Y] = ceil(global_box_size[Y] / (float)local_box_size[Y]);
   sub_div[Z] = ceil(global_box_size[Z] / (float)local_box_size[Z]);
-  local_box_offset[Z] = (rank / (sub_div[X] * sub_div[Y])) * local_box_size[Z];
-  int slice = rank % (sub_div[X] * sub_div[Y]);
+  local_box_offset[Z] = (prank / (sub_div[X] * sub_div[Y])) * local_box_size[Z];
+  int slice = prank % (sub_div[X] * sub_div[Y]);
   local_box_offset[Y] = (slice / sub_div[X]) * local_box_size[Y];
   local_box_offset[X] = (slice % sub_div[X]) * local_box_size[X];
 }

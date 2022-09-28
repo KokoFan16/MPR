@@ -1,5 +1,8 @@
 cmake_minimum_required (VERSION 2.8)
 
+file(GLOB_RECURSE CFILES "${PROJECT_SOURCE_DIR}/*.c")
+SET_SOURCE_FILES_PROPERTIES(${CFILES} PROPERTIES LANGUAGE CXX )
+
 include_directories(./utils)
 include_directories(./comm)
 include_directories(./data_handle)
