@@ -16,7 +16,9 @@ char output_file_name[512];
 unsigned char **data;
 static MPR_point patch_box;
 
-int agg_version;
+//int agg_version;
+int agg_mode;
+int nagg;
 
 double logging_cost = 0;
 double write_cost = 0;
@@ -84,7 +86,7 @@ int main(int argc, char **argv)
 //	size_buffer = malloc(time_step_count * 5 * sizeof(long long int));
 //	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
 
-	Profiler::start(output_file_template, 0.2, rank, process_count, time_step_count, logs, agg_version);
+	Profiler::start(output_file_template, 0, rank, process_count, time_step_count, agg_mode, nagg);
 
 	double start_time = MPI_Wtime();
 	for (ts = 0; ts < time_step_count; ts++)
@@ -210,12 +212,13 @@ static void parse_args(int argc, char **argv)
       break;
 
     case('d'): // is_log
-      if (sscanf(optarg, "%d", &logs) < 0 || logs > 2)
-        terminate_with_error_msg("Invalid logs parameter (0 or 1)\n%s", usage);
+//      if (sscanf(optarg, "%d", &logs) < 0 || logs > 2)
+	  if (sscanf(optarg, "%d", &agg_mode) < 0 || agg_mode > 2)
+		terminate_with_error_msg("Invalid logs parameter (0 or 1)\n%s", usage);
       break;
 
     case('a'): // to be delete
-      if (sscanf(optarg, "%d", &agg_version) < 0)
+      if (sscanf(optarg, "%d", &nagg) < 0)
         terminate_with_error_msg("Invalid aggregation parameter\n%s", usage);
       break;
 

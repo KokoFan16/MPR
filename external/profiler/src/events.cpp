@@ -25,7 +25,6 @@ void Events::constr_help(std::string name) {
 
     double et = MPI_Wtime();
     logging_cost += (et - st);
-    call_count += 1;
 }
 
 // constructors with different parameters
@@ -78,6 +77,8 @@ Events::~Events() {
     double et = MPI_Wtime();
     logging_cost += (et - st);
 
+    call_count += 1;
+
     /* check if dump output */
     if (context.timegap > 0 && comEvent == 1) {
 
@@ -89,7 +90,7 @@ Events::~Events() {
 
 		// dump files every n seconds
 		if (max_ptime >= context.timegap) {
-			context.dump();
+			Profiler::dump();
 			context.pstart = std::chrono::system_clock::now();
 			context.dump_count += 1;
 		}
