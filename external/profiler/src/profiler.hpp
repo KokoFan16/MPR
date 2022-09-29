@@ -13,6 +13,12 @@
 #include <unordered_set>
 #include <math.h>
 
+extern double logging_cost;
+extern double write_cost;
+extern double agg_cost;
+extern double esyc_cost;
+extern long call_count;
+
 class Params {
 	public:
 		std::string tagloop;

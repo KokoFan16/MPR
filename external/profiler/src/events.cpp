@@ -2,6 +2,7 @@
 #include "events.hpp"
 
 void Events::constr_help(std::string name) {
+	double st = MPI_Wtime();
     auto start = std::chrono::system_clock::now(); // get start time of a event
     start_time = start;
 
@@ -22,6 +23,9 @@ void Events::constr_help(std::string name) {
     if (comEvent == 0)
     	context.noncomEvents.insert(context.namespath);
 
+    double et = MPI_Wtime();
+    logging_cost += (et - st);
+    call_count += 1;
 }
 
 // constructors with different parameters
@@ -38,6 +42,7 @@ Events::Events(std::string n, int ce, std::string t, int loop, int ite):
 	
 // destructor 
 Events::~Events() {
+	double st = MPI_Wtime();
     auto end_time = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end_time-start_time; // calculate duration
     elapsed_time = elapsed_seconds.count();
@@ -69,6 +74,9 @@ Events::~Events() {
         }
     }
     callpath = callpath.substr(0, found); // back to last level
+
+    double et = MPI_Wtime();
+    logging_cost += (et - st);
 
     /* check if dump output */
     if (context.timegap > 0 && comEvent == 1) {

@@ -18,6 +18,12 @@ static MPR_point patch_box;
 
 int agg_version;
 
+double logging_cost = 0;
+double write_cost = 0;
+double agg_cost = 0;
+double esyc_cost = 0;
+long call_count = 0;
+
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -96,11 +102,17 @@ int main(int argc, char **argv)
 	}
 	double end_time = MPI_Wtime();
 	double time = (end_time-start_time);
-	double max_time;
-	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-	if (rank == 0) { printf("time_without_logging(%d): %f\n", process_count, max_time); }
 
+	double swt = MPI_Wtime();
 	Profiler::dump();
+	double ewt = MPI_Wtime();
+	double write_cost = (ewt - swt);
+
+	double total_time = time + write_cost;
+	double max_time;
+	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+	if (total_time == max_time) { printf("fpp-time (%d): %f, %f, %f, %f, %f, %ld\n", process_count, time, logging_cost, esyc_cost, agg_cost, write_cost, call_count); }
 
 //	free(time_buffer);
 //	free(size_buffer);

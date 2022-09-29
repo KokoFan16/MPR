@@ -133,11 +133,13 @@ void Profiler::idump() {
 	if (rank == 0)
 		std::cout << rank << " call dump " << dump_count << std::endl;
 
-//	double st = MPI_Wtime();
+	double st = MPI_Wtime();
 	sync_events(); /* Sync events of all processes */
-//	double et = MPI_Wtime();
+	double et = MPI_Wtime();
+	esyc_cost += (et - st);
 
 	/* generate the exchanged message */
+	st = MPI_Wtime();
 	std::string message = "";
 	std::map<std::string, Params> ::iterator p1; // map pointer
 	for (p1 = output.begin(); p1 != output.end(); p1++) {
@@ -160,6 +162,8 @@ void Profiler::idump() {
 	MPI_Allreduce(&strLen, &max_strlen, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 	message.resize(max_strlen, ' '); // padded message to max_strlen
 	message.back() = ','; // add comma sat the end of each message
+	et = MPI_Wtime();
+	agg_cost += (et - st);
 
 	// gather all the data to one process
 	char* gather_buffer = nullptr;
@@ -169,7 +173,10 @@ void Profiler::idump() {
 		if (rank == 0)
 			gather_buffer = (char*)malloc(totalLen * sizeof(char));
 
+		st = MPI_Wtime();
 		MPI_Gather((char*)message.c_str(), max_strlen, MPI_CHAR, gather_buffer, max_strlen, MPI_CHAR, 0, MPI_COMM_WORLD);
+		et = MPI_Wtime();
+		agg_cost += (et - st);
 
 		if (rank == 0) {
 			// create file path
@@ -180,6 +187,7 @@ void Profiler::idump() {
 	}
 	else if (write_mode == 1) { // two-phase IO
 		/// split communicator
+		st = MPI_Wtime();
 		int spliter = myceil(nprocs, nagg);
 		int color = rank / spliter;
 
@@ -195,6 +203,8 @@ void Profiler::idump() {
 		if (split_rank == 0)
 			gather_buffer = (char*)malloc(totalLen * sizeof(char));
 		MPI_Gather((char*)message.c_str(), max_strlen, MPI_CHAR, gather_buffer, max_strlen, MPI_CHAR, 0, split_comm);
+		et = MPI_Wtime();
+		agg_cost += (et - st);
 
 		if (split_rank == 0) {
 			std::string filePath = filename + "_" + std::to_string(ntimestep) + "_" + std::to_string(nprocs) + "_" + std::to_string(rank) + ".csv";
