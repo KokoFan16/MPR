@@ -12,6 +12,8 @@
 #include <set>
 #include <unordered_set>
 #include <math.h>
+#include <string.h>
+#include <chrono>
 
 extern double logging_cost;
 extern double write_cost;

@@ -136,7 +136,7 @@ static void parse_args(int argc, char **argv)
   char flags[] = "g:l:p:i:f:t:v:o:z:c:m:d:a:";
   int one_opt = 0;
 
-  while ((one_opt = getopt(argc, argv, flags)) != EOF)
+  while ((one_opt = mygetopt(argc, argv, flags)) != EOF)
   {
     /* postpone error checking for after while loop */
     switch (one_opt)
