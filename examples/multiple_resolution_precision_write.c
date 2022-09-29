@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 	double max_time;
 	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (total_time == max_time) { printf("fpp-time (%d): %f, %f, %f, %f, %f, %ld\n", process_count, time, logging_cost, esyc_cost, agg_cost, write_cost, call_count); }
+	if (total_time == max_time) { printf("(%d): %f, %f, %f, %f, %f, %ld\n", process_count, time, logging_cost, esyc_cost, agg_cost, write_cost, call_count); }
 
 //	free(time_buffer);
 //	free(size_buffer);
@@ -402,7 +402,7 @@ static void set_mpr_file(int ts)
   MPR_set_aggregation_mode(file, is_fixed_file_size);
   MPR_set_logs(file, logs);
 
-  file->mpr->agg_version = agg_version;
+  file->mpr->agg_version = 0;
 
   return;
 }
