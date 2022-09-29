@@ -7,6 +7,8 @@ static void calculate_res_level_box(int* res_box, int* patch_box, int level);
 
 MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, int evi)
 {
+	Events e("ZFP", 1);
+
 	int subband_num = file->mpr->wavelet_trans_num * 7 + 1;
 
 	for (int v = svi; v < evi; v++)
@@ -17,10 +19,13 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 		int bytes = file->variable[v]->vps * file->variable[v]->bpv/8; /* bytes per data */
 
 		int data_type;
+		{
+			Events e("getDT", 1);
 		if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
 			data_type = 0;
 		else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
 			data_type = 1;
+		}
 
 
 		for (int p = 0; p < local_patch_count; p++)
@@ -34,12 +39,14 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			MPR_patch reg_patch = local_patch->patch[p];
 			MPR_zfp_compress output = (MPR_zfp_compress)malloc(sizeof(*output));
 			memset(output, 0, sizeof (*output)); /* Initialization */
-
-			reg_patch->subbands_comp_size = (int*)malloc(subband_num * sizeof(int));
 			int sid = 0;
+			int size = res_box[0] * res_box[1] * res_box[2]; /* size of resolution box per level */
+
+			{
+				Events e("calDC", 1, "comp", 2, p);
+			reg_patch->subbands_comp_size = (int*)malloc(subband_num * sizeof(int));
 
 			// Compressed DC component
-			int size = res_box[0] * res_box[1] * res_box[2]; /* size of resolution box per level */
 			unsigned char* dc_buf = (unsigned char*)malloc(size * bytes); /* buffer for DC component */
 			memcpy(dc_buf, &reg_patch->buffer[offset], size * bytes);
 			MPR_compress_3D_data(dc_buf, res_box[0], res_box[1], res_box[2], file->mpr->compression_type, file->mpr->compression_param, data_type, &output); /* ZFP Compression */
@@ -49,7 +56,10 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			comp_offset += output->compress_size;
 			offset += size * bytes;
 			reg_patch->subbands_comp_size[sid++] = output->compress_size;
+			}
 
+			{
+				Events e("calBands", 1, "comp", 2, p);
 			for (int i = file->mpr->wavelet_trans_num; i > 0; i--)
 			{
 				calculate_res_level_box(res_box, file->mpr->patch_box, i);
@@ -70,6 +80,7 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			reg_patch->buffer = (unsigned char*)realloc(reg_patch->buffer, comp_offset); /* changed the size of patch buffer */
 			reg_patch->patch_buffer_size = comp_offset; /* the total compressed size per patch */
 			free(output);
+			}
 		}
 	}
 	return MPR_success;

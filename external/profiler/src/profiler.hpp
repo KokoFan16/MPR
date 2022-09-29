@@ -18,17 +18,24 @@ class Params {
 		std::string tagloop;
 		int nloop;
 		std::vector<double> times;
-//		string timeGather;
 };
 
+// Singleton
 class Profiler {
 	private:
 		std::string filename;
 		int write_mode;
 	 	void sync_events();
-		int nagg = 0;
+		int nagg;
 		void write(char* buf, std::string fp, int n);
-//		void gather_info();
+
+		Profiler(); // private constructor to ensure only one instance
+		Profiler(const Profiler&) = delete;
+		Profiler &operator=(const Profiler&) = delete;
+
+		void instart(std::string outname, double tg, int p, int np, int nts, int wmode, int na=0);
+		void iset_context(std::string name, int t);
+		void idump();
 
 	public:
 		double timegap;
@@ -37,19 +44,27 @@ class Profiler {
 		int nprocs;
 		int rank;
 		int dump_count;
-		int name_id = 0;
+		int name_id;
 		std::string namespath; // call path of functions
 		std::map<std::string, Params> output;
-//		map<string, vector<string>> output; // store the output dictionary
 		std::chrono::system_clock::time_point pstart;
 		std::set<std::string> noncomEvents;
 		std::map<std::string, int> name_encodes;
-//		set<string> cachedEvents;
 
-		Profiler(std::string outname, double tg, int p, int np, int nts);
+		static Profiler& getInstance() {
+            // The only instance
+            // Guaranteed to be lazy initialized
+            // Guaranteed that it will be destroyed correctly
+			static Profiler instance;
+            return instance;
+		}
 
-		void set_context(std::string name, int t, int wmode, int na=0);
-        void dump(); // gather info from all the processes
+		static void start(std::string outname, double tg, int p, int np, int nts, int wmode, int na) {
+			getInstance().instart(outname, tg, p, np, nts, wmode, na);
+		}
+
+		static void set_context(std::string name, int t) { getInstance().iset_context(name, t); }
+		static void dump() { getInstance().idump(); } // gather info from all the processes
 };
 
 #endif /* PROFILER_H */

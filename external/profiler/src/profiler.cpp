@@ -3,15 +3,31 @@
 
 static int myceil(int x, int y) { return (x/y + (x % y != 0)); }
 
-Profiler::Profiler(std::string outname, double tg, int p, int np, int nts):
-	filename(outname), write_mode(0), timegap(tg), ntimestep(nts), curTs(0), nprocs(np), rank(p), dump_count(0), name_id(0)
-{}
+Profiler::Profiler(){
+	write_mode = 0;
+	nagg = 0;
+	timegap = 0;
+	ntimestep = 0;
+	curTs = 0;
+	nprocs = 0;
+	rank = 0;
+	dump_count = 0;
+	name_id = 0;
+}
 
-void Profiler::set_context(std::string name, int t, int wmode, int na) {
+void Profiler::iset_context(std::string name, int t) {
 	namespath = name;
 	curTs = t;
-	write_mode = wmode;
 	pstart = std::chrono::system_clock::now();
+}
+
+void Profiler::instart(std::string outname, double tg, int p, int np, int nts, int wmode, int na) {
+	filename = outname;
+	write_mode = wmode;
+	timegap = tg;
+	ntimestep = nts;
+	nprocs = np;
+	rank = p;
 	nagg = na;
 }
 
@@ -112,7 +128,7 @@ void Profiler::write(char* buf, std::string fp, int n) {
 }
 
 /// write csv file out
-void Profiler::dump() {
+void Profiler::idump() {
 
 	if (rank == 0)
 		std::cout << rank << " call dump " << dump_count << std::endl;

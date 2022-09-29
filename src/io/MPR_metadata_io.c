@@ -13,6 +13,8 @@ static int intersect_patch(int* a_size, int* a_offset, int* b_size, int* b_offse
 
 MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 {
+	Events e("crtStruc", 1);
+
 	char* file_name = file->mpr->filename;
 
 	char *directory_path;
@@ -70,6 +72,7 @@ MPR_return_code MPR_create_folder_structure(MPR_file file, int svi, int evi)
 /* Write meta-data out */
 MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 {
+	Events e("wrtMeta", 1);
 	/* Write basic information out */
 	if (MPR_basic_info_metadata_write_out(file) != MPR_success)
 	{
@@ -96,6 +99,8 @@ MPR_return_code MPR_metadata_write_out(MPR_file file, int svi, int evi)
 
 MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 {
+	Events e("basic", 0, "io");
+
 	char* file_name = file->mpr->filename; /* file name for */
 	/* Check if the data format is .mpr */
 	if (strncmp(".mpr", &file_name[strlen(file_name) - 4], 4) != 0)
@@ -148,6 +153,8 @@ MPR_return_code MPR_basic_info_metadata_write_out(MPR_file file)
 
 MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int evi)
 {
+	Events e("Bounding", 0, "io");
+
 	char directory_path[PATH_MAX]; /* file template */
 	memset(directory_path, 0, sizeof(*directory_path) * PATH_MAX);
 	strncpy(directory_path, file->mpr->filename, strlen(file->mpr->filename) - 4);
@@ -234,6 +241,7 @@ MPR_return_code MPR_bounding_box_metadata_write_out(MPR_file file, int svi, int 
 
 MPR_return_code MPR_gather_file_metadata(MPR_file file, int svi, int evi)
 {
+	Events e("gather", 0, "comp");
 	if (file->mpr->is_aggregator == 1)
 	{
 		int meta_count = 1; /* the number of needed meta-data */

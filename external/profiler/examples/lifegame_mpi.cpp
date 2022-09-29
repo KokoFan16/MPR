@@ -25,7 +25,7 @@
 #include <iostream>
 #include <string>
 
-#include "../src/profiler.hpp"
+//#include "../src/profiler.hpp"
 #include "../src/events.hpp"
 
 void randomInitBoard(int *b, int N, int M);
@@ -55,24 +55,24 @@ int main(int argc, char **argv) {
     int wm = atoi(argv[3]);
     int na = atoi(argv[4]);
 
-    Profiler ctx = Profiler("lifeGame_loop100", 0.2, rank, nprocs, ntimestep);
+    Profiler::start("lifeGame_loop100", 0.2, rank, nprocs, ntimestep, wm, na);
     for (int t = 0; t < ntimestep; t++) {
-    	ctx.set_context("", t, wm, na);
+    	Profiler::set_context("", t);
 
-		Events e(&ctx, "main", 1); //"size:100"
+		Events e("main", 1); //"size:100"
 
 		int *board, *counts, *offset, *my_board, *my_next;
 		int N, maxGeneration, my_count, my_N;
 
 		// Get arguments
 		{
-			Events e(&ctx, "Pre", 1);
+			Events e("Pre", 1);
 
 			N = atoi(argv[1]);
 			maxGeneration = atoi(argv[2]);
 
 			{
-				Events e(&ctx, "InitBoard", 1, "COMP");
+				Events e("InitBoard", 1, "COMP");
 				// Mallocate memory for board and initialize
 				board = (int*)malloc((N+2)*(N+2)*sizeof(int));
 				randomInitBoard(board, N, N);
@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
 
 			// Calculate the counts and offset of data per process
 			{
-				Events e(&ctx, "calCounts", 1, "COMP");
+				Events e("calCounts", 1, "COMP");
 				counts = (int*)malloc(sizeof(int)*nprocs);
 				offset = (int*)malloc(sizeof(int)*nprocs);
 
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
 
 
 			{
-				Events e(&ctx, "scatter", 1, "COMP");
+				Events e("scatter", 1, "COMP");
 				// Scatter data per process by row
 				MPI_Scatterv(&board[N+2], counts, offset, MPI_INT, &my_board[N+2], my_count, MPI_INT, 0, MPI_COMM_WORLD);
 
@@ -121,14 +121,14 @@ int main(int argc, char **argv) {
 		}
 
 		if (rank == 2) {
-			Events e(&ctx, "test2", 0);
+			Events e("test2", 0);
 		}
 
 		// Set start time
 		double starttime = MPI_Wtime();
 
 		{
-			Events e(&ctx, "lifeChange", 1);
+			Events e("lifeChange", 1);
 
 			// Set prev and next process of a process
 			int prev = rank - 1;
@@ -144,7 +144,7 @@ int main(int argc, char **argv) {
 				int change_flag = 0;
 
 				{
-					Events e(&ctx, "exchange", 1, "COMM", 2, k);
+					Events e("exchange", 1, "COMM", 2, k);
 
 					// If the nprocs is larger than 1, send first row and last row to prev and next process
 					if(nprocs != 1)
@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
 
 
 				{
-					Events e(&ctx, "BoardChange", 1, "COMP", 2, k);
+					Events e("BoardChange", 1, "COMP", 2, k);
 
 					for (int i = 1; i < my_N+1; i++)
 					{
@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
 				}
 
 				{
-					Events e(&ctx, "statusCheck", 1, "COMP", 2, k);
+					Events e("statusCheck", 1, "COMP", 2, k);
 
 					// Copy ghost cell
 					copyGhostCell(my_next, my_N, N);
@@ -267,12 +267,12 @@ int main(int argc, char **argv) {
 
 
 		if (rank == 1) {
-			Events e(&ctx, "test1", 0);
+			Events e("test1", 0);
 		}
 
 		{
 			// Sync each process, gather the final board, and calculate the taken time
-			Events e(&ctx, "gather", 1, "COMP");
+			Events e("gather", 1, "COMP");
 			MPI_Barrier(MPI_COMM_WORLD);
 			MPI_Gatherv(my_board, my_count, MPI_INT, board, counts, offset, MPI_INT, 0, MPI_COMM_WORLD);
 		}
@@ -283,7 +283,7 @@ int main(int argc, char **argv) {
 
     }
 
-    ctx.dump();
+    Profiler::dump();
 
     MPI_Finalize();
     return 0;

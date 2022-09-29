@@ -2,7 +2,7 @@
 #include "../src/utils/MPR_windows_utils.h"
 #include "MPR_example_utils.h"
 
-#include "profiler.hpp"
+#include "events.hpp"
 
 char var_name[MAX_VAR_COUNT][512];
 int bpv[MAX_VAR_COUNT];
@@ -17,6 +17,7 @@ unsigned char **data;
 static MPR_point patch_box;
 
 int agg_version;
+
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -44,7 +45,7 @@ char *usage = "Parallel Usage: mpirun -n 8 ./multi_res_pre_write -g 64x64x64 -l 
 int main(int argc, char **argv)
 {
 	int ts = 0, var = 0;
-	/* Init MPI and MPI vars (e.g. prank and process_count) */
+	/* Init MPI and MPI vars (e.g. rank and process_count) */
 	init_mpi(argc, argv);
 
 	/* Parse input arguments and initialize */
@@ -61,7 +62,7 @@ int main(int argc, char **argv)
 		create_synthetic_simulation_data();  /* Create local simulation data */
 	else
 	{
-		if (prank == 0)
+		if (rank == 0)
 			printf("Read data from file %s\n", input_file);
 		read_file_parallel();   /* Read file in parallel */
 	}
@@ -77,9 +78,15 @@ int main(int argc, char **argv)
 //	size_buffer = malloc(time_step_count * 5 * sizeof(long long int));
 //	memset(size_buffer, 0, time_step_count * 5 * sizeof(long long int));
 
+	Profiler::start(output_file_template, 0.2, rank, process_count, time_step_count, logs, agg_version);
+
 	double start_time = MPI_Wtime();
 	for (ts = 0; ts < time_step_count; ts++)
 	{
+		Profiler::set_context("", ts);
+
+		Events e("main", 1);
+
 		set_mpr_file(ts);
 
 		for (var = 0; var < variable_count; var++)
@@ -91,7 +98,9 @@ int main(int argc, char **argv)
 	double time = (end_time-start_time);
 	double max_time;
 	MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-	if (prank == 0) { printf("time_without_logging(%d): %f\n", process_count, max_time); }
+	if (rank == 0) { printf("time_without_logging(%d): %f\n", process_count, max_time); }
+
+	Profiler::dump();
 
 //	free(time_buffer);
 //	free(size_buffer);
@@ -189,7 +198,7 @@ static void parse_args(int argc, char **argv)
       break;
 
     case('d'): // is_log
-      if (sscanf(optarg, "%d", &logs) < 0 || logs > 1)
+      if (sscanf(optarg, "%d", &logs) < 0 || logs > 2)
         terminate_with_error_msg("Invalid logs parameter (0 or 1)\n%s", usage);
       break;
 
@@ -348,7 +357,7 @@ static void read_file_parallel()
     }
     else
     {
-    	if (prank == 0)
+    	if (rank == 0)
     		printf("The file %s has been read successful!\n", input_file);
     }
 

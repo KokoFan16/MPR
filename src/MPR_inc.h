@@ -38,5 +38,7 @@
 #include "../external/zfp/include/zfp.h"
 #include "core/MPR_partition.h"
 
+#include "../external/profiler/src/events.hpp"
+
 
 #endif /* SRC_MPR_INC_H_ */

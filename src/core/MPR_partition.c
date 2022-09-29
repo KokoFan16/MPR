@@ -23,6 +23,11 @@ MPR_return_code MPR_set_patch_box_size(MPR_file file, int svi)
 
 MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi)
 {
+	Events e("PART", 1);
+	int min_same = 0;
+
+	{
+		Events e("other", 1);
 	int is_same = 0;
 	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 	{
@@ -33,8 +38,8 @@ MPR_return_code MPR_is_partition(MPR_file file, int svi, int evi)
 			is_same += 1;
 	}
 
-	int min_same = 0;
 	MPI_Allreduce(&is_same, &min_same, 1, MPI_INT, MPI_MIN, file->comm->simulation_comm);
+	}
 
 	if (min_same == MPR_MAX_DIMENSIONS)
 	{
@@ -107,6 +112,11 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 	int patch_dimensional_counts[MPR_MAX_DIMENSIONS];
 	int process_dimensional_counts[MPR_MAX_DIMENSIONS];
 	int local_end[MPR_MAX_DIMENSIONS];
+	int total_patch_num = 0;
+	int local_patch_offset_array[procs_num * MPR_MAX_DIMENSIONS];
+
+	{
+		Events e("gather", 1, "comp");
 	for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 	{
 		local_end[d] = local_offset[d] + local_box[d];
@@ -114,40 +124,46 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 		process_dimensional_counts[d] = ceil((float)global_box[d]/local_box[d]);
 	}
 	/* The total number of patches for the global data */
-	int total_patch_num = patch_dimensional_counts[0] * patch_dimensional_counts[1] * patch_dimensional_counts[2];
+	total_patch_num = patch_dimensional_counts[0] * patch_dimensional_counts[1] * patch_dimensional_counts[2];
 	file->mpr->total_patches_num = total_patch_num; /* The global total number of patches */
 	/***************************************************************************/
 
 	/************************ Gather local patch info **************************/
-	int local_patch_offset_array[procs_num * MPR_MAX_DIMENSIONS];
 	MPI_Allgather(local_offset, MPR_MAX_DIMENSIONS, MPI_INT, local_patch_offset_array, MPR_MAX_DIMENSIONS, MPI_INT, comm);
 //	double gather_end = MPI_Wtime();
+	}
 	/***************************************************************************/
 
 	/******************** Calculate local number of patches *********************/
 //	double cal_count_start = MPI_Wtime();
     int local_patch_num = total_patch_num / procs_num; /* The local number of patches per process */
     int remain_patch_num = total_patch_num % procs_num; /* Remainder */
+    int required_local_patch_num[procs_num];
+    int gap = 0;
 
+    {
     if (remain_patch_num > 0)
     {
-		int gap = procs_num / remain_patch_num;
+		gap = procs_num / remain_patch_num;
 		if(rank % gap == 0 && rank < (gap*remain_patch_num))
 			local_patch_num += 1;
     }
+    Events e("calPc", 1, "comp");
 
-    int required_local_patch_num[procs_num]; /* The required local number of patches per process */
+ /* The required local number of patches per process */
     MPI_Allgather(&local_patch_num, 1, MPI_INT, required_local_patch_num, 1, MPI_INT, comm);
+    }
 //    double cal_count_end = MPI_Wtime();
     /***************************************************************************/
 
 	/***************************** Find max shared patches count *******************************/
 //    double max_count_start = MPI_Wtime();
     int patch_offsets[total_patch_num][MPR_MAX_DIMENSIONS];
-
 	int max_owned_patch_count = 0;
-
 	int global_id = 0; /* The global id for each patch */
+	{
+		Events e("maxPshare", 1, "comp");
+
 	for (int k = 0; k < global_box[2]; k += patch_box[2])
 	{
 		for (int j = 0; j < global_box[1]; j += patch_box[1])
@@ -175,6 +191,7 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 			}
 		}
 	}
+	}
 //	double max_count_end = MPI_Wtime();
 
     /***************************** Patch assignment *******************************/
@@ -195,6 +212,9 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 
 	int local_shared_rank_count[local_patch_num];
 	int local_shared_patches_ranks[local_patch_num][max_owned_patch_count];
+
+	{
+		Events e("assign", 1, "comp");
 
 	for (int i = 0; i < total_patch_num; i++)
 	{
@@ -258,11 +278,15 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 			local_assigned_count++;
 		}
 	}
+	}
 //	double assign_end = MPI_Wtime();
 	/******************************************************************************/
 
 	/*********************************** Data exchange and merge *********************************/
 //	double comm_start = MPI_Wtime();
+	{
+		Events e("exCell", 1);
+
 	for (int v = start_var_index; v < end_var_index; v++)
 	{
 		MPR_local_patch local_patch = file->variable[v]->local_patch; /* Local patch pointer */
@@ -276,10 +300,18 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 		MPI_Status stat[local_own_patch_count + local_patch_num * max_owned_patch_count];
 
 		/*********** Receive data (non-blocking point-to-point communication) **********/
+		{
+			Events e("recv", 1);
+
 		int receive_array[MPR_MAX_DIMENSIONS] = {patch_box[0] * bytes, patch_box[1], patch_box[2]};
 		for (int i = 0; i < local_patch_num; i++)
 		{
 			int patch_id = local_assigned_patches[i];
+			int patch_end[MPR_MAX_DIMENSIONS];
+
+			{
+				Events e("pre", 1, 2, i);
+
 			local_patch->patch[i] = (MPR_patch)malloc(sizeof(*local_patch->patch[i]));
 			local_patch->patch[i]->global_id = patch_id;
 
@@ -287,7 +319,6 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 			memset(local_patch->patch[i]->buffer, 0, patch_size * bytes);
 			local_patch->patch[i]->patch_buffer_size = patch_size * bytes;
 
-			int patch_end[MPR_MAX_DIMENSIONS];
 			for (int d = 0; d < MPR_MAX_DIMENSIONS; d++)
 			{
 				local_patch->patch[i]->offset[d] = patch_offsets[patch_id][d];
@@ -297,6 +328,10 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 				if (patch_end[d] > global_box[d])
 					patch_end[d] = global_box[d];
 			}
+			}
+
+			{
+				Events e("exBox", 1, "comm", 2, i);
 
 			int physical_size[MPR_MAX_DIMENSIONS];
 			int physical_offset[MPR_MAX_DIMENSIONS];
@@ -341,10 +376,15 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 				req_i++;
 				MPI_Type_free(&recv_type);
 			}
+			}
+		}
 		}
 
 		/*********** Send data (non-blocking point-to-point communication) **********/
 		int sent_array[MPR_MAX_DIMENSIONS] = {local_box[0] * bytes, local_box[1], local_box[2]};
+		{
+			Events e("send", 1, "comm");
+
 		for (int i = 0; i < local_own_patch_count; i++)
 		{
 			int patch_id = local_own_patch_ids[i];
@@ -389,7 +429,14 @@ MPR_return_code MPR_partition_perform(MPR_file file, int start_var_index, int en
 			req_i++;
 			MPI_Type_free(&send_type);
 		}
+		}
+
+		{
+			Events e("wait", 1, "comm");
 		MPI_Waitall(req_i, req, stat); /* Wait all the send and receive to be finished */
+		}
+	}
+
 	}
 //	double comm_end = MPI_Wtime();
 	/**********************************************************************************************/

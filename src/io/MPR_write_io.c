@@ -64,6 +64,7 @@ MPR_return_code MPR_multi_pre_res_write(MPR_file file, int svi, int evi)
 /* Write data out */
 MPR_return_code MPR_write_data_out(MPR_file file, int svi, int evi)
 {
+	Events e("wrtData", 0, "io");
 	/* the directory patch for out files */
 	char *directory_path;
 	directory_path = (char*) malloc(sizeof(*directory_path) * PATH_MAX);

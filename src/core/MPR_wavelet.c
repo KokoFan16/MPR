@@ -19,6 +19,8 @@ static void wavelet_decode_transform(unsigned char* buffer, int* patch_box, char
 
 MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 {
+	Events e("wave", 1);
+
 	int rank = file->comm->simulation_rank; /* The rank of process */
 	int procs_num = file->comm->simulation_nprocs; /* The number of processes */
 	MPI_Comm comm = file->comm->simulation_comm; /* MPI Communicator */
@@ -41,9 +43,15 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 
 		for (int i = 0; i < patch_count; i++)
 		{
+			{
+				Events e("trans", 1, "comp", 2, i);
 			wavelet_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, file->variable[v]->type_name, trans_num);
+			}
 			unsigned char* reg_buffer = (unsigned char*) malloc(local_patch->patch[i]->patch_buffer_size);
+			{
+				Events e("organ", 1, "comp", 2, i);
 			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes, 0, 0);
+			}
 			memcpy(local_patch->patch[i]->buffer, reg_buffer, local_patch->patch[i]->patch_buffer_size);
 			free(reg_buffer);
 		}
