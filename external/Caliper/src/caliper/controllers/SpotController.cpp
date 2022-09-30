@@ -52,7 +52,7 @@ local_aggregate(const char* query, Caliper& c, Channel* channel, CaliperMetadata
     Preprocessor   prp(spec);
     Aggregator     agg(spec);
 
-    c.flush(channel, nullptr, [&db,&filter,&prp,&agg](CaliperMetadataAccessInterface& in_db, const std::vector<Entry>& rec){
+    c.flush(channel, SnapshotView(), [&db,&filter,&prp,&agg](CaliperMetadataAccessInterface& in_db, const std::vector<Entry>& rec){
             EntryList mrec = prp.process(db, db.merge_snapshot(in_db, rec));
 
             if (filter.pass(db, mrec))
@@ -214,7 +214,7 @@ const char* spot_timeseries_spec =
     " \"name\"        : \"spot.timeseries\","
     " \"description\" : \"Collect time-series information for loops\","
     " \"categories\"  : [ \"metric\" ],"
-    " \"services\"    : [ \"loop_monitor\", \"timestamp\", \"trace\" ],"
+    " \"services\"    : [ \"loop_monitor\", \"timer\", \"trace\" ],"
     " \"config\"      : "
     "   { \"CALI_CHANNEL_FLUSH_ON_EXIT\"      : \"false\","
     "     \"CALI_CHANNEL_CONFIG_CHECK\"       : \"false\","
@@ -544,8 +544,8 @@ const char* spot_controller_spec =
     "{"
     " \"name\"        : \"spot\","
     " \"description\" : \"Record a time profile for the Spot web visualization framework\","
-    " \"categories\"  : [ \"adiak\", \"metric\", \"output\", \"region\" ],"
-    " \"services\"    : [ \"aggregate\", \"event\", \"timestamp\" ],"
+    " \"categories\"  : [ \"adiak\", \"metric\", \"output\", \"region\", \"event\" ],"
+    " \"services\"    : [ \"aggregate\", \"event\", \"timer\" ],"
     " \"config\"      : "
     "   { \"CALI_CHANNEL_FLUSH_ON_EXIT\"      : \"false\","
     "     \"CALI_CHANNEL_CONFIG_CHECK\"       : \"false\","

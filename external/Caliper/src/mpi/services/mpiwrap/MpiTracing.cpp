@@ -23,9 +23,12 @@ struct MpiTracing::MpiTracingImpl
     Attribute msg_dst_attr;
     Attribute msg_size_attr;
     Attribute msg_tag_attr;
+    Attribute send_count_attr;
+    Attribute recv_count_attr;
 
     Attribute coll_type_attr;
     Attribute coll_root_attr;
+    Attribute coll_count_attr;
 
     Attribute comm_attr;
     Attribute comm_is_world_attr;
@@ -69,34 +72,41 @@ struct MpiTracing::MpiTracingImpl
         const struct attr_info_t {
             const char* name; cali_attr_type type; int prop; Attribute* ptr;
         } attr_info_tbl[] = {
-            { "mpi.msg.src",       CALI_TYPE_INT,   CALI_ATTR_ASVALUE,
+            { "mpi.msg.src",       CALI_TYPE_INT,   CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS,
               &msg_src_attr    },
-            { "mpi.msg.dst",       CALI_TYPE_INT,   CALI_ATTR_ASVALUE,
+            { "mpi.msg.dst",       CALI_TYPE_INT,   CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS,
               &msg_dst_attr    },
-            { "mpi.msg.size",      CALI_TYPE_INT,   CALI_ATTR_ASVALUE,
-              &msg_size_attr   },
-            { "mpi.msg.tag",       CALI_TYPE_INT,   CALI_ATTR_ASVALUE,
+            { "mpi.msg.tag",       CALI_TYPE_INT,   CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS,
               &msg_tag_attr    },
 
-            { "mpi.coll.type",     CALI_TYPE_INT,   CALI_ATTR_DEFAULT,
+            { "mpi.coll.type",     CALI_TYPE_INT,   CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS,
               &coll_type_attr  },
-            { "mpi.coll.root",     CALI_TYPE_INT,   CALI_ATTR_ASVALUE,
+            { "mpi.coll.root",     CALI_TYPE_INT,   CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS,
               &coll_root_attr  },
 
-            { "mpi.comm",          CALI_TYPE_INT,   CALI_ATTR_DEFAULT,
+            { "mpi.comm",          CALI_TYPE_INT,   CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS,
               &comm_attr       },
-            { "mpi.comm.size",     CALI_TYPE_INT,   CALI_ATTR_DEFAULT,
+            { "mpi.comm.size",     CALI_TYPE_INT,   CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS,
               &comm_size_attr  },
-            { "mpi.comm.is_world", CALI_TYPE_BOOL,  CALI_ATTR_DEFAULT,
+            { "mpi.comm.is_world", CALI_TYPE_BOOL,  CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS,
               &comm_is_world_attr },
-            { "mpi.comm.list",     CALI_TYPE_USR,   CALI_ATTR_DEFAULT,
+            { "mpi.comm.list",     CALI_TYPE_USR,   CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS,
               &comm_list_attr  },
+
+            { "mpi.msg.size",      CALI_TYPE_INT,   CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS | CALI_ATTR_AGGREGATABLE,
+              &msg_size_attr   },
+            { "mpi.send.count",    CALI_TYPE_INT,   CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS | CALI_ATTR_AGGREGATABLE,
+              &send_count_attr },
+            { "mpi.recv.count",    CALI_TYPE_INT,   CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS | CALI_ATTR_AGGREGATABLE,
+              &recv_count_attr },
+            { "mpi.coll.count",    CALI_TYPE_INT,   CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS | CALI_ATTR_AGGREGATABLE,
+              &coll_count_attr },
 
             { nullptr, CALI_TYPE_INV, 0, nullptr }
         };
 
-        for (const attr_info_t* p = attr_info_tbl; p->name; ++p)
-            *(p->ptr) = c->create_attribute(p->name, p->type, p->prop);
+        for (const struct attr_info_t* a = attr_info_tbl; a && a->name; a++)
+            *(a->ptr) = c->create_attribute(a->name, a->type, a->prop);
     }
 
     void init_mpi(Caliper* c, Channel* chn) {
@@ -166,15 +176,15 @@ struct MpiTracing::MpiTracingImpl
     //
 
     void push_send_event(Caliper* c, Channel* channel, int size, int dest, int tag, cali::Node* comm_node) {
-        cali_id_t attr[3] = {
-            msg_dst_attr.id(), msg_tag_attr.id(), msg_size_attr.id()
-        };
-        Variant   data[3] = {
-            Variant(dest),     Variant(tag),      Variant(size)
+        const Entry data[] = {
+            { comm_node },
+            { msg_dst_attr,    Variant(dest) },
+            { msg_tag_attr,    Variant(tag)  },
+            { msg_size_attr,   Variant(size) },
+            { send_count_attr, Variant(1)    }
         };
 
-        SnapshotRecord rec(1, &comm_node, 3, attr, data);
-        c->push_snapshot(channel, &rec);
+        c->push_snapshot(channel, SnapshotView(5, data));
     }
 
     void handle_send_init(Caliper* c, Channel* chn, int count, MPI_Datatype type, int dest, int tag, MPI_Comm comm, MPI_Request* req) {
@@ -198,15 +208,15 @@ struct MpiTracing::MpiTracingImpl
     }
 
     void push_recv_event(Caliper* c, Channel* channel, int src, int size, int tag, Node* comm_node) {
-        cali_id_t attr[3] = {
-            msg_src_attr.id(), msg_tag_attr.id(), msg_size_attr.id()
-        };
-        Variant   data[3] = {
-            Variant(src),      Variant(tag),      Variant(size)
+        const Entry data[] = {
+            { comm_node },
+            { msg_src_attr,    Variant(src)  },
+            { msg_tag_attr,    Variant(tag)  },
+            { msg_size_attr,   Variant(size) },
+            { recv_count_attr, Variant(1)    }
         };
 
-        SnapshotRecord rec(1, &comm_node, 3, attr, data);
-        c->push_snapshot(channel, &rec);
+        c->push_snapshot(channel, SnapshotView(5, data));
     }
 
     void handle_recv(Caliper* c, Channel* chn, MPI_Datatype type, MPI_Comm comm, MPI_Status* status) {
@@ -307,20 +317,23 @@ struct MpiTracing::MpiTracingImpl
     //
 
     void push_coll_event(Caliper* c, Channel* channel, CollectiveType coll_type, int size, int root, Node* comm_node) {
-        cali_id_t attr[2] = { msg_size_attr.id(), coll_root_attr.id() };
-        Variant   data[2] = { Variant(size),      Variant(root)       };
-
         Node* node = c->make_tree_entry(coll_type_attr, Variant(static_cast<int>(coll_type)), comm_node);
 
-        int ne = 0;
+        const Entry data[] = {
+            { node },
+            { coll_count_attr, Variant(1)    },
+            { msg_size_attr,   Variant(size) },
+            { coll_root_attr,  Variant(root) }
+        };
+
+        int ne = 2;
 
         if (coll_type == Coll_12N || coll_type == Coll_N21)
-            ne = 2;
+            ne = 4;
         else if (coll_type == Coll_NxN)
-            ne = 1;
+            ne = 3;
 
-        SnapshotRecord rec(1, &node, ne, attr, data);
-        c->push_snapshot(channel, &rec);
+        c->push_snapshot(channel, SnapshotView(ne, data));
     }
 
     // --- constructor

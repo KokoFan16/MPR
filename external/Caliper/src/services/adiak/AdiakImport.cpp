@@ -3,7 +3,10 @@
 
 #include "caliper/CaliperService.h"
 
+#include "../Services.h"
+
 #include "caliper/Caliper.h"
+#include "caliper/SnapshotRecord.h"
 
 #include "caliper/common/Log.h"
 #include "caliper/common/Node.h"
@@ -236,20 +239,23 @@ nameval_cb(const char *name, adiak_category_t category, const char *subcategory,
     }
 }
 
+const char* spec = R"json(
+    {   "name"        : "adiak_import",
+        "description" : "Import program run metadata from Adiak",
+        "config"      : [
+            { "name"        : "categories",
+              "type"        : "string",
+              "description" : "List of Adiak categories to import",
+              "value"       : "2,3"
+            }
+        ]
+    }
+)json";
+
 void
 register_adiak_import(Caliper* c, Channel* channel)
 {
-    static const ConfigSet::Entry configdata[] = {
-        { "categories",   CALI_TYPE_STRING, "2,3",
-          "List of Adiak categories to import",
-          "List of Adiak categories to import. Comma-separated list of integers."
-          "\nDefault is 2,3 (\"general\", \"performance\")."
-          "\nSet to 1 to import everything."
-        },
-        ConfigSet::Terminator
-    };
-
-    ConfigSet cfg = channel->config().init("adiak_import", configdata);
+    ConfigSet cfg = services::init_config_from_spec(channel->config(), spec);
     std::vector<int> categories;
 
     for (const std::string& s : cfg.get("categories").to_stringlist())
@@ -263,7 +269,7 @@ register_adiak_import(Caliper* c, Channel* channel)
        c->create_attribute("adiak.subcategory", CALI_TYPE_STRING, CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS);
 
     channel->events().pre_flush_evt.connect(
-        [categories](Caliper*, Channel* channel, const SnapshotRecord*){
+        [categories](Caliper*, Channel* channel, SnapshotView){
             nameval_usr_args_t args { channel, 0 };
 
             for (int category : categories)
@@ -281,6 +287,6 @@ register_adiak_import(Caliper* c, Channel* channel)
 namespace cali
 {
 
-CaliperService adiak_import_service { "adiak_import", ::register_adiak_import };
+CaliperService adiak_import_service { spec, ::register_adiak_import };
 
 }

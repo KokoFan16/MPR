@@ -3,6 +3,8 @@
 
 #include "caliper/CaliperService.h"
 
+#include "../Services.h"
+
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
 
@@ -17,7 +19,6 @@ using namespace cali;
 namespace cali
 {
 
-extern Attribute class_aggregatable_attr;
 extern Attribute class_iteration_attr;
 extern Attribute loop_attr;
 
@@ -28,8 +29,6 @@ namespace
 
 class LoopMonitor
 {
-    static const ConfigSet::Entry s_configdata[];
-
     int       loop_level;
     int       target_level;
     int       start_iteration;
@@ -58,17 +57,12 @@ class LoopMonitor
     }
 
     void snapshot(Caliper* c, Channel* channel) {
-        cali_id_t attr[2] = {
-            num_iterations_attr.id(), start_iteration_attr.id()
+        Entry data[] = {
+            { num_iterations_attr,  Variant(num_iterations)  },
+            { start_iteration_attr, Variant(start_iteration) }
         };
-        Variant   data[2] = {
-             Variant(num_iterations), Variant(start_iteration)
-        };
-
         size_t n = start_iteration >= 0 ? 2 : 1;
-
-        SnapshotRecord trigger_info(n, attr, data);
-        c->push_snapshot(channel, &trigger_info);
+        c->push_snapshot(channel, SnapshotView(n, data));
 
         start_iteration = -1;
         num_iterations  =  0;
@@ -134,14 +128,14 @@ class LoopMonitor
         num_iterations_attr =
             c->create_attribute("loop.iterations", CALI_TYPE_INT,
                                 CALI_ATTR_SKIP_EVENTS |
-                                CALI_ATTR_ASVALUE,
-                                1, &class_aggregatable_attr, &v_true);
+                                CALI_ATTR_ASVALUE     |
+                                CALI_ATTR_AGGREGATABLE);
         start_iteration_attr =
             c->create_attribute("loop.start_iteration", CALI_TYPE_INT,
                                 CALI_ATTR_SKIP_EVENTS |
                                 CALI_ATTR_ASVALUE);
 
-        ConfigSet config = channel->config().init("loop_monitor", s_configdata);
+        ConfigSet config = services::init_config_from_spec(channel->config(), s_spec);
 
         iteration_interval = config.get("iteration_interval").to_int();
         time_interval      = config.get("time_interval").to_double();
@@ -149,6 +143,8 @@ class LoopMonitor
     }
 
 public:
+
+    static const char* s_spec;
 
     static void create(Caliper* c, Channel* channel) {
         LoopMonitor* instance = new LoopMonitor(c, channel);
@@ -173,27 +169,33 @@ public:
     }
 };
 
-const ConfigSet::Entry LoopMonitor::s_configdata[] = {
-    { "iteration_interval", CALI_TYPE_INT, "0",
-      "Trigger snapshot every N iterations."
-      "Trigger snapshot every N iterations. Set to 0 to disable."
-    },
-    { "time_interval",     CALI_TYPE_DOUBLE, "0",
-      "Trigger snapshot every t seconds."
-      "Trigger snapshot every t seconds. Set to 0 to disable."
-    },
-    { "target_loops",      CALI_TYPE_STRING, "",
-      "List of loops to instrument. Default: empty (any top-level loop)",
-      "List of loops to instrument. Default: empty (any top-level loop)"
-    },
-    ConfigSet::Terminator
-};
+const char* LoopMonitor::s_spec = R"json(
+{   "name"        : "loop_monitor",
+    "description" : "Trigger snapshots on loop iterations",
+    "config"      : [
+        {   "name"        : "iteration_interval",
+            "description" : "Trigger snapshots every N iterations",
+            "type"        : "int",
+            "value"       : "0"
+        },
+        {   "name"        : "time_interval",
+            "description" : "Trigger snapshots every t seconds",
+            "type"        : "double",
+            "value"       : "0.5"
+        },
+        {   "name"        : "target_loops",
+            "description" : "List of loops to instrument",
+            "type"        : "string"
+        }
+    ]
+}
+)json";
 
 } // namespace [anonymous]
 
 namespace cali
 {
 
-CaliperService loop_monitor_service { "loop_monitor", ::LoopMonitor::create };
+CaliperService loop_monitor_service { ::LoopMonitor::s_spec, ::LoopMonitor::create };
 
 }

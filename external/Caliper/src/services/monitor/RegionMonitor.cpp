@@ -2,6 +2,7 @@
 // See top-level LICENSE file for details.
 
 #include "caliper/CaliperService.h"
+#include "../Services.h"
 
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
@@ -14,21 +15,11 @@
 
 using namespace cali;
 
-namespace cali
-{
-
-extern Attribute class_aggregatable_attr;
-extern Attribute class_iteration_attr;
-
-}
-
 namespace
 {
 
 class RegionMonitor
 {
-    static const ConfigSet::Entry s_configdata[];
-
     struct RegionInfo {
         double inclusive_time;
         double child_time;
@@ -61,8 +52,8 @@ class RegionMonitor
 
         if (it != m_tracking_regions.end()) {
             if (it->second.inclusive_time > 2.0 * it->second.child_time) {
-                SnapshotRecord rec;
-                c->pull_snapshot(channel, CALI_SCOPE_PROCESS | CALI_SCOPE_THREAD, nullptr, &rec);
+                SnapshotBuilder tmp;
+                c->pull_snapshot(channel, CALI_SCOPE_PROCESS | CALI_SCOPE_THREAD, SnapshotView(), tmp);
                 m_measuring = true;
                 m_skip = 1;
             }
@@ -79,7 +70,7 @@ class RegionMonitor
 
             m_measuring = false;
             ++m_num_measured;
-            c->push_snapshot(channel, nullptr);
+            c->push_snapshot(channel, SnapshotView());
         }
 
         const Node* node = c->get(attr).node();
@@ -131,12 +122,13 @@ class RegionMonitor
           m_skip(0),
           m_num_measured(0)
         {
-            ConfigSet config = channel->config().init("region_monitor", s_configdata);
-
+            ConfigSet config = services::init_config_from_spec(channel->config(), s_spec);
             m_min_interval = config.get("time_interval").to_double();
         }
 
 public:
+
+    static const char* s_spec;
 
     static void create(Caliper* c, Channel* channel) {
         RegionMonitor* instance = new RegionMonitor(c, channel);
@@ -161,19 +153,23 @@ public:
     }
 };
 
-const ConfigSet::Entry RegionMonitor::s_configdata[] = {
-    { "time_interval",     CALI_TYPE_DOUBLE, "0.01",
-      "Minimum time for regions to measure."
-      "Minimum time for regions to measure."
-    },
-    ConfigSet::Terminator
-};
+const char* RegionMonitor::s_spec = R"json(
+{   "name": "region_monitor",
+    "description": "Trigger snapshots for long-running regions",
+    "config": [
+        {   "name"        : "time_interval",
+            "description" : "Minimum length in seconds for regions to measure",
+            "type"        : "double",
+            "value"       : "0.01"
+        }
+    ]
+}
+)json";
 
 }
-
 namespace cali
 {
 
-CaliperService region_monitor_service { "region_monitor", ::RegionMonitor::create };
+CaliperService region_monitor_service { ::RegionMonitor::s_spec, ::RegionMonitor::create };
 
 }

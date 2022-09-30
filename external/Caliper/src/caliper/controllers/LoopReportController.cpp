@@ -68,7 +68,7 @@ class LoopReportController : public cali::internal::CustomOutputController
         Preprocessor   prp(spec);
         Aggregator     agg(spec);
 
-        c.flush(channel(), nullptr, [&db,&filter,&prp,&agg](CaliperMetadataAccessInterface& in_db, const EntryList& rec){
+        c.flush(channel(), SnapshotView(), [&db,&filter,&prp,&agg](CaliperMetadataAccessInterface& in_db, const EntryList& rec){
                 EntryList mrec = prp.process(db, db.merge_snapshot(in_db, rec));
 
                 if (filter.pass(db, mrec))
@@ -278,7 +278,7 @@ const char* loop_report_controller_spec =
     " \"name\"        : \"loop-report\","
     " \"description\" : \"Print summary and time-series information for loops\","
     " \"categories\"  : [ \"metric\", \"output\" ],"
-    " \"services\"    : [ \"loop_monitor\", \"timestamp\", \"trace\" ],"
+    " \"services\"    : [ \"loop_monitor\", \"timer\", \"trace\" ],"
     " \"config\"      : "
     "   { \"CALI_CHANNEL_FLUSH_ON_EXIT\"      : \"false\","
     "     \"CALI_CHANNEL_CONFIG_CHECK\"       : \"false\","

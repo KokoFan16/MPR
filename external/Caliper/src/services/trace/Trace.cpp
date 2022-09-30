@@ -6,6 +6,8 @@
 
 #include "caliper/CaliperService.h"
 
+#include "../Services.h"
+
 #include "TraceBufferChunk.h"
 
 #include "caliper/Caliper.h"
@@ -57,8 +59,6 @@ class Trace
                 prev->next = next;
         }
     };
-
-    static const ConfigSet::Entry    s_configdata[];
 
     BufferPolicy   policy            = BufferPolicy::Grow;
     size_t         buffersize        = 2 * 1024 * 1024;
@@ -130,7 +130,7 @@ class Trace
         {
             Log(1).stream() << chn->name() << ": Trace buffer full: flushing." << std::endl;
 
-            c->flush_and_write(chn, nullptr);
+            c->flush_and_write(chn, SnapshotView());
 
             return tbuf;
         }
@@ -140,7 +140,7 @@ class Trace
         return 0;
     }
 
-    void process_snapshot_cb(Caliper* c, Channel* chn, const SnapshotRecord*, const SnapshotRecord* sbuf) {
+    void process_snapshot_cb(Caliper* c, Channel* chn, SnapshotView rec) {
         TraceBuffer* tbuf = acquire_tbuf(c, chn, !c->is_signal());
 
         if (!tbuf || tbuf->stopped.load()) {
@@ -148,15 +148,15 @@ class Trace
             return;
         }
 
-        if (!tbuf->chunks->fits(sbuf))
+        if (!tbuf->chunks->fits(rec))
             tbuf = handle_overflow(c, chn, tbuf);
         if (!tbuf)
             return;
 
-        tbuf->chunks->save_snapshot(sbuf);
+        tbuf->chunks->save_snapshot(rec);
     }
 
-    void flush_cb(Caliper* c, Channel* chn, const SnapshotRecord*, SnapshotFlushFn proc_fn) {
+    void flush_cb(Caliper* c, Channel* chn, SnapshotFlushFn proc_fn) {
         std::lock_guard<std::mutex>
             g(flush_lock);
 
@@ -300,7 +300,7 @@ class Trace
             tbuf_lock.unlock();
             flush_lock.unlock();
 
-            ConfigSet cfg = chn->config().init("trace", s_configdata);
+            ConfigSet cfg = services::init_config_from_spec(chn->config(), s_spec);
 
             init_overflow_policy(cfg.get("buffer_policy").to_string());
             buffersize = cfg.get("buffer_size").to_uint() * 1024 * 1024;
@@ -315,6 +315,8 @@ class Trace
         }
 
 public:
+
+    static const char* s_spec;
 
     ~Trace()
         {
@@ -339,12 +341,12 @@ public:
                 instance->release_thread_cb(c, chn);
             });
         chn->events().process_snapshot.connect(
-            [instance](Caliper* c, Channel* chn, const SnapshotRecord* trigger, const SnapshotRecord* snapshot){
-                instance->process_snapshot_cb(c, chn, trigger, snapshot);
+            [instance](Caliper* c, Channel* chn, SnapshotView, SnapshotView rec){
+                instance->process_snapshot_cb(c, chn, rec);
             });
         chn->events().flush_evt.connect(
-            [instance](Caliper* c, Channel* chn, const SnapshotRecord* trigger, SnapshotFlushFn fn){
-                instance->flush_cb(c, chn, trigger, fn);
+            [instance](Caliper* c, Channel* chn, SnapshotView, SnapshotFlushFn fn){
+                instance->flush_cb(c, chn, fn);
             });
         chn->events().clear_evt.connect(
             [instance](Caliper* c, Channel* chn){
@@ -365,26 +367,29 @@ public:
     }
 }; // class Trace
 
-const ConfigSet::Entry Trace::s_configdata[] = {
-    { "buffer_size",   CALI_TYPE_UINT, "2",
-      "Size of initial per-thread trace buffer in MiB",
-      "Size of initial per-thread trace buffer in MiB" },
-    { "buffer_policy", CALI_TYPE_STRING, "grow",
-      "What to do when trace buffer is full",
-      "What to do when trace buffer is full:\n"
-      "   flush:  Write out contents\n"
-      "   grow:   Increase buffer size\n"
-      "   stop:   Stop recording.\n"
-      "Default: grow" },
-
-    ConfigSet::Terminator
-};
+const char* Trace::s_spec = R"json(
+{   "name": "trace",
+    "description": "Store snapshots in trace buffer",
+    "config": [
+        {   "name": "buffer_size",
+            "description": "Size of initial per-thread trace buffer in MiB",
+            "type": "uint",
+            "value": "2"
+        },
+        {   "name": "buffer_policy",
+            "description": "What to do when the buffer is full ('flush', 'stop', 'grow')",
+            "type": "string",
+            "value": "grow"
+        }
+    ]
+}
+)json";
 
 } // namespace
 
 namespace cali
 {
 
-CaliperService trace_service { "trace", ::Trace::trace_register };
+CaliperService trace_service { ::Trace::s_spec, ::Trace::trace_register };
 
 }

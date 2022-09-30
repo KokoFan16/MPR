@@ -19,13 +19,6 @@
 
 using namespace cali;
 
-namespace cali
-{
-
-extern cali::Attribute class_aggregatable_attr;
-
-}
-
 namespace
 {
 
@@ -55,7 +48,7 @@ class PcpService {
     Attribute m_timestamp_attr;
     Attribute m_time_duration_attr;
 
-    void snapshot(Caliper*, SnapshotRecord* rec) {
+    void snapshot(Caliper*, SnapshotBuilder& rec) {
         pmResult* res = nullptr;
 
         int status = pmFetch(static_cast<int>(m_metric_list.size()), m_metric_list.data(), &res);
@@ -87,25 +80,23 @@ class PcpService {
                 ++nvals;
             }
 
-            if (rec && nvals > 0) {
+            if (nvals > 0) {
                 double val = total;
 
                 if (m_metric_info[i].pmdesc.sem == PM_SEM_COUNTER)
                     val = total - m_prev_value[i];
 
-                rec->append(m_metric_info[i].attr.id(), Variant(val));
+                rec.append(m_metric_info[i].attr, Variant(val));
             }
-            
+
             m_prev_value[i] = total;
         }
 
         double timestamp = res->timestamp.tv_sec + (res->timestamp.tv_usec * 1e-6);
 
-        if (rec) {
-            rec->append(m_timestamp_sec_attr.id(), cali_make_variant_from_uint(res->timestamp.tv_sec));
-            rec->append(m_timestamp_attr.id(),     Variant(timestamp));
-            rec->append(m_time_duration_attr.id(), Variant(timestamp - m_prev_timestamp));
-        }
+        rec.append(m_timestamp_sec_attr, cali_make_variant_from_uint(res->timestamp.tv_sec));
+        rec.append(m_timestamp_attr,     Variant(timestamp));
+        rec.append(m_time_duration_attr, Variant(timestamp - m_prev_timestamp));
 
         m_prev_timestamp = timestamp;
 
@@ -150,12 +141,11 @@ class PcpService {
 
             // TODO: Do some sanity checking
 
-            Variant v_true(true);
             Attribute attr =
                 c->create_attribute(std::string("pcp.")+name, CALI_TYPE_DOUBLE,
                                     CALI_ATTR_SKIP_EVENTS |
-                                    CALI_ATTR_ASVALUE,
-                                    1, &class_aggregatable_attr, &v_true);
+                                    CALI_ATTR_ASVALUE     |
+                                    CALI_ATTR_AGGREGATABLE);
 
             list.push_back(pmid);
             info.push_back( { name, attr, pmdesc} );
@@ -178,33 +168,27 @@ class PcpService {
     {
         Attribute unit_attr =
             c->create_attribute("time.unit", CALI_TYPE_STRING, CALI_ATTR_SKIP_EVENTS);
-        Attribute aggr_class_attr =
-            c->get_attribute("class.aggregatable");
-
         Variant   sec_val   = Variant("sec");
-        Variant   true_val  = Variant(true);
-
-        Attribute meta_attr[2] = { aggr_class_attr, unit_attr };
-        Variant   meta_vals[2] = { true_val,        sec_val   };
 
         m_timestamp_sec_attr =
             c->create_attribute("pcp.timestamp.sec", CALI_TYPE_UINT,
                                 CALI_ATTR_ASVALUE       |
                                 CALI_ATTR_SCOPE_PROCESS |
-                                CALI_ATTR_SKIP_EVENTS,
-                                1, &unit_attr, &sec_val);
+                                CALI_ATTR_SKIP_EVENTS   |
+                                CALI_ATTR_AGGREGATABLE);
         m_timestamp_attr =
             c->create_attribute("pcp.timestamp", CALI_TYPE_DOUBLE,
                                 CALI_ATTR_ASVALUE       |
                                 CALI_ATTR_SCOPE_PROCESS |
-                                CALI_ATTR_SKIP_EVENTS,
-                                1, &unit_attr, &sec_val);
+                                CALI_ATTR_SKIP_EVENTS   |
+                                CALI_ATTR_AGGREGATABLE);
         m_time_duration_attr =
             c->create_attribute("pcp.time.duration", CALI_TYPE_DOUBLE,
                                 CALI_ATTR_ASVALUE       |
                                 CALI_ATTR_SCOPE_PROCESS |
-                                CALI_ATTR_SKIP_EVENTS,
-                                2, meta_attr, meta_vals);
+                                CALI_ATTR_SKIP_EVENTS   |
+                                CALI_ATTR_AGGREGATABLE,
+                                1, &unit_attr, &sec_val);
     }
 
     static bool init_pcp_context(const char* hostname) {
@@ -264,13 +248,14 @@ public:
         }
 
         channel->events().snapshot.connect(
-            [instance](Caliper* c, Channel*, int, const SnapshotRecord*, SnapshotRecord* rec){
+            [instance](Caliper* c, Channel*, int, SnapshotView, SnapshotBuilder& rec){
                 instance->snapshot(c, rec);
             });
         channel->events().post_init_evt.connect(
             [instance](Caliper* c, Channel*){
                 // fetch current values to initialize m_prev_value
-                instance->snapshot(c, nullptr);
+                SnapshotBuilder builder;
+                instance->snapshot(c, builder);
             });
         channel->events().finish_evt.connect(
             [instance](Caliper* c, Channel* channel){

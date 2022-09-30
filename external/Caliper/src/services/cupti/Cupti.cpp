@@ -8,6 +8,8 @@
 
 #include "caliper/CaliperService.h"
 
+#include "../Services.h"
+
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
 
@@ -40,7 +42,6 @@ class CuptiService
     //
 
     ConfigSet config;
-    static const ConfigSet::Entry   s_configdata[];
 
     struct CallbackDomainInfo {
         CUpti_CallbackDomain domain;
@@ -118,13 +119,11 @@ class CuptiService
                               Variant(static_cast<uint64_t>(stream_id)),
                               v_name };
 
-        SnapshotRecord::FixedSnapshotRecord<4> trigger_info_data;
-        SnapshotRecord trigger_info(trigger_info_data);
-
+        FixedSizeSnapshotRecord<4> trigger_info;
         Caliper c;
 
-        c.make_record(4, attr, vals, trigger_info);
-        c.push_snapshot(channel, &trigger_info);
+        c.make_record(4, attr, vals, trigger_info.builder());
+        c.push_snapshot(channel, trigger_info.view());
     }
 
     void
@@ -145,13 +144,11 @@ class CuptiService
                               Variant(static_cast<uint64_t>(context_id)),
                               v_name };
 
-        SnapshotRecord::FixedSnapshotRecord<3> trigger_info_data;
-        SnapshotRecord trigger_info(trigger_info_data);
-
+        FixedSizeSnapshotRecord<4> trigger_info;
         Caliper c;
 
-        c.make_record(3, attr, vals, trigger_info);
-        c.push_snapshot(channel, &trigger_info);
+        c.make_record(3, attr, vals, trigger_info.builder());
+        c.push_snapshot(channel, trigger_info.view());
     }
 
     void
@@ -320,9 +317,17 @@ class CuptiService
     }
 
     void
-    snapshot_cb(Caliper* c, Channel*, int /* scope */, const SnapshotRecord* trigger_info, SnapshotRecord* snapshot)
+    snapshot_cb(Caliper* c, SnapshotBuilder& snapshot)
     {
-        event_sampling.snapshot(c, trigger_info, snapshot);
+        event_sampling.snapshot(c, snapshot);
+    }
+
+    void
+    pre_finish_cb() {
+        cuptiUnsubscribe(subscriber);
+        cuptiFinalize();
+
+        event_sampling.stop_all();
     }
 
     void
@@ -340,11 +345,6 @@ class CuptiService
             if (event_sampling.is_enabled())
                 event_sampling.print_statistics(Log(2).stream());
         }
-
-        event_sampling.stop_all();
-
-        cuptiUnsubscribe(subscriber);
-        cuptiFinalize();
     }
 
     void
@@ -445,7 +445,7 @@ class CuptiService
     }
 
     CuptiService(Caliper* c, Channel* chn)
-        : config(chn->config().init("cupti", s_configdata)),
+        : config(services::init_config_from_spec(chn->config(), s_spec)),
           num_cb(0),
           num_api_cb(0),
           num_resource_cb(0),
@@ -464,6 +464,8 @@ class CuptiService
 
 public:
 
+    static const char* s_spec;
+
     static void
     cuptiservice_initialize(Caliper* c, Channel* chn)
     {
@@ -474,13 +476,17 @@ public:
 
         if (instance->event_sampling.is_enabled())
             chn->events().snapshot.connect(
-                [instance](Caliper* c, Channel* chn, int scope, const SnapshotRecord* info, SnapshotRecord* rec){
-                    instance->snapshot_cb(c, chn, scope, info, rec);
+                [instance](Caliper* c, Channel*, int, SnapshotView, SnapshotBuilder& rec){
+                    instance->snapshot_cb(c, rec);
                 });
 
         chn->events().post_init_evt.connect(
             [instance](Caliper* c, Channel* channel){
                 instance->subscribe_attributes(c, channel);
+            });
+        chn->events().pre_finish_evt.connect(
+            [instance](Caliper*, Channel*){
+                instance->pre_finish_cb();
             });
         chn->events().finish_evt.connect(
             [instance](Caliper* c, Channel* chn){
@@ -493,32 +499,32 @@ public:
 
 }; // CuptiService
 
-const ConfigSet::Entry CuptiService::s_configdata[] = {
-    { "callback_domains", CALI_TYPE_STRING, "runtime:sync",
-      "List of CUDA callback domains to capture",
-      "List of CUDA callback domains to capture. Possible values:\n"
-      "  runtime  :  Capture CUDA runtime API calls\n"
-      "  driver   :  Capture CUDA driver calls\n"
-      "  resource :  Capture CUDA resource creation events\n"
-      "  sync     :  Capture CUDA synchronization events\n"
-      "  nvtx     :  Capture NVidia NVTX annotations\n"
-      "  none     :  Don't capture callbacks"
-    },
-    { "record_symbol", CALI_TYPE_BOOL, "false",
-      "Record symbol name (kernel) for CUDA runtime and driver callbacks",
-      "Record symbol name (kernel) for CUDA runtime and driver callbacks"
-    },
-    { "sample_events", CALI_TYPE_STRING, "",
-      "CUpti events to sample",
-      "CUpti events to sample"
-    },
-    { "sample_event_id", CALI_TYPE_UINT, "0",
-      "CUpti event ID to sample",
-      "CUpti event ID to sample"
-    },
-
-    ConfigSet::Terminator
-};
+const char* CuptiService::s_spec = R"json(
+{   "name": "cupti",
+    "description": "CUDA API instrumentation",
+    "config": [
+        {   "name": "callback_domains",
+            "description": "List of CUDA callback domains to capture (runtime, driver, resource, sync, nvtx)",
+            "type": "string",
+            "value": "runtime,sync"
+        },
+        {   "name": "record_symbol",
+            "description": "Record kernel symbol name for CUDA runtime and driver callbacks",
+            "type": "bool",
+            "value": "false"
+        },
+        {   "name": "sample_events",
+            "description": "List of CUpti events to sample",
+            "type": "string"
+        },
+        {   "name": "sample_event_id",
+            "description": "CUpti event ID to sample",
+            "type": "uint",
+            "value": "0"
+        }
+    ]
+}
+)json";
 
 const CuptiService::CallbackDomainInfo CuptiService::s_callback_domains[] = {
     { CUPTI_CB_DOMAIN_RUNTIME_API, "runtime"  },
@@ -535,6 +541,6 @@ const CuptiService::CallbackDomainInfo CuptiService::s_callback_domains[] = {
 namespace cali
 {
 
-CaliperService cupti_service = { "cupti", ::CuptiService::cuptiservice_initialize };
+CaliperService cupti_service = { ::CuptiService::s_spec, ::CuptiService::cuptiservice_initialize };
 
 }

@@ -6,6 +6,8 @@
 
 #include "caliper/CaliperService.h"
 
+#include "../Services.h"
+
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
 
@@ -27,9 +29,9 @@ using namespace std;
 namespace
 {
 
-class Timestamp
+class TimerService
 {
-    //   This keeps per-thread per-channel timer data, which we can look up 
+    //   This keeps per-thread per-channel timer data, which we can look up
     // on the thread-local blackboard
     struct TimerInfo {
         // The timestamp of the last snapshot on this channel+thread
@@ -50,9 +52,9 @@ class Timestamp
 
     Attribute timerinfo_attr { Attribute::invalid } ;
 
-    cali_id_t snapshot_duration_attr_id  { CALI_INV_ID };
-    cali_id_t inclusive_duration_attr_id { CALI_INV_ID };
-    cali_id_t offset_attr_id             { CALI_INV_ID };
+    Attribute snapshot_duration_attr;
+    Attribute inclusive_duration_attr;
+    Attribute offset_attr;
 
     // Keeps all created timer info objects so we can delete them later
     std::vector<TimerInfo*>  info_obj_list;
@@ -70,11 +72,8 @@ class Timestamp
 
     int       n_stack_errors { 0 };
 
-    static const ConfigSet::Entry s_configdata[];
-
-
     TimerInfo* acquire_timerinfo(Caliper* c) {
-        TimerInfo* ti = 
+        TimerInfo* ti =
             static_cast<TimerInfo*>(c->get(timerinfo_attr).value().get_ptr());
 
         if (!ti && !c->is_signal()) {
@@ -84,24 +83,25 @@ class Timestamp
 
             std::lock_guard<std::mutex>
                 g(info_obj_mutex);
-            
+
             info_obj_list.push_back(ti);
         }
 
         return ti;
     }
 
-    void snapshot_cb(Caliper* c, Channel* chn, int scope, const SnapshotRecord* info, SnapshotRecord* rec) {
+    void snapshot_cb(Caliper* c, Channel* chn, int scope, SnapshotView info, SnapshotBuilder& rec) {
         auto now = chrono::high_resolution_clock::now();
         uint64_t usec = chrono::duration_cast<chrono::microseconds>(now - tstart).count();
 
         if (record_offset)
-            rec->append(offset_attr_id, Variant(usec));
+            rec.append(offset_attr, Variant(usec));
 
-        if (record_timestamp && (scope & CALI_SCOPE_PROCESS))
-            rec->append(timestamp_attr.id(),
-                        Variant(cali_make_variant_from_uint(
-                                chrono::duration_cast<chrono::nanoseconds>(chrono::system_clock::now().time_since_epoch()).count())));
+        if (record_timestamp && (scope & CALI_SCOPE_PROCESS)) {
+            auto timestamp =
+                chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
+            rec.append(timestamp_attr, cali_make_variant_from_uint(timestamp));
+        }
 
         if ((!record_snapshot_duration && !record_inclusive_duration) || !(scope & CALI_SCOPE_THREAD))
             return;
@@ -113,18 +113,18 @@ class Timestamp
             return;
 
         if (record_snapshot_duration)
-            rec->append(snapshot_duration_attr_id, Variant(scale_factor * (usec - ti->prev_snapshot_timestamp)));
+            rec.append(snapshot_duration_attr, Variant(scale_factor * (usec - ti->prev_snapshot_timestamp)));
 
         ti->prev_snapshot_timestamp = usec;
 
-        if (record_inclusive_duration && info && !c->is_signal()) {
-            Entry event = info->get(begin_evt_attr);
+        if (record_inclusive_duration && !info.empty() && !c->is_signal()) {
+            Entry event = info.get(begin_evt_attr);
 
-            if (event.is_empty())
-                event = info->get(end_evt_attr);
-            if (event.is_empty())
+            if (event.empty())
+                event = info.get(end_evt_attr);
+            if (event.empty())
                 return;
-            
+
             cali_id_t evt_attr_id = event.value().to_id();
 
             if (event.attribute() == begin_evt_attr.id()) {
@@ -139,7 +139,7 @@ class Timestamp
                     return;
                 }
 
-                rec->append(inclusive_duration_attr_id, Variant(scale_factor * (usec - stack_it->second.back())));
+                rec.append(inclusive_duration_attr, Variant(scale_factor * (usec - stack_it->second.back())));
                 stack_it->second.pop_back();
             }
         }
@@ -165,34 +165,31 @@ class Timestamp
 
     void finish_cb(Caliper*, Channel* chn) {
         if (n_stack_errors > 0)
-            Log(1).stream() << chn->name() << ": timestamp: Encountered " 
+            Log(1).stream() << chn->name() << ": timestamp: Encountered "
                             << n_stack_errors
                             << " inclusive time stack errors!"
                             << std::endl;
     }
 
-    Timestamp(Caliper* c, Channel* chn)
+    TimerService(Caliper* c, Channel* chn)
         : tstart(chrono::high_resolution_clock::now())
         {
-            ConfigSet config = chn->config().init("timer", s_configdata);
+            ConfigSet config = services::init_config_from_spec(chn->config(), s_spec);
 
-            record_snapshot_duration = 
+            record_snapshot_duration =
                 config.get("snapshot_duration").to_bool();
-            record_offset    = 
+            record_offset    =
                 config.get("offset").to_bool();
-            record_timestamp = 
+            record_timestamp =
                 config.get("timestamp").to_bool();
             record_inclusive_duration
                 = config.get("inclusive_duration").to_bool();
 
             Attribute unit_attr =
                 c->create_attribute("time.unit", CALI_TYPE_STRING, CALI_ATTR_SKIP_EVENTS);
-            Attribute aggr_class_attr =
-                c->get_attribute("class.aggregatable");
 
             Variant   usec_val  = Variant("usec");
             Variant   sec_val   = Variant("sec");
-            Variant   true_val  = Variant(true);
 
             Variant   unit_val  = usec_val;
 
@@ -205,34 +202,33 @@ class Timestamp
                 Log(0).stream() << chn->name() << ": timestamp: Unknown unit " << unitstr
                                 << std::endl;
 
-            Attribute meta_attr[2] = { aggr_class_attr, unit_attr };
-            Variant   meta_vals[2] = { true_val,        unit_val  };
-
             timestamp_attr =
                 c->create_attribute("time.timestamp", CALI_TYPE_UINT,
                                     CALI_ATTR_ASVALUE       |
                                     CALI_ATTR_SCOPE_PROCESS |
                                     CALI_ATTR_SKIP_EVENTS,
                                     1, &unit_attr, &sec_val);
-            offset_attr_id =
+            offset_attr =
                 c->create_attribute("time.offset",    CALI_TYPE_UINT,
                                     CALI_ATTR_ASVALUE       |
                                     CALI_ATTR_SCOPE_THREAD  |
                                     CALI_ATTR_SKIP_EVENTS,
-                                    1, &unit_attr, &usec_val).id();
-            snapshot_duration_attr_id =
+                                    1, &unit_attr, &usec_val);
+            snapshot_duration_attr =
                 c->create_attribute("time.duration",  CALI_TYPE_DOUBLE,
                                     CALI_ATTR_ASVALUE       |
                                     CALI_ATTR_SCOPE_THREAD  |
-                                    CALI_ATTR_SKIP_EVENTS,
-                                    2, meta_attr, meta_vals).id();
-            inclusive_duration_attr_id =
+                                    CALI_ATTR_SKIP_EVENTS   |
+                                    CALI_ATTR_AGGREGATABLE,
+                                    1, &unit_attr, &unit_val);
+            inclusive_duration_attr =
                 c->create_attribute("time.inclusive.duration", CALI_TYPE_DOUBLE,
                                     CALI_ATTR_ASVALUE       |
                                     CALI_ATTR_SCOPE_THREAD  |
-                                    CALI_ATTR_SKIP_EVENTS,
-                                    2, meta_attr, meta_vals).id();
-            timerinfo_attr = 
+                                    CALI_ATTR_SKIP_EVENTS   |
+                                    CALI_ATTR_AGGREGATABLE,
+                                    1, &unit_attr, &unit_val);
+            timerinfo_attr =
                 c->create_attribute(std::string("timer.info.") + std::to_string(chn->id()), CALI_TYPE_PTR,
                                     CALI_ATTR_ASVALUE       |
                                     CALI_ATTR_SCOPE_THREAD  |
@@ -240,7 +236,7 @@ class Timestamp
                                     CALI_ATTR_HIDDEN);
         }
 
-        ~Timestamp() {
+        ~TimerService() {
             std::lock_guard<std::mutex>
                 g(info_obj_mutex);
 
@@ -250,8 +246,10 @@ class Timestamp
 
 public:
 
-    static void timestamp_register(Caliper* c, Channel* chn) {
-        Timestamp* instance = new Timestamp(c, chn);
+    static const char* s_spec;
+
+    static void timer_register(Caliper* c, Channel* chn) {
+        TimerService* instance = new TimerService(c, chn);
 
         chn->events().post_init_evt.connect(
             [instance](Caliper* c, Channel* chn){
@@ -262,8 +260,8 @@ public:
                 instance->acquire_timerinfo(c);
             });
         chn->events().snapshot.connect(
-            [instance](Caliper* c, Channel* chn, int scopes, const SnapshotRecord* info, SnapshotRecord* snapshot){
-                instance->snapshot_cb(c, chn, scopes, info, snapshot);
+            [instance](Caliper* c, Channel* chn, int scopes, SnapshotView info, SnapshotBuilder& rec){
+                instance->snapshot_cb(c, chn, scopes, info, rec);
             });
         chn->events().finish_evt.connect(
             [instance](Caliper* c, Channel* chn){
@@ -271,34 +269,49 @@ public:
                 delete instance;
             });
 
-        Log(1).stream() << chn->name() << ": Registered timestamp service" << endl;
+        Log(1).stream() << chn->name() << ": Registered timer service" << endl;
     }
 
-}; // class Timestamp
+}; // class TimerService
 
-const ConfigSet::Entry Timestamp::s_configdata[] = {
-    { "snapshot_duration", CALI_TYPE_BOOL, "true",
-      "Include duration of snapshot epoch with each context record",
-      "Include duration of snapshot epoch with each context record"
-    },
-    { "offset", CALI_TYPE_BOOL, "false",
-      "Include time offset (time since program start) with each context record",
-      "Include time offset (time since program start) with each context record"
-    },
-    { "timestamp", CALI_TYPE_BOOL, "false",
-      "Include absolute timestamp (POSIX time) with each context record",
-      "Include absolute timestamp (POSIX time) with each context record"
-    },
-    { "inclusive_duration", CALI_TYPE_BOOL, "true",
-      "Record inclusive duration of begin/end phases.",
-      "Record inclusive duration of begin/end phases."
-    },
-    { "unit", CALI_TYPE_STRING, "sec",
-      "Unit for time durations (sec or usec)",
-      "Unit for time durations (sec or usec)"
-    },
-    ConfigSet::Terminator
-};
+const char* TimerService::s_spec = R"json(
+{   "name": "timer",
+    "description": "Record timestamps and time durations",
+    "config": [
+        {   "name": "snapshot_duration",
+            "description": "Include duration of snapshot epoch with each snapshot record",
+            "type": "bool",
+            "value": "true"
+        },
+        {   "name": "offset",
+            "description": "Include timestamp (time since program start) in snapshots",
+            "type": "bool",
+            "value": "false"
+        },
+        {   "name": "timestamp",
+            "description": "Include absolute timestamp in POSIX time",
+            "type": "bool",
+            "value": "false"
+        },
+        {   "name": "inclusive_duration",
+            "description": "Record inclusive duration of begin/end regions",
+            "type": "bool",
+            "value": "true"
+        },
+        {   "name": "unit",
+            "description": "Unit for time durations (sec, usec)",
+            "type": "string",
+            "value": "sec"
+        }
+    ]
+}
+)json";
+
+const char* timestamp_spec = R"json(
+{   "name": "timestamp",
+    "description": "Deprecated name for 'timer' service"
+}
+)json";
 
 }  // namespace
 
@@ -306,6 +319,7 @@ const ConfigSet::Entry Timestamp::s_configdata[] = {
 namespace cali
 {
 
-CaliperService timestamp_service = { "timestamp", ::Timestamp::timestamp_register };
+CaliperService timer_service = { ::TimerService::s_spec, ::TimerService::timer_register };
+CaliperService timestamp_service = { timestamp_spec, ::TimerService::timer_register };
 
 } // namespace cali

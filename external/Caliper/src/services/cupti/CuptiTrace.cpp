@@ -6,6 +6,8 @@
 
 #include "caliper/CaliperService.h"
 
+#include "../Services.h"
+
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
 
@@ -40,8 +42,6 @@ namespace
 
 class CuptiTraceService
 {
-    static const ConfigSet::Entry s_configdata[];
-
     struct ActivityBuffer {
         uint8_t*        buffer;
         CUcontext       ctx;
@@ -386,12 +386,14 @@ class CuptiTraceService
                 Variant(cali_make_variant_from_uint(memcpy->end - memcpy->start))
             };
 
-            SnapshotRecord::FixedSnapshotRecord<8> snapshot_data;
-            SnapshotRecord snapshot(snapshot_data);
+            FixedSizeSnapshotRecord<8> snapshot;
 
-            c->make_record(6, attr, data, snapshot, parent);
+            c->make_record(6, attr, data, snapshot.builder(), parent);
+            SnapshotView view = snapshot.view();
 
-            auto rec = snapshot.to_entrylist();
+            std::vector<Entry> rec;
+            rec.reserve(view.size() + irec.size());
+            rec.assign(view.begin(), view.end());
             rec.insert(rec.end(), irec.begin(), irec.end());
             proc_fn(*c, rec);
 
@@ -455,12 +457,14 @@ class CuptiTraceService
                 Variant(cali_make_variant_from_uint(kernel->end - kernel->start))
             };
 
-            SnapshotRecord::FixedSnapshotRecord<8> snapshot_data;
-            SnapshotRecord snapshot(snapshot_data);
+            FixedSizeSnapshotRecord<8> snapshot;
 
-            c->make_record(5, attr, data, snapshot, parent);
+            c->make_record(5, attr, data, snapshot.builder(), parent);
+            SnapshotView view = snapshot.view();
 
-            auto rec = snapshot.to_entrylist();
+            std::vector<Entry> rec;
+            rec.reserve(view.size() + irec.size());
+            rec.assign(view.begin(), view.end());
             rec.insert(rec.end(), irec.begin(), irec.end());
             proc_fn(*c, rec);
 
@@ -541,11 +545,13 @@ class CuptiTraceService
                 break;
             }
 
-            SnapshotRecord::FixedSnapshotRecord<8> snapshot_data;
-            SnapshotRecord snapshot(snapshot_data);
-            c->make_record(n, attr, data, snapshot);
+            FixedSizeSnapshotRecord<8> snapshot;
+            c->make_record(n, attr, data, snapshot.builder());
+            SnapshotView view = snapshot.view();
 
-            auto rec = snapshot.to_entrylist();
+            std::vector<Entry> rec;
+            rec.reserve(view.size() + irec.size());
+            rec.assign(view.begin(), view.end());
             rec.insert(rec.end(), irec.begin(), irec.end());
             proc_fn(*c, rec);
 
@@ -585,12 +591,12 @@ class CuptiTraceService
         return num_records;
     }
 
-    std::vector<Entry> get_flush_info(Caliper* c, const SnapshotRecord* flush_info) {
+    std::vector<Entry> get_flush_info(Caliper* c, SnapshotView flush_info) {
         // Extract requested flush_info_attributes from flush_info
 
         std::vector<Entry> ret;
 
-        if (!flush_info)
+        if (flush_info.empty())
             return ret;
 
         std::vector<const Node*> nodes;
@@ -600,7 +606,7 @@ class CuptiTraceService
             if (attr == Attribute::invalid)
                 continue;
 
-            Entry e = flush_info->get(attr);
+            Entry e = flush_info.get(attr);
 
             if (e.is_reference())
                 nodes.push_back(e.node());
@@ -614,7 +620,7 @@ class CuptiTraceService
         return ret;
     }
 
-    size_t do_flush(Caliper* c, const SnapshotRecord* flush_info, SnapshotFlushFn proc_fn) {
+    size_t do_flush(Caliper* c, SnapshotView flush_info, SnapshotFlushFn proc_fn) {
         //   Flush CUpti. Apppends all currently active CUpti trace buffers
         // to the retired_buffers_list.
 
@@ -649,7 +655,7 @@ class CuptiTraceService
     // --- Caliper callbacks
     //
 
-    void flush_cb(Caliper* c, Channel* channel, const SnapshotRecord* flush_info, SnapshotFlushFn proc_fn) {
+    void flush_cb(Caliper* c, Channel* channel, SnapshotView flush_info, SnapshotFlushFn proc_fn) {
         size_t num_written = do_flush(c, flush_info, proc_fn);
 
         Log(1).stream() << channel->name() << ": cuptitrace: Wrote "
@@ -705,9 +711,14 @@ class CuptiTraceService
         }
     }
 
-    void finish_cb(Caliper* c, Channel* chn) {
-        cuptiFinalize();
+    void pre_finish_cb(Caliper* c, Channel* channel) {
+        if (Log::verbosity() >= 2)
+            Log(2).stream() << channel->name() << ": finalizing CUpti\n";
 
+        cuptiFinalize();
+    }
+
+    void finish_cb(Caliper* c, Channel* chn) {
         if (Log::verbosity() < 1)
             return;
 
@@ -844,7 +855,7 @@ class CuptiTraceService
 
     }
 
-    void snapshot_cb(Caliper* c, Channel* chn, int scopes, const SnapshotRecord* trigger_info, SnapshotRecord* snapshot) {
+    void snapshot_cb(Caliper* c, Channel* chn, int scopes, const SnapshotView, SnapshotBuilder& snapshot) {
         uint64_t timestamp = 0;
         cuptiGetTimestamp(&timestamp);
 
@@ -852,28 +863,18 @@ class CuptiTraceService
         Variant  v_prev = c->exchange(timestamp_attr, v_now);
 
         if (record_host_duration)
-            snapshot->append(duration_attr.id(),
-                             Variant(cali_make_variant_from_uint(timestamp - v_prev.to_uint())));
+            snapshot.append(Entry(duration_attr,
+                                  Variant(cali_make_variant_from_uint(timestamp - v_prev.to_uint()))));
     }
 
-    void snapshot_flush_activities_cb(Caliper* c, Channel* channel, int, const SnapshotRecord* info, SnapshotRecord* snapshot) {
+    void snapshot_flush_activities_cb(Caliper* c, Channel* channel, int, SnapshotView trigger_info, SnapshotBuilder& snapshot) {
         if (c->is_signal())
             return;
-        if (flush_trigger_attr == Attribute::invalid || info->get(flush_trigger_attr).is_empty())
+        if (flush_trigger_attr == Attribute::invalid || trigger_info.get(flush_trigger_attr).empty())
             return;
 
-        do_flush(c, nullptr, [c,channel](CaliperMetadataAccessInterface& db, const std::vector<Entry>& rec){
-                SnapshotRecord::FixedSnapshotRecord<8> snapshot_data;
-                SnapshotRecord info(snapshot_data);
-
-                for (const Entry& e : rec) {
-                    if (e.is_reference())
-                        info.append(db.node(e.node()->id()));
-                    else if (e.is_immediate())
-                        info.append(e.attribute(), e.value());
-                }
-
-                c->push_snapshot(channel, &info);
+        do_flush(c, SnapshotView(), [c,channel](CaliperMetadataAccessInterface& db, const std::vector<Entry>& rec){
+                c->push_snapshot(channel, SnapshotView(rec.size(), rec.data()));
             });
 
         clear_cb(c, channel);
@@ -882,8 +883,7 @@ class CuptiTraceService
     }
 
     void post_init_cb(Caliper* c, Channel* chn) {
-        ConfigSet config = chn->config().init("cuptitrace", s_configdata);
-
+        ConfigSet config = services::init_config_from_spec(chn->config(), s_spec);
         enable_cupti_activities(config);
 
         CUptiResult res =
@@ -914,7 +914,7 @@ class CuptiTraceService
             c->set(timestamp_attr, cali_make_variant_from_uint(starttime));
 
             chn->events().snapshot.connect(
-                [](Caliper* c, Channel* chn, int scopes, const SnapshotRecord* info, SnapshotRecord* rec){
+                [](Caliper* c, Channel* chn, int scopes, SnapshotView info, SnapshotBuilder& rec){
                     s_instance->snapshot_cb(c, chn, scopes, info, rec);
                 });
         }
@@ -933,7 +933,7 @@ class CuptiTraceService
                     });
 
             chn->events().snapshot.connect(
-                [](Caliper* c, Channel* channel, int scopes, const SnapshotRecord* info, SnapshotRecord* rec){
+                [](Caliper* c, Channel* channel, int scopes, SnapshotView info, SnapshotBuilder& rec){
                     s_instance->snapshot_flush_activities_cb(c, channel, scopes, info, rec);
                 });
 
@@ -942,7 +942,7 @@ class CuptiTraceService
                             << std::endl;
         } else {
             chn->events().flush_evt.connect(
-                [](Caliper* c, Channel* chn, const SnapshotRecord* info, SnapshotFlushFn flush_fn){
+                [](Caliper* c, Channel* chn, SnapshotView info, SnapshotFlushFn flush_fn){
                     s_instance->flush_cb(c, chn, info, flush_fn);
                 });
             chn->events().clear_evt.connect(
@@ -951,6 +951,10 @@ class CuptiTraceService
                 });
         }
 
+        chn->events().pre_finish_evt.connect(
+            [](Caliper* c, Channel* chn){
+                s_instance->pre_finish_cb(c, chn);
+            });
         chn->events().finish_evt.connect(
             [](Caliper* c, Channel* chn){
                 s_instance->finish_cb(c, chn);
@@ -965,16 +969,10 @@ class CuptiTraceService
         {
             Attribute unit_attr =
                 c->create_attribute("time.unit", CALI_TYPE_STRING, CALI_ATTR_SKIP_EVENTS);
-            Attribute aggr_class_attr =
-                c->get_attribute("class.aggregatable");
             Attribute addr_class_attr =
                 c->get_attribute("class.memoryaddress");
-
-            Variant   nsec_val  = Variant(CALI_TYPE_STRING, "nsec", 4);
-            Variant   true_val  = Variant(true);
-
-            Attribute meta_attr[2] = { aggr_class_attr, unit_attr };
-            Variant   meta_vals[2] = { true_val,        nsec_val  };
+            Variant nsec_val(CALI_TYPE_STRING, "nsec", 4);
+            Variant true_val(true);
 
             activity_start_attr =
                 c->create_attribute("cupti.activity.start",    CALI_TYPE_UINT,
@@ -984,8 +982,10 @@ class CuptiTraceService
                                     CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS);
             activity_duration_attr =
                 c->create_attribute("cupti.activity.duration", CALI_TYPE_UINT,
-                                    CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS,
-                                    2, meta_attr, meta_vals);
+                                    CALI_ATTR_ASVALUE     |
+                                    CALI_ATTR_SKIP_EVENTS |
+                                    CALI_ATTR_AGGREGATABLE,
+                                    1, &unit_attr, &nsec_val);
             activity_kind_attr =
                 c->create_attribute("cupti.activity.kind",     CALI_TYPE_STRING,
                                     CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS);
@@ -997,8 +997,9 @@ class CuptiTraceService
                                     CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS);
             memcpy_bytes_attr =
                 c->create_attribute("cupti.memcpy.bytes",      CALI_TYPE_UINT,
-                                    CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS,
-                                    1, &aggr_class_attr, &true_val);
+                                    CALI_ATTR_ASVALUE     |
+                                    CALI_ATTR_SKIP_EVENTS |
+                                    CALI_ATTR_AGGREGATABLE);
             starttime_attr =
                 c->create_attribute("cupti.starttime",         CALI_TYPE_UINT,
                                     CALI_ATTR_SCOPE_PROCESS |
@@ -1015,12 +1016,14 @@ class CuptiTraceService
                                     CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS);
             uvm_bytes_attr =
                 c->create_attribute("cupti.uvm.bytes",      CALI_TYPE_UINT,
-                                    CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS,
-                                    1, &aggr_class_attr, &true_val);
+                                    CALI_ATTR_ASVALUE     |
+                                    CALI_ATTR_SKIP_EVENTS |
+                                    CALI_ATTR_AGGREGATABLE);
             uvm_pagefault_groups_attr =
                 c->create_attribute("cupti.uvm.pagefault.groups", CALI_TYPE_UINT,
-                                    CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS,
-                                    1, &aggr_class_attr, &true_val);
+                                    CALI_ATTR_ASVALUE     |
+                                    CALI_ATTR_SKIP_EVENTS |
+                                    CALI_ATTR_AGGREGATABLE);
             uvm_migration_cause_attr =
                 c->create_attribute("cupti.uvm.migration.cause", CALI_TYPE_STRING,
                                     CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS);
@@ -1028,7 +1031,7 @@ class CuptiTraceService
                 c->create_attribute("cupti.uvm.access.type", CALI_TYPE_STRING,
                                     CALI_ATTR_DEFAULT | CALI_ATTR_SKIP_EVENTS);
 
-            ConfigSet config = chn->config().init("cuptitrace", s_configdata);
+            ConfigSet config = services::init_config_from_spec(chn->config(), s_spec);
 
             record_host_timestamp = config.get("snapshot_timestamps").to_bool();
             record_host_duration  = config.get("snapshot_duration").to_bool();
@@ -1047,14 +1050,17 @@ class CuptiTraceService
                     c->create_attribute("cupti.host.duration", CALI_TYPE_UINT,
                                         CALI_ATTR_SCOPE_THREAD |
                                         CALI_ATTR_ASVALUE      |
-                                        CALI_ATTR_SKIP_EVENTS,
-                                        2, meta_attr, meta_vals);
+                                        CALI_ATTR_SKIP_EVENTS  |
+                                        CALI_ATTR_AGGREGATABLE,
+                                        1, &unit_attr, &nsec_val);
             }
 
             flush_info_attributes = config.get("info_attributes").to_stringlist();
         }
 
 public:
+
+    static const char* s_spec;
 
     static void cuptitrace_initialize(Caliper* c, Channel* chn) {
         if (s_instance) {
@@ -1073,53 +1079,59 @@ public:
 
 };
 
-const struct ConfigSet::Entry CuptiTraceService::s_configdata[] = {
-    { "activities", CALI_TYPE_STRING, "correlation,device,runtime,kernel,memcpy",
-      "The CUpti activity kinds to record",
-      "\nThe CUpti activity kinds to record. Possible values: "
-      "\n  device:       Device info"
-      "\n  correlation:  Correlation records. Required for Caliper context correlation."
-      "\n  driver:       Driver API."
-      "\n  runtime:      Runtime API."
-      "\n    Runtime records are also required for Caliper context correlation."
-      "\n  kernel:       CUDA Kernels being executed."
-      "\n  memcpy:       CUDA memory copies."
-      "\n  uvm:          Unified memory events."
-    },
-    { "correlate_context",   CALI_TYPE_BOOL, "true",
-      "Correlate CUpti records with Caliper context",
-      "Correlate CUpti records with Caliper context" },
-    { "snapshot_timestamps", CALI_TYPE_BOOL, "false",
-      "Record CUpti timestamps for all Caliper snapshots",
-      "Record CUpti timestamps for all Caliper snapshots"
-    },
-    { "uvm_transfers",       CALI_TYPE_BOOL, "true",
-      "When recording uvm events, record memory transfers",
-      "When recording uvm events, record memory transfers"
-    },
-    { "uvm_pagefaults",      CALI_TYPE_BOOL, "true",
-      "When recording uvm events, record pagefaults",
-      "When recording uvm events, record pagefaults"
-    },
-    { "snapshot_duration",   CALI_TYPE_BOOL, "false",
-      "Record duration of host-side activities using CUpti timestamps",
-      "Record duration of host-side activities using CUpti timestamps"
-    },
-    { "info_attributes",     CALI_TYPE_STRING, "mpi.rank",
-      "Flush info attributes to append to the cupti activity records",
-      "Flush info attributes to append to the cupti activity records"
-    },
-    { "flush_on_snapshot",   CALI_TYPE_BOOL, "false",
-      "Flush CUpti buffers at snapshots instead of regular flush events.",
-      "Flush CUpti buffers at snapshots instead of regular flush events"
-    },
-    { "flush_trigger",       CALI_TYPE_STRING, "cupti.sync",
-      "Attributes to trigger flushes when flush_on_snapshot is enabled",
-      "Attributes to trigger flushes when flush_on_snapshot is enabled"
-    },
-
-    ConfigSet::Terminator
-};
+const char* CuptiTraceService::s_spec = R"json(
+{   "name": "cuptitrace",
+    "description": "CUDA GPU event tracing via the CUpti activity API",
+    "config": [
+        {   "name": "activities",
+            "description":
+"The CUpti activities to record (device, correlation, driver, runtime, kernel, memcpy, uvm)",
+            "type": "string",
+            "value": "correlation,device,runtime,kernel,memcpy"
+        },
+        {   "name": "correlate_context",
+            "description": "Correlate CUpti records with Caliper context",
+            "type": "bool",
+            "value": "true"
+        },
+        {   "name": "uvm_transfers",
+            "description": "When recording uvm events, record UVM transfers",
+            "type": "bool",
+            "value": "true"
+        },
+        {   "name": "uvm_pagefaults",
+            "description": "When recording uvm events, record UVM pagefaults",
+            "type": "bool",
+            "value": "true"
+        },
+        {   "name": "snapshot_timestamps",
+            "description": "Record CUpti timestamps for Caliper host-side snapshots",
+            "type": "bool",
+            "value": "false"
+        },
+        {   "name": "snapshot_duration",
+            "description": "Record duration of host-side activities using CUpti timestamps",
+            "type": "bool",
+            "value": "false"
+        },
+        {   "name": "flush_on_snapshot",
+            "description": "Flush CUpti buffers at snapshots instead of regular flush",
+            "type": "bool",
+            "value": "false"
+        },
+        {   "name": "flush_trigger",
+            "description": "Attributes to trigger a flush when flush_on_snapshot is on",
+            "type": "string",
+            "value": "cupti.sync"
+        },
+        {   "name": "info_attributes",
+            "description": "Flush info attributes to append to the cupti activity records",
+            "type": "string",
+            "value": "mpi.rank"
+        }
+    ]
+}
+)json";
 
 CuptiTraceService* CuptiTraceService::s_instance = nullptr;
 
@@ -1128,6 +1140,6 @@ CuptiTraceService* CuptiTraceService::s_instance = nullptr;
 namespace cali
 {
 
-CaliperService cuptitrace_service = { "cuptitrace", ::CuptiTraceService::cuptitrace_initialize };
+CaliperService cuptitrace_service = { ::CuptiTraceService::s_spec, ::CuptiTraceService::cuptitrace_initialize };
 
 }

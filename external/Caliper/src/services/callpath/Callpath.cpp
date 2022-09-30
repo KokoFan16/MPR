@@ -5,6 +5,7 @@
 // Callpath provider for caliper records using libunwind
 
 #include "caliper/CaliperService.h"
+#include "../Services.h"
 
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
@@ -37,10 +38,9 @@ namespace
 
 class Callpath
 {
-    static const ConfigSet::Entry s_configdata[];
-
-    Attribute callpath_name_attr { Attribute::invalid};
+    Attribute callpath_name_attr { Attribute::invalid };
     Attribute callpath_addr_attr { Attribute::invalid };
+    Attribute ucursor_attr       { Attribute::invalid };
 
     bool      use_name { false };
     bool      use_addr { false };
@@ -53,25 +53,33 @@ class Callpath
     uintptr_t caliper_start_addr { 0 };
     uintptr_t caliper_end_addr   { 0 };
 
-    void snapshot_cb(Caliper* c, Channel* chn, int scope, const SnapshotRecord*, SnapshotRecord* snapshot) {
+    void snapshot_cb(Caliper* c, Channel* chn, int scope, SnapshotView info, SnapshotBuilder& snapshot) {
         Variant v_addr[MAX_PATH];
         Variant v_name[MAX_PATH];
 
         char    strbuf[MAX_PATH][NAMELEN];
 
         // Init unwind context
-        unw_context_t unw_ctx;
         unw_cursor_t  unw_cursor;
 
-#ifdef __aarch64__
-        unw_getcontext(unw_ctx);
-#else
-        unw_getcontext(&unw_ctx);
-#endif
+        Entry e;
+        if (ucursor_attr != Attribute::invalid)
+            e = info.get(ucursor_attr);
+        if (!e.empty()) {
+            unw_cursor = *static_cast<unw_cursor_t*>(e.value().get_ptr());
+        } else {
+            unw_context_t unw_ctx;
 
-        if (unw_init_local(&unw_cursor, &unw_ctx) < 0) {
-            Log(0).stream() << "callpath: unable to init libunwind cursor" << endl;
-            return;
+            #ifdef __aarch64__
+            unw_getcontext(unw_ctx);
+            #else
+            unw_getcontext(&unw_ctx);
+            #endif
+
+            if (unw_init_local(&unw_cursor, &unw_ctx) < 0) {
+                Log(0).stream() << "callpath: unable to init libunwind cursor" << endl;
+                return;
+            }
         }
 
         // skip n frames
@@ -112,13 +120,13 @@ class Callpath
 
         if (n > 0) {
             if (use_addr)
-                snapshot->append(
-                    c->make_tree_entry(callpath_addr_attr, n, v_addr+(MAX_PATH-n),
-                                       &callpath_root_node));
+                snapshot.append(
+                    Entry(c->make_tree_entry(callpath_addr_attr, n, v_addr+(MAX_PATH-n),
+                                             &callpath_root_node)));
             if (use_name)
-                snapshot->append(
-                    c->make_tree_entry(callpath_name_attr, n, v_name+(MAX_PATH-n),
-                                       &callpath_root_node));
+                snapshot.append(
+                    Entry(c->make_tree_entry(callpath_name_attr, n, v_name+(MAX_PATH-n),
+                                             &callpath_root_node)));
         }
     }
 
@@ -174,11 +182,14 @@ class Callpath
 #endif
     }
 
+    void post_init_evt(Caliper* c, Channel*) {
+        ucursor_attr = c->get_attribute("cali.unw_cursor");
+    }
+
     Callpath(Caliper* c, Channel* chn)
         : callpath_root_node(CALI_INV_ID, CALI_INV_ID, Variant())
         {
-            ConfigSet config =
-                chn->config().init("callpath", s_configdata);
+            ConfigSet config = services::init_config_from_spec(chn->config(), s_spec);
 
             use_name      = config.get("use_name").to_bool();
             use_addr      = config.get("use_address").to_bool();
@@ -210,11 +221,17 @@ class Callpath
 
 public:
 
+    static const char* s_spec;
+
     static void callpath_service_register(Caliper* c, Channel* chn) {
         Callpath* instance = new Callpath(c, chn);
 
+        chn->events().post_init_evt.connect(
+            [instance](Caliper* c, Channel* chn){
+                instance->post_init_evt(c, chn);
+            });
         chn->events().snapshot.connect(
-            [instance](Caliper* c, Channel* chn, int scope, const SnapshotRecord* info, SnapshotRecord* snapshot){
+            [instance](Caliper* c, Channel* chn, int scope, SnapshotView info, SnapshotBuilder& snapshot){
                 instance->snapshot_cb(c, chn, scope, info, snapshot);
             });
         chn->events().finish_evt.connect(
@@ -227,33 +244,39 @@ public:
 
 }; // class Callpath
 
-const ConfigSet::Entry Callpath::s_configdata[] = {
-    { "use_name", CALI_TYPE_BOOL, "false",
-      "Record region names for call path.",
-      "Record region names for call path. Incurs higher overhead."
-    },
-    { "use_address", CALI_TYPE_BOOL, "true",
-      "Record region addresses for call path",
-      "Record region addresses for call path"
-    },
-    { "skip_frames", CALI_TYPE_UINT, "0",
-      "Skip this number of stack frames",
-      "Skip this number of stack frames.\n"
-      "Avoids recording stack frames within the caliper library"
-    },
-    { "skip_internal", CALI_TYPE_BOOL, "true",
-      "Skip caliper-internal stack frames",
-      "Skip caliper-internal stack frames. Requires libdw support.\n"
-    },
-    ConfigSet::Terminator
-};
+const char* Callpath::s_spec = R"json(
+{   "name"        : "callpath",
+    "description" : "Record call stack at each snapshot",
+    "config"      : [
+        { "name"        : "use_name",
+          "type"        : "bool",
+          "description" : "Record function names",
+          "value"       : "false"
+        },
+        { "name"        : "use_address",
+          "type"        : "bool",
+          "description" : "Record function addresses",
+          "value"       : "true"
+        },
+        { "name"        : "skip_frames",
+          "type"        : "uint",
+          "description" : "Skip this number of stack frames",
+          "value"       : "0"
+        },
+        { "name"        : "skip_internal",
+          "type"        : "bool",
+          "description" : "Skip internal (inside Caliper library) stack frames",
+          "value"       : "true"
+        }
+    ]
+}
+)json";
 
 } // namespace [anonymous]
-
 
 namespace cali
 {
 
-CaliperService callpath_service = { "callpath", ::Callpath::callpath_service_register };
+CaliperService callpath_service = { ::Callpath::s_spec, ::Callpath::callpath_service_register };
 
 } // namespace cali

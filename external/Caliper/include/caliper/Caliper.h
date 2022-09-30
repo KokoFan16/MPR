@@ -8,10 +8,11 @@
 
 #include "cali_definitions.h"
 
+#include "SnapshotRecord.h"
+
 #include "common/Attribute.h"
 #include "common/CaliperMetadataAccessInterface.h"
 #include "common/Entry.h"
-#include "common/IdType.h"
 #include "common/Variant.h"
 #include "common/util/callback.hpp"
 
@@ -27,7 +28,6 @@ class  Caliper;
 struct CaliperService;
 class  Node;
 class  RuntimeConfig;
-class  SnapshotRecord;
 
 // --- Typedefs
 
@@ -37,7 +37,7 @@ typedef std::function<void(CaliperMetadataAccessInterface&,const std::vector<cal
 
 /// \brief Maintain a single data collection configuration with
 ///    callbacks and associated measurement data.
-class Channel : public IdType
+class Channel
 {
     struct ChannelImpl;
 
@@ -60,16 +60,16 @@ public:
         typedef util::callback<void(Caliper*,Channel*)>
             caliper_cbvec;
 
-        typedef util::callback<void(Caliper*,Channel*,int,const SnapshotRecord*,SnapshotRecord*)>
+        typedef util::callback<void(Caliper*,Channel*,int,SnapshotView,SnapshotBuilder&)>
             snapshot_cbvec;
-        typedef util::callback<void(Caliper*,Channel*,const SnapshotRecord*,const SnapshotRecord*)>
+        typedef util::callback<void(Caliper*,Channel*,SnapshotView,SnapshotView)>
             process_snapshot_cbvec;
         typedef util::callback<void(Caliper*,Channel*,std::vector<Entry>&)>
             edit_snapshot_cbvec;
 
-        typedef util::callback<void(Caliper*,Channel*,const SnapshotRecord*,SnapshotFlushFn)>
+        typedef util::callback<void(Caliper*,Channel*,SnapshotView,SnapshotFlushFn)>
             flush_cbvec;
-        typedef util::callback<void(Caliper*,Channel*,const SnapshotRecord*)>
+        typedef util::callback<void(Caliper*,Channel*,SnapshotView)>
             write_cbvec;
 
         typedef util::callback<void(Caliper*,Channel*,const void*, const char*, size_t, size_t, const size_t*,
@@ -176,6 +176,8 @@ public:
     /// Channels can be enabled and disabled with Caliper::activate_channel()
     /// and Caliper::deactivate_channel().
     bool           is_active() const;
+
+    cali_id_t      id() const;
 
     friend class Caliper;
 };
@@ -313,12 +315,28 @@ public:
     /// \param trigger_info A caller-provided list of attributes that is passed
     ///   to the snapshot and process_snapshot callbacks, and added to the
     ///   returned snapshot record.
-    void      push_snapshot(Channel* channel, const SnapshotRecord* trigger_info);
+    void      push_snapshot(Channel* channel, SnapshotView trigger_info);
+
+    /// \brief Return context data from blackboards.
+    ///
+    /// This function updates the caller-provided snapshot record builder
+    /// with the %Caliper blackboard contents.
+    ///
+    /// This function is signal safe.
+    ///
+    /// \param channel The %Caliper channel to fetch the context from.
+    /// \param scopes Defines which blackboard contents (thread, process,
+    ///   channel) are returned. Bitwise combination of cali_context_scope_t
+    ///   flags.
+    /// \param trigger_info A caller-provided record that is passed to the
+    ///   snapshot callback, and added to the returned snapshot record.
+    /// \param rec The snapshot record buffer to update.
+    void     pull_context(Channel* channel, int scopes, SnapshotBuilder& rec);
 
     /// \brief Trigger and return a snapshot.
     ///
-    /// This function triggers a snapshot for a given channel and returns a
-    /// snapshot record to the caller. The returned snapshot record contains
+    /// This function triggers a snapshot for a given channel and updates the
+    /// snapshot record provided the caller. The updated record contains
     /// the  current blackboard contents, measurement values provided by
     /// service modules, and the contents of the trigger_info list provided by
     /// the caller.
@@ -333,12 +351,13 @@ public:
     /// This function is signal safe.
     ///
     /// \param channel The %Caliper channel to fetch the snapshot from.
+    /// \param scopes Defines which blackboard contents (thread, process,
+    ///   channel) are returned. Bitwise combination of cali_context_scope_t
+    ///   flags.
     /// \param trigger_info A caller-provided record that is passed to the
     ///   snapshot callback, and added to the returned snapshot record.
-    /// \param sbuf A caller-provided snapshot record buffer in which the
-    ///   snapshot record is returned. Must have sufficient space for the
-    ///   snapshot contents.
-    void      pull_snapshot(Channel* channel, int scopes, const SnapshotRecord* trigger_info, SnapshotRecord* snapshot);
+    /// \param rec The snapshot record buffer to update.
+    void      pull_snapshot(Channel* channel, int scopes, SnapshotView trigger_info, SnapshotBuilder& rec);
 
     // --- Flush and I/O API
 
@@ -348,7 +367,7 @@ public:
 
     /// \brief Flush aggregation/trace buffer contents into the \a proc_fn
     ///   processing function.
-    void      flush(Channel* channel, const SnapshotRecord* flush_info, SnapshotFlushFn proc_fn);
+    void      flush(Channel* channel, SnapshotView flush_info, SnapshotFlushFn proc_fn);
 
     /// \brief Flush snapshot buffer contents on \a channel into the registered
     ///   output services.
@@ -359,7 +378,7 @@ public:
     ///
     /// \param channel The channel to flush
     /// \param input_flush_info User-provided flush context information
-    void      flush_and_write(Channel* channel, const SnapshotRecord* flush_info);
+    void      flush_and_write(Channel* channel, SnapshotView flush_info);
 
     /// \brief Clear snapshot buffers on \a channel
     ///
@@ -487,12 +506,12 @@ public:
     /// \param n      Number of elements in attribute/value lists
     /// \param attr   Attribute list
     /// \param data   Value list
-    /// \param list   Output record
+    /// \param list   Output record builder
     /// \param parent (Optional) parent node for any treee elements.
     void      make_record(size_t n,
                           const Attribute  attr[],
                           const Variant    data[],
-                          SnapshotRecord&  list,
+                          SnapshotBuilder& rec,
                           cali::Node*      parent = nullptr);
 
     // --- Metadata Access Interface

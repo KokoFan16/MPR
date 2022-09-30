@@ -6,6 +6,8 @@
 
 #include "caliper/CaliperService.h"
 
+#include "../Services.h"
+
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
 
@@ -24,6 +26,11 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 
+#ifdef CALIPER_HAVE_LIBUNWIND
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+#endif
+
 #include "context.h"
 
 using namespace cali;
@@ -34,8 +41,8 @@ namespace
 
 Attribute   timer_attr   { Attribute::invalid };
 Attribute   sampler_attr { Attribute::invalid };
+Attribute   ucursor_attr { Attribute::invalid };
 
-cali_id_t   sampler_attr_id     = CALI_INV_ID;
 int         nsec_interval       = 0;
 
 int         n_samples           = 0;
@@ -43,13 +50,18 @@ int         n_processed_samples = 0;
 
 Channel* channel          = nullptr;
 
-static const ConfigSet::Entry s_configdata[] = {
-    { "frequency", CALI_TYPE_INT, "50",
-      "Sampling frequency (in Hz)",
-      "Sampling frequency (in Hz)"
-    },
-    ConfigSet::Terminator
-};
+const char* spec = R"json(
+{   "name": "sampler",
+    "description": "Trigger snapshots via sampling timer",
+    "config": [
+        { "name": "frequency",
+          "description": "Sampling frequency in Hz",
+          "type": "int",
+          "value": "50"
+        }
+    ]
+}
+)json";
 
 void on_prof(int sig, siginfo_t *info, void *context)
 {
@@ -60,17 +72,34 @@ void on_prof(int sig, siginfo_t *info, void *context)
     if (!c)
         return;
 
+    Entry data[2];
+    unsigned count = 0;
+
 #ifdef CALI_SAMPLER_GET_PC
     uint64_t  pc = static_cast<uint64_t>( CALI_SAMPLER_GET_PC(context) );
     Variant v_pc(CALI_TYPE_ADDR, &pc, sizeof(uint64_t));
-
-    SnapshotRecord trigger_info(1, &sampler_attr_id, &v_pc);
-#else
-    SnapshotRecord trigger_info;
+    data[count++] = Entry(sampler_attr, v_pc);
 #endif
 
-    c.push_snapshot(channel, &trigger_info);
+#ifdef CALIPER_HAVE_LIBUNWIND
+    unw_context_t unw_ctx;
+    unw_cursor_t  unw_cursor;
 
+#ifdef __aarch64__
+    unw_getcontext(unw_ctx);
+#else
+    unw_getcontext(&unw_ctx);
+#endif
+
+    if (unw_init_local(&unw_cursor, &unw_ctx) >= 0) {
+        unw_step(&unw_cursor); // get us out of the sample handler frame
+
+        Variant v_cursor(cali_make_variant_from_ptr(&unw_cursor));
+        data[count++] = Entry(ucursor_attr, v_cursor);
+    }
+#endif
+
+    c.push_snapshot(channel, SnapshotView(count, data));
     ++n_processed_samples;
 }
 
@@ -140,7 +169,7 @@ void setup_settimer(Caliper* c)
 void clear_timer(Caliper* c, Channel* chn) {
     Entry e = c->get(timer_attr);
 
-    if (e.is_empty()) {
+    if (e.empty()) {
         Log(0).stream() << chn->name() << ": Sampler: Timer attribute not found " << endl;
         return;
     }
@@ -164,10 +193,12 @@ void release_thread_cb(Caliper* c, Channel* chn) {
     clear_timer(c, chn);
 }
 
-void finish_cb(Caliper* c, Channel* chn) {
+void pre_finish_cb(Caliper* c, Channel* chn) {
     clear_timer(c, chn);
     clear_signal();
+}
 
+void finish_cb(Caliper* c, Channel* chn) {
     Log(1).stream() << chn->name()
                     << ": Sampler: processed " << n_processed_samples << " samples ("
                     << n_samples << " total, "
@@ -189,7 +220,7 @@ void sampler_register(Caliper* c, Channel* chn)
         return;
     }
 
-    ConfigSet config = chn->config().init("sampler", s_configdata);
+    ConfigSet config = services::init_config_from_spec(chn->config(), spec);
 
     Attribute symbol_class_attr = c->get_attribute("class.symboladdress");
     Variant v_true(true);
@@ -206,8 +237,12 @@ void sampler_register(Caliper* c, Channel* chn)
                             CALI_ATTR_SKIP_EVENTS  |
                             CALI_ATTR_ASVALUE,
                             1, &symbol_class_attr, &v_true);
-
-    sampler_attr_id = sampler_attr.id();
+    ucursor_attr =
+        c->create_attribute("cali.unw_cursor", CALI_TYPE_PTR,
+                            CALI_ATTR_SCOPE_THREAD |
+                            CALI_ATTR_SKIP_EVENTS  |
+                            CALI_ATTR_ASVALUE      |
+                            CALI_ATTR_HIDDEN);
 
     int frequency = config.get("frequency").to_int();
 
@@ -220,6 +255,7 @@ void sampler_register(Caliper* c, Channel* chn)
 
     chn->events().create_thread_evt.connect(create_thread_cb);
     chn->events().release_thread_evt.connect(release_thread_cb);
+    chn->events().pre_finish_evt.connect(pre_finish_cb);
     chn->events().finish_evt.connect(finish_cb);
 
     channel = chn;
@@ -236,6 +272,6 @@ void sampler_register(Caliper* c, Channel* chn)
 namespace cali
 {
 
-CaliperService sampler_service { "sampler", ::sampler_register };
+CaliperService sampler_service { spec, ::sampler_register };
 
 }

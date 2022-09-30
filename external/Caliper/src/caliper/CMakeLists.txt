@@ -8,8 +8,8 @@ set(CALIPER_RUNTIME_SOURCES
   CustomOutputController.cpp
   MemoryPool.cpp
   MetadataTree.cpp
+  RegionFilter.cpp
   RegionProfile.cpp
-  SnapshotRecord.cpp
   api.cpp
   builtin_configmanager.cpp
   cali.cpp
@@ -21,10 +21,6 @@ add_subdirectory(controllers)
 add_library(caliper-runtime OBJECT ${CALIPER_RUNTIME_SOURCES})
 
 target_compile_options(caliper-runtime PRIVATE ${Wall_flag})
-
-if (${BUILD_SHARED_LIBS})
-  set_property(TARGET caliper-runtime PROPERTY POSITION_INDEPENDENT_CODE TRUE)
-endif()
 
 list(APPEND CALIPER_SERIAL_OBJS
   caliper/machine_serial.cpp

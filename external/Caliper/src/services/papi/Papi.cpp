@@ -6,6 +6,8 @@
 
 #include "caliper/CaliperService.h"
 
+#include "../Services.h"
+
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
 
@@ -23,13 +25,6 @@ using namespace cali;
 
 #include <papi.h>
 
-namespace cali
-{
-
-extern cali::Attribute class_aggregatable_attr;
-
-}
-
 namespace
 {
 
@@ -45,7 +40,7 @@ class PapiService
 {
     struct event_group_t {
         std::vector<int> codes;
-        std::vector<cali_id_t> attrs;
+        std::vector<Attribute> attrs;
     };
 
     typedef std::map< int, std::shared_ptr<event_group_t> >
@@ -87,13 +82,9 @@ class PapiService
 
     static int s_num_instances;
 
-    static const ConfigSet::Entry s_configdata[];
-
-
     bool setup_event_info(Caliper* c, const std::vector<std::string>& eventlist) {
         m_event_groups.clear();
 
-        Variant v_true(true);
         int count = 0;
 
         for (auto &name : eventlist) {
@@ -124,8 +115,8 @@ class PapiService
                 c->create_attribute(std::string("papi.")+name, CALI_TYPE_UINT,
                                     CALI_ATTR_SCOPE_THREAD |
                                     CALI_ATTR_SKIP_EVENTS  |
-                                    CALI_ATTR_ASVALUE,
-                                    1, &class_aggregatable_attr, &v_true);
+                                    CALI_ATTR_ASVALUE      |
+                                    CALI_ATTR_AGGREGATABLE);
 
             int component = PAPI_get_event_component(code);
 
@@ -137,7 +128,7 @@ class PapiService
             }
 
             it->second->codes.push_back(code);
-            it->second->attrs.push_back(attr.id());
+            it->second->attrs.push_back(attr);
 
             ++count;
         }
@@ -246,13 +237,13 @@ class PapiService
     get_thread_info(Caliper* c) {
         Entry e = c->get(m_thread_attr);
 
-        if (e.is_empty())
+        if (e.empty())
             return nullptr;
 
         return static_cast<ThreadInfo*>(e.value().get_ptr());
     }
 
-    void read_events(int eventset, const event_group_t& grp, SnapshotRecord* rec) {
+    void read_events(int eventset, const event_group_t& grp, SnapshotBuilder& rec) {
         long long values[MAX_COUNTERS];
 
         int ret = PAPI_read(eventset, values);
@@ -273,7 +264,7 @@ class PapiService
         }
 
         for (int i = 0; i < count; ++i)
-            rec->append(grp.attrs[i], Variant(cali_make_variant_from_uint(values[i])));
+            rec.append(grp.attrs[i], Variant(cali_make_variant_from_uint(values[i])));
     }
 
     bool
@@ -352,7 +343,7 @@ class PapiService
     }
 
     void
-    snapshot(Caliper* c, SnapshotRecord* rec) {
+    snapshot(Caliper* c, SnapshotBuilder& rec) {
         ThreadInfo* td = get_thread_info(c);
 
         if (!td)
@@ -450,9 +441,11 @@ public:
         }
     }
 
+    static const char* s_spec;
+
     static void register_papi(Caliper* c, Channel* channel) {
         auto eventlist =
-            channel->config().init("papi", s_configdata).get("counters").to_stringlist(",");
+            services::init_config_from_spec(channel->config(), s_spec).get("counters").to_stringlist(",");
 
         if (eventlist.empty()) {
             Log(1).stream() << channel->name()
@@ -494,7 +487,7 @@ public:
                 instance->finish_thread_eventsets(c);
             });
         channel->events().snapshot.connect(
-            [instance](Caliper* c, Channel*, int, const SnapshotRecord*, SnapshotRecord* rec){
+            [instance](Caliper* c, Channel*, int, SnapshotView, SnapshotBuilder& rec){
                 instance->snapshot(c, rec);
             });
         channel->events().finish_evt.connect(
@@ -510,13 +503,17 @@ public:
 
 int PapiService::s_num_instances = 0;
 
-const ConfigSet::Entry PapiService::s_configdata[] = {
-    { "counters", CALI_TYPE_STRING, "",
-      "List of PAPI events to record",
-      "List of PAPI events to record, separated by ','"
-    },
-    ConfigSet::Terminator
-};
+const char* PapiService::s_spec = R"json(
+{   "name": "papi",
+    "description": "Record PAPI counters",
+    "config": [
+        {   "name": "counters",
+            "description": "List of PAPI events to record",
+            "type": "string"
+        }
+    ]
+}
+)json";
 
 } // namespace
 
@@ -524,6 +521,6 @@ const ConfigSet::Entry PapiService::s_configdata[] = {
 namespace cali
 {
 
-CaliperService papi_service = { "papi", ::PapiService::register_papi };
+CaliperService papi_service = { ::PapiService::s_spec, ::PapiService::register_papi };
 
 } // namespace cali

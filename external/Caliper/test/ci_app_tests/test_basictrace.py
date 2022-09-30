@@ -274,25 +274,6 @@ class CaliperBasicTraceTest(unittest.TestCase):
                 'cali.attribute.prop' : '12',
                 'cali.attribute.type' : 'string' }))
 
-    def test_postprocess_snapshot(self):
-        target_cmd = [ './ci_test_postprocess_snapshot' ]
-        query_cmd  = [ '../../src/tools/cali-query/cali-query', '-e' ]
-
-        caliper_config = {
-            'CALI_SERVICES_ENABLE'   : 'trace:recorder',
-            'CALI_RECORDER_FILENAME' : 'stdout',
-            'CALI_LOG_VERBOSITY'     : '0',
-        }
-
-        query_output = cat.run_test_with_query(target_cmd, query_cmd, caliper_config)
-        snapshots = cat.get_snapshots_from_text(query_output)
-
-        self.assertTrue(cat.has_snapshot_with_attributes(
-            snapshots, {
-                'snapshot.val'     : '49',
-                'postprocess.val'  : '42',
-                'postprocess.node' : '36' }))
-
     def test_binding(self):
         target_cmd = [ './ci_test_binding' ]
         query_cmd  = [ '../../src/tools/cali-query/cali-query', '-e' ]
@@ -308,6 +289,47 @@ class CaliperBasicTraceTest(unittest.TestCase):
 
         self.assertTrue(cat.has_snapshot_with_attributes(
             snapshots, { 'testbinding' : 'binding.nested=outer/binding.nested=inner' }))
+
+    def test_inclusive_region_filter(self):
+        target_cmd = [ './ci_test_macros', '0', 'event-trace,include_regions="startswith(main)",output=stdout' ]
+        query_cmd = [ '../../src/tools/cali-query/cali-query', '-e' ]
+
+        caliper_config = {
+            'CALI_LOG_VERBOSITY' : '0'
+        }
+
+        query_output = cat.run_test_with_query(target_cmd, query_cmd, caliper_config)
+        snapshots = cat.get_snapshots_from_text(query_output)
+
+        self.assertTrue(cat.has_snapshot_with_attributes(
+            snapshots, {
+                'function' : 'main',
+                'loop'     : 'main loop'
+            }))
+        self.assertFalse(cat.has_snapshot_with_attributes(
+            snapshots, {
+                'annotation': 'pre-loop'
+            }))
+
+    def test_exclusive_region_filter(self):
+        target_cmd = [ './ci_test_macros', '0', 'hatchet-region-profile,exclude_regions=before_loop,output.format=cali,output=stdout' ]
+        query_cmd = [ '../../src/tools/cali-query/cali-query', '-e' ]
+
+        caliper_config = {
+            'CALI_LOG_VERBOSITY' : '0'
+        }
+
+        query_output = cat.run_test_with_query(target_cmd, query_cmd, caliper_config)
+        snapshots = cat.get_snapshots_from_text(query_output)
+
+        self.assertTrue(cat.has_snapshot_with_attributes(
+            snapshots, {
+                'function' : 'main/foo',
+                'loop'     : 'main loop/fooloop' }))
+        self.assertFalse(cat.has_snapshot_with_attributes(
+            snapshots, {
+                'function'   : 'main',
+                'annotation' : 'before_loop' }))
 
 if __name__ == "__main__":
     unittest.main()

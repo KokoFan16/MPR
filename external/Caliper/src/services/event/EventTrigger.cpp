@@ -6,6 +6,10 @@
 
 #include "caliper/CaliperService.h"
 
+#include "../Services.h"
+
+#include "../../caliper/RegionFilter.h"
+
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
 
@@ -35,12 +39,6 @@ namespace
 class EventTrigger
 {
     //
-    // --- Static data
-    //
-
-    static const ConfigSet::Entry s_configdata[];
-
-    //
     // --- Per-channel instance data
     //
 
@@ -57,6 +55,8 @@ class EventTrigger
     bool                     enable_snapshot_info;
 
     Node                     event_root_node;
+
+    RegionFilter             region_filter;
 
     //
     // --- Helpers / misc
@@ -89,7 +89,7 @@ class EventTrigger
 
         c->make_tree_entry(exp_marker_attr,
                            Variant(CALI_TYPE_USR, evt_attr_ids, sizeof(evt_attr_ids)),
-                           c->node(attr.node()->id()));
+                           attr.node());
 
         Log(2).stream() << chn->name() << ": event: Marked attribute " << attr.name() << std::endl;
     }
@@ -129,6 +129,8 @@ class EventTrigger
 
         if (!marker_node)
             return;
+        if (attr.type() == CALI_TYPE_STRING && !region_filter.pass(static_cast<const char*>(value.data())))
+            return;
 
         if (enable_snapshot_info) {
             assert(!marker_node->data().empty());
@@ -147,13 +149,12 @@ class EventTrigger
             Attribute attrs[2] = { trigger_begin_attr, begin_attr };
             Variant    vals[2] = { Variant(attr.id()), value };
 
-            SnapshotRecord::FixedSnapshotRecord<2> trigger_info_data;
-            SnapshotRecord trigger_info(trigger_info_data);
+            FixedSizeSnapshotRecord<2> trigger_info;
 
-            c->make_record(2, attrs, vals, trigger_info, &event_root_node);
-            c->push_snapshot(chn, &trigger_info);
+            c->make_record(2, attrs, vals, trigger_info.builder(), &event_root_node);
+            c->push_snapshot(chn, trigger_info.view());
         } else {
-            c->push_snapshot(chn, nullptr);
+            c->push_snapshot(chn, SnapshotView());
         }
     }
 
@@ -161,6 +162,8 @@ class EventTrigger
         const Node* marker_node = find_exp_marker(attr);
 
         if (!marker_node)
+            return;
+        if (attr.type() == CALI_TYPE_STRING && !region_filter.pass(static_cast<const char*>(value.data())))
             return;
 
         if (enable_snapshot_info) {
@@ -180,13 +183,12 @@ class EventTrigger
             Attribute attrs[2] = { trigger_set_attr,   set_attr };
             Variant    vals[2] = { Variant(attr.id()), value    };
 
-            SnapshotRecord::FixedSnapshotRecord<2> trigger_info_data;
-            SnapshotRecord trigger_info(trigger_info_data);
+            FixedSizeSnapshotRecord<2> trigger_info;
 
-            c->make_record(2, attrs, vals, trigger_info, &event_root_node);
-            c->push_snapshot(chn, &trigger_info);
+            c->make_record(2, attrs, vals, trigger_info.builder(), &event_root_node);
+            c->push_snapshot(chn, trigger_info.view());
         } else {
-            c->push_snapshot(chn, nullptr);
+            c->push_snapshot(chn, SnapshotView());
         }
     }
 
@@ -194,6 +196,8 @@ class EventTrigger
         const Node* marker_node = find_exp_marker(attr);
 
         if (!marker_node)
+            return;
+        if (attr.type() == CALI_TYPE_STRING && !region_filter.pass(static_cast<const char*>(value.data())))
             return;
 
         if (enable_snapshot_info) {
@@ -211,17 +215,13 @@ class EventTrigger
             Attribute attrs[3] = { trigger_end_attr, end_attr, region_count_attr };
             Variant    vals[3] = { Variant(attr.id()), value, cali_make_variant_from_uint(1) };
 
-            SnapshotRecord::FixedSnapshotRecord<3> trigger_info_data;
-            SnapshotRecord trigger_info(trigger_info_data);
+            FixedSizeSnapshotRecord<3> trigger_info;
 
-            c->make_record(3, attrs, vals, trigger_info, &event_root_node);
-            c->push_snapshot(chn, &trigger_info);
+            c->make_record(3, attrs, vals, trigger_info.builder(), &event_root_node);
+            c->push_snapshot(chn, trigger_info.view());
         } else {
-            cali_id_t attr_id = region_count_attr.id();
-            Variant   v_1(cali_make_variant_from_uint(1));
-            SnapshotRecord trigger_info(1, &attr_id, &v_1);
-
-            c->push_snapshot(chn, &trigger_info);
+            Entry rcount { region_count_attr, cali_make_variant_from_uint(1) };
+            c->push_snapshot(chn, SnapshotView(1, &rcount));
         }
     }
 
@@ -237,22 +237,37 @@ class EventTrigger
                 check_attribute(c, chn, attr);
     }
 
-    EventTrigger(Caliper* c, Channel* chn)
+    EventTrigger(Caliper* c, Channel* channel)
         : event_root_node(CALI_INV_ID, CALI_INV_ID, Variant())
         {
-            Attribute aggr_attr = c->get_attribute("class.aggregatable");
-            Variant   v_true(true);
-
             region_count_attr =
                 c->create_attribute("region.count", CALI_TYPE_UINT,
-                                    CALI_ATTR_SKIP_EVENTS | CALI_ATTR_ASVALUE,
-                                    1, &aggr_attr, &v_true);
+                                    CALI_ATTR_SKIP_EVENTS |
+                                    CALI_ATTR_ASVALUE     |
+                                    CALI_ATTR_AGGREGATABLE);
 
             ConfigSet cfg =
-                chn->config().init("event", s_configdata);
+                services::init_config_from_spec(channel->config(), s_spec);
 
             trigger_attr_names   = cfg.get("trigger").to_stringlist(",:");
             enable_snapshot_info = cfg.get("enable_snapshot_info").to_bool();
+
+            {
+                std::string i_filter =
+                    cfg.get("include_regions").to_string();
+                std::string e_filter =
+                    cfg.get("exclude_regions").to_string();
+
+                auto p = RegionFilter::from_config(i_filter, e_filter);
+
+                if (!p.second.empty()) {
+                    Log(0).stream() << channel->name() << ": event: filter parse error: "
+                                    << p.second
+                                    << std::endl;
+                } else {
+                    region_filter = p.first;
+                }
+            }
 
             // register trigger events
 
@@ -266,15 +281,17 @@ class EventTrigger
                 c->create_attribute("cali.event.end",
                                     CALI_TYPE_UINT, CALI_ATTR_SKIP_EVENTS | CALI_ATTR_HIDDEN);
             exp_marker_attr =
-                c->create_attribute(std::string("event.exp#")+std::to_string(chn->id()),
+                c->create_attribute(std::string("event.exp#")+std::to_string(channel->id()),
                                     CALI_TYPE_USR,
                                     CALI_ATTR_SKIP_EVENTS |
                                     CALI_ATTR_HIDDEN);
 
-            check_existing_attributes(c, chn);
+            check_existing_attributes(c, channel);
         }
 
 public:
+
+    static const char* s_spec;
 
     static void event_trigger_register(Caliper* c, Channel* chn) {
         EventTrigger* instance = new EventTrigger(c, chn);
@@ -309,19 +326,31 @@ public:
     }
 };
 
-const ConfigSet::Entry EventTrigger::s_configdata[] = {
-    { "trigger", CALI_TYPE_STRING, "",
-      "List of attributes that trigger measurement snapshots.",
-      "Colon-separated list of attributes that trigger measurement snapshots.\n"
-      "If empty, all user attributes trigger measurement snapshots."
-    },
-    { "enable_snapshot_info", CALI_TYPE_BOOL, "true",
-      "Enable snapshot info records",
-      "Enable snapshot info records."
-    },
-
-    ConfigSet::Terminator
-};
+const char* EventTrigger::s_spec = R"json(
+    {   "name"        : "event",
+        "description" : "Trigger snapshots for Caliper region begin and end events",
+        "config"      :
+        [
+            { "name"        : "trigger",
+              "type"        : "stringlist",
+              "description" : "List of attributes that trigger measurements (optional)"
+            },
+            { "name"        : "enable_snapshot_info",
+              "type"        : "bool",
+              "description" : "If true, add begin/end attributes at each event. Increases overhead.",
+              "value"       : "True"
+            },
+            { "name"        : "include_regions",
+              "type"        : "string",
+              "description" : "Region filter to specify regions that will trigger snapshots"
+            },
+            { "name"        : "exclude_regions",
+              "type"        : "string",
+              "description" : "Region filter to specify regions that won't trigger snapshots"
+            }
+        ]
+    }
+)json";
 
 } // namespace
 
@@ -329,6 +358,6 @@ const ConfigSet::Entry EventTrigger::s_configdata[] = {
 namespace cali
 {
 
-CaliperService event_service { "event", ::EventTrigger::event_trigger_register };
+CaliperService event_service { ::EventTrigger::s_spec, ::EventTrigger::event_trigger_register };
 
 }

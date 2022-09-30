@@ -8,6 +8,8 @@
 
 #include "caliper/CaliperService.h"
 
+#include "../Services.h"
+
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
 
@@ -20,13 +22,6 @@
 #include <vector>
 
 using namespace cali;
-
-namespace cali
-{
-
-extern cali::Attribute class_aggregatable_attr;
-
-}
 
 namespace
 {
@@ -51,8 +46,6 @@ std::tuple<bool, uint64_t> measure(const TimePoint& start, const std::string& na
 // for a performance measurement) to Caliper snapshot records.
 class MeasurementTemplateService
 {
-    static const ConfigSet::Entry s_configdata[]; // Configuration variables for this service
-
     struct MeasurementInfo {
         std::string name;       // Measurement name / ID
         Attribute   value_attr; // Attribute for the measurement value
@@ -65,7 +58,7 @@ class MeasurementTemplateService
     unsigned                      m_num_errors; // Number of measurement errors encountered at runtime
     TimePoint                     m_starttime;  // Initial value for our measurement function
 
-    void snapshot_cb(Caliper* c, Channel* /*channel*/, int /*scopes*/, const SnapshotRecord* /*trigger_info*/, SnapshotRecord* rec) {
+    void snapshot_cb(Caliper* c, Channel* /*channel*/, int /*scopes*/, SnapshotView /*trigger_info*/, SnapshotBuilder& rec) {
         //   The snapshot callback triggers performance measurements.
         // Measurement services should make measurements and add them to the
         // provided SnapshotRecord parameter, e.g. using rec->append().
@@ -92,14 +85,14 @@ class MeasurementTemplateService
 
             // Append measurement value to the snapshot record
             Variant v_val(cali_make_variant_from_uint(val));
-            rec->append(m.value_attr, v_val);
+            rec.append(m.value_attr, v_val);
 
             //   We store the previous measurement value on the Caliper thread
             // blackboard so we can compute the difference since the last
             // snapshot. Here, c->exchange() stores the current and returns
             // the previous value. Compute the difference and append it.
             Variant v_prev = c->exchange(m.prval_attr, v_val);
-            rec->append(m.delta_attr, cali_make_variant_from_uint(val - v_prev.to_uint()));
+            rec.append(m.delta_attr, cali_make_variant_from_uint(val - v_prev.to_uint()));
         }
     }
 
@@ -151,16 +144,15 @@ class MeasurementTemplateService
         Variant v_true(true);
 
         //   The delta attribute stores the difference of the measurement
-        // value since the last snapshot. We add the "class.aggregatable"
-        // metadata attribute here, which lets Caliper aggregate these values
-        // automatically.
+        // value since the last snapshot. We add the "aggregatable" property
+        // here, which lets Caliper aggregate these values automatically.
         m.delta_attr =
             c->create_attribute(std::string("measurement.") + name,
                         CALI_TYPE_UINT,
                         CALI_ATTR_SCOPE_THREAD |
                         CALI_ATTR_ASVALUE      |
-                        CALI_ATTR_SKIP_EVENTS,
-                        1, &class_aggregatable_attr, &v_true);
+                        CALI_ATTR_SKIP_EVENTS  |
+                        CALI_ATTR_AGGREGATABLE);
 
         //   We use a hidden attribute to store the previous measurement
         // for <name> on Caliper's per-thread blackboard. This is a
@@ -189,7 +181,7 @@ class MeasurementTemplateService
         // config set, so the configuration variables for our service are
         // prefixed with "CALI_MEASUREMENT_TEMPLATE_". For example, set
         // "CALI_MEASUREMENT_TEMPLATE_NAMES=a,b" to set "names" to "a,b".
-        ConfigSet config = channel->config().init("measurement_template", s_configdata);
+        ConfigSet config = services::init_config_from_spec(channel->config(), s_spec);
 
         //   Read the "names" variable and treat it as a string list
         // (comma-separated list). Returns a std::vector<std::string>.
@@ -202,6 +194,10 @@ class MeasurementTemplateService
     }
 
 public:
+
+    //   The service specification in JSON format. It contains the service
+    // name, a short description, and its configuration variables.
+    static const char* s_spec;
 
     //   This is the entry function to initialize the service, specified
     // in the CaliperService structure below. It is invoked when a Caliper
@@ -229,7 +225,7 @@ public:
                 instance->post_init_cb(c, channel);
             });
         channel->events().snapshot.connect(
-            [instance](Caliper* c, Channel* channel, int scopes, const SnapshotRecord* trigger_info, SnapshotRecord* rec){
+            [instance](Caliper* c, Channel* channel, int scopes, SnapshotView trigger_info, SnapshotBuilder& rec){
                 instance->snapshot_cb(c, channel, scopes, trigger_info, rec);
             });
         channel->events().finish_evt.connect(
@@ -246,17 +242,18 @@ public:
     }
 };
 
-const ConfigSet::Entry MeasurementTemplateService::s_configdata[] = {
-    { "names",          // config variable name
-      CALI_TYPE_STRING, // datatype
-      "a,b",            // default value
-      // short description
-      "Names of measurements to record",
-      // long description
-      "Names of measurements to record, separated by ','"
-    },
-    ConfigSet::Terminator
-};
+const char* MeasurementTemplateService::s_spec = R"json(
+{   "name": "measurement_template",
+    "description": "A Caliper measurement service example",
+    "config": [
+        {   "name": "names",
+            "type": "string",
+            "description": "Names of measurements to record, separated by ','",
+            "value": "a,b"
+        }
+    ]
+}
+)json";
 
 } // namespace [anonymous]
 
@@ -264,7 +261,7 @@ namespace cali
 {
 
 CaliperService measurement_template_service = {
-    "measurement_template",
+    ::MeasurementTemplateService::s_spec,
     ::MeasurementTemplateService::register_measurement_template_service
 };
 

@@ -36,7 +36,7 @@ class MpiReport
     QuerySpec   m_local_spec;
     std::string m_filename;
 
-    void write_output_cb(Caliper* c, Channel* channel, const SnapshotRecord* flush_info) {
+    void write_output_cb(Caliper* c, Channel* channel, SnapshotView flush_info) {
         // check if we can use MPI
 
         int initialized = 0;
@@ -66,13 +66,27 @@ class MpiReport
             stream.set_stream(OutputStream::StdOut);
 
             if (!m_filename.empty())
-                stream.set_filename(m_filename.c_str(), *c, flush_info->to_entrylist());
+                stream.set_filename(m_filename.c_str(), *c, std::vector<Entry>(flush_info.begin(), flush_info.end()));
         }
 
         collective_flush(stream, *c, *channel, flush_info, m_local_spec, m_cross_spec, comm);
 
         if (comm != MPI_COMM_NULL)
             MPI_Comm_free(&comm);
+    }
+
+    void connect_mpi_finalize(Channel* channel) {
+        MpiEvents* events = mpiwrap_get_events(channel);
+
+        if (!events) {
+            Log(1).stream() << channel->name() << ": mpireport: mpi service is missing\n";
+            return;
+        }
+
+        events->mpi_finalize_evt.connect(
+            [](Caliper* c, Channel* channel){
+                c->flush_and_write(channel, SnapshotView());
+            });
     }
 
     MpiReport(const QuerySpec& cross_spec, const QuerySpec &local_spec, const std::string& filename)
@@ -104,7 +118,7 @@ public:
             new MpiReport(cross_parser.spec(), local_parser.spec(), config.get("filename").to_string());
 
         chn->events().write_output_evt.connect(
-            [instance](Caliper* c, Channel* chn, const SnapshotRecord* info){
+            [instance](Caliper* c, Channel* chn, SnapshotView info){
                 instance->write_output_cb(c, chn, info);
             });
         chn->events().finish_evt.connect(
@@ -112,11 +126,12 @@ public:
                 delete instance;
             });
 
-        if (config.get("write_on_finalize").to_bool() == true)
-            mpiwrap_get_events(chn).mpi_finalize_evt.connect(
-                [](Caliper* c, Channel* chn){
-                    c->flush_and_write(chn, nullptr);
+        if (config.get("write_on_finalize").to_bool() == true) {
+            chn->events().post_init_evt.connect(
+                [instance](Caliper*, Channel* channel){
+                    instance->connect_mpi_finalize(channel);
                 });
+        }
 
         Log(1).stream() << chn->name() << ": Registered mpireport service" << std::endl;
     }

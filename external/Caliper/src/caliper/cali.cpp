@@ -138,14 +138,12 @@ cali_push_snapshot(int /*scope*/, int n,
         data[i] = Variant(trigger_info_val_list[i]);
     }
 
-    SnapshotRecord::FixedSnapshotRecord<64> trigger_info_data;
-    SnapshotRecord trigger_info(trigger_info_data);
-
-    c.make_record(n, attr, data, trigger_info);
+    FixedSizeSnapshotRecord<64> trigger_info;
+    c.make_record(n, attr, data, trigger_info.builder());
 
     for (auto chn : c.get_all_channels())
         if (chn->is_active())
-            c.push_snapshot(chn, &trigger_info);
+            c.push_snapshot(chn, trigger_info.view());
 }
 
 void
@@ -165,15 +163,13 @@ cali_channel_push_snapshot(cali_id_t chn_id, int /*scope*/, int n,
         data[i] = Variant(trigger_info_val_list[i]);
     }
 
-    SnapshotRecord::FixedSnapshotRecord<64> trigger_info_data;
-    SnapshotRecord trigger_info(trigger_info_data);
-
-    c.make_record(n, attr, data, trigger_info);
+    FixedSizeSnapshotRecord<64> trigger_info;
+    c.make_record(n, attr, data, trigger_info.builder());
 
     Channel* chn = c.get_channel(chn_id);
 
     if (chn && chn->is_active())
-        c.push_snapshot(chn, &trigger_info);
+        c.push_snapshot(chn, trigger_info.view());
 }
 
 size_t
@@ -184,18 +180,17 @@ cali_channel_pull_snapshot(cali_id_t chn_id, int scopes, size_t len, unsigned ch
     if (!c)
         return 0;
 
-    SnapshotRecord::FixedSnapshotRecord<SNAP_MAX> snapshot_buffer;
-    SnapshotRecord snapshot(snapshot_buffer);
-
+    FixedSizeSnapshotRecord<SNAP_MAX> snapshot;
     Channel* chn = c.get_channel(chn_id);
 
     if (chn)
-        c.pull_snapshot(chn, scopes, nullptr, &snapshot);
+        c.pull_snapshot(chn, scopes, SnapshotView(), snapshot.builder());
     else
         Log(0).stream() << "cali_channel_pull_snapshot(): invalid channel id " << chn_id << std::endl;
 
     CompressedSnapshotRecord rec(len, buf);
-    rec.append(&snapshot);
+    SnapshotView view(snapshot.view());
+    rec.append(view.size(), view.data());
 
     return rec.needed_len();
 }
@@ -657,39 +652,6 @@ struct _cali_configset_t {
     std::map<std::string, std::string> cfgset;
 };
 
-
-/**
- *
- * When the BG/Q machines die at LLNL, we can delete these.
- * They exist because BG/Q had Clang compilers that *mostly*
- * supported C++11, except for features like std::vector<T>::emplace.
- */
-
-template<typename Container, typename = void>
-struct emplace_helper{
-    template<typename Emplaced>
-    static void emplace(Container& emplace_into, Emplaced object){
-        emplace_into.insert(object);
-    }
-};
-
-template<typename Container>
-struct emplace_helper<
-   Container,
-   typename std::enable_if<
-       std::is_same<
-           decltype(std::declval<Container>().emplace(std::make_pair("",""))),
-           decltype(std::declval<Container>().emplace(std::make_pair("","")))
-       >::value
-       , void
-   >::type
-> {
-    template<typename Emplaced>
-    static void emplace(Container& emplace_into, Emplaced&& object){
-        emplace_into.emplace(object);
-    }
-};
-
 cali_configset_t
 cali_create_configset(const char* keyvallist[][2])
 {
@@ -698,10 +660,8 @@ cali_create_configset(const char* keyvallist[][2])
     if (!keyvallist)
         return cfg;
 
-    for ( ; (*keyvallist)[0] && (*keyvallist)[1]; ++keyvallist){
-        emplace_helper<decltype(cfg->cfgset)>::emplace( cfg->cfgset, std::make_pair(std::string((*keyvallist)[0]),
-                                            std::string((*keyvallist)[1])) );
-    }
+    for ( ; (*keyvallist)[0] && (*keyvallist)[1]; ++keyvallist)
+        cfg->cfgset.insert(std::make_pair((*keyvallist)[0], (*keyvallist)[1]));
 
     return cfg;
 }
@@ -793,7 +753,7 @@ cali_flush(int flush_opts)
     Channel* channel = c.get_channel(0); // channel 0 should be the default channel
 
     if (channel && channel->is_active()) {
-        c.flush_and_write(channel, nullptr);
+        c.flush_and_write(channel, SnapshotView());
 
         if (flush_opts & CALI_FLUSH_CLEAR_BUFFERS)
             c.clear(channel);
@@ -806,7 +766,7 @@ cali_channel_flush(cali_id_t chn_id, int flush_opts)
     Caliper  c;
     Channel* chn = c.get_channel(chn_id);
 
-    c.flush_and_write(chn, nullptr);
+    c.flush_and_write(chn, SnapshotView());
 
     if (flush_opts & CALI_FLUSH_CLEAR_BUFFERS)
         c.clear(chn);
@@ -906,7 +866,7 @@ write_report_for_query(cali_id_t chn_id, const char* query, int flush_opts, std:
 
     QueryProcessor queryP(spec, stream);
 
-    c.flush(chn, nullptr, [&queryP](CaliperMetadataAccessInterface& db, const std::vector<Entry>& rec){
+    c.flush(chn, SnapshotView(), [&queryP](CaliperMetadataAccessInterface& db, const std::vector<Entry>& rec){
             queryP.process_record(db, rec);
         });
 

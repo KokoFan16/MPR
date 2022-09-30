@@ -2,17 +2,13 @@
 # Caliper
 #
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.12)
 project (caliper C CXX)
 
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.3)
-    # ensure visibility gets honored for all targets
-    cmake_policy(SET CMP0063 NEW)
-endif()
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
-   # Use <PackageName>_ROOT variables in find_package()
-   cmake_policy(SET CMP0074 NEW)
-endif()
+# ensure visibility gets honored for all targets
+cmake_policy(SET CMP0063 NEW)
+# Use <PackageName>_ROOT variables in find_package()
+cmake_policy(SET CMP0074 NEW)
 
 # set the default visibility settings
 set(CMAKE_VISIBILITY_INLINES_HIDDEN OFF)
@@ -21,7 +17,7 @@ set(CMAKE_CXX_VISIBILITY_PRESET "default")
 
 # Version information
 set(CALIPER_MAJOR_VERSION 2)
-set(CALIPER_MINOR_VERSION 8)
+set(CALIPER_MINOR_VERSION 9)
 set(CALIPER_PATCH_VERSION 0)
 set(CALIPER_VERSION "${CALIPER_MAJOR_VERSION}.${CALIPER_MINOR_VERSION}.${CALIPER_PATCH_VERSION}-dev")
 
@@ -73,6 +69,7 @@ add_caliper_option(WITH_DYNINST   "Enable dyninst (for symbollookup service" FAL
 add_caliper_option(WITH_GOTCHA    "Enable GOTCHA wrapping" ${CALIPER_HAVE_LINUX})
 add_caliper_option(WITH_ROCTX     "Enable AMD RocTX support" FALSE)
 add_caliper_option(WITH_ROCTRACER "Enable AMD RocTracer support" FALSE)
+add_caliper_option(WITH_ROCM      "Enable AMD RocTracer and RocTX support" FALSE)
 add_caliper_option(WITH_SOS       "Enable SOSFlow data management" FALSE)
 add_caliper_option(WITH_TAU       "Enable TAU service (TAU Performance System)" FALSE)
 add_caliper_option(WITH_VTUNE     "Enable Intel(R) VTune(tm) annotation bindings" FALSE)
@@ -80,6 +77,8 @@ add_caliper_option(WITH_ADIAK     "Enable adiak support" FALSE)
 add_caliper_option(WITH_KOKKOS    "Enable Kokkos profiling support" TRUE)
 add_caliper_option(WITH_PCP       "Enable performance co-pilot support" FALSE)
 add_caliper_option(WITH_VARIORUM  "Enable Variorum support" FALSE)
+add_caliper_option(WITH_UMPIRE    "Enable Umpire statistics support" FALSE)
+add_caliper_option(WITH_CRAYPAT   "Enable CrayPAT region forwarding support" FALSE)
 
 add_caliper_option(USE_EXTERNAL_GOTCHA "Use pre-installed gotcha instead of building our own" FALSE)
 
@@ -202,7 +201,8 @@ if(WITH_CUPTI)
           ${CUDAToolkit_TARGET_DIR}/extras/CUPTI/include)
       list(APPEND CALI_CUPTI_INCLUDE_DIRS ${_real_cupti_include_dir})
       list(REMOVE_DUPLICATES CALI_CUPTI_INCLUDE_DIRS)
-      if (BUILD_SHARED_LIBS)
+      # The static library is not always installed
+      if (BUILD_SHARED_LIBS OR NOT TARGET CUDA::cupti_static)
         list(APPEND CALIPER_EXTERNAL_LIBS CUDA::cupti)
       else()
         find_library(RT_LIB rt REQUIRED)
@@ -359,7 +359,7 @@ if (WITH_MPI)
   endif()
 endif()
 
-if (WITH_ROCTX)
+if (WITH_ROCTX OR WITH_ROCM)
   include(FindRocTX)
   if (ROCTX_FOUND)
     set(CALIPER_HAVE_ROCTX TRUE)
@@ -371,7 +371,7 @@ if (WITH_ROCTX)
   endif()
 endif()
 
-if (WITH_ROCTRACER)
+if (WITH_ROCTRACER OR WITH_ROCM)
   include(FindRoctracer)
   if (ROCTRACER_FOUND)
     set(CALIPER_HAVE_ROCTRACER TRUE)
@@ -380,6 +380,18 @@ if (WITH_ROCTRACER)
   else()
     message(WARNING "RocTracer support requested but ROCm was not found!\n"
       "Set ROCM_PREFIX to installation path and re-run cmake.")
+  endif()
+endif()
+
+if (WITH_CRAYPAT)
+  include(FindCrayPAT)
+  if (CRAYPAT_FOUND)
+    set(CALIPER_HAVE_CRAYPAT TRUE)
+    set(CALIPER_CrayPAT_CMAKE_MSG "Yes, using ${CRAYPAT_LIBRARIES}")
+    list(APPEND CALIPER_EXTERNAL_LIBS ${CRAYPAT_LIBRARIES})
+  else()
+    message(WARNING "CrayPAT support requested but CrayPAT was not found!\n"
+      "Set CRAYPAT_ROOT to installation path and re-run cmake.")
   endif()
 endif()
 
@@ -400,13 +412,8 @@ if(WITH_TAU)
 endif()
 
 # Find Python
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
-  find_package(Python COMPONENTS Interpreter REQUIRED)
-  set(CALI_PYTHON_EXECUTABLE Python::Interpreter)
-else()
-  find_package(PythonInterp REQUIRED)
-  set(CALI_PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE})
-endif()
+find_package(Python COMPONENTS Interpreter REQUIRED)
+set(CALI_PYTHON_EXECUTABLE Python::Interpreter)
 
 if (WITH_SAMPLER)
   # Sampler is currently Linux-specific: check for Linux
@@ -445,6 +452,14 @@ if (WITH_VARIORUM)
     message(WARNING "Variorum support was requested but Variorum was not found!\n"
   "Set VARIORUM_PREFIX to the Variorum installation path and re-run cmake.")
   endif()
+endif()
+
+if (WITH_UMPIRE)
+  find_package(umpire REQUIRED)
+  set(CALIPER_HAVE_UMPIRE TRUE)
+  get_target_property(_umpire_location umpire LOCATION)
+  set(CALIPER_umpire_CMAKE_MSG "Yes, using ${_umpire_location}")
+  list(APPEND CALIPER_EXTERNAL_LIBS umpire)
 endif()
 
 # PGI 17.x has issues with some constexpr constructors
@@ -567,7 +582,9 @@ set(CALIPER_MODULES
   VTune
   PCP
   histogram
-  variorum)
+  variorum
+  umpire
+  CrayPAT)
 
 foreach(_caliper_module ${CALIPER_MODULES})
   string(LENGTH "${_caliper_module}" _strlen)

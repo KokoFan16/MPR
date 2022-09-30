@@ -6,6 +6,7 @@
 #include "SplayTree.hpp"
 
 #include "caliper/CaliperService.h"
+#include "../Services.h"
 
 #include "caliper/Caliper.h"
 #include "caliper/SnapshotRecord.h"
@@ -103,8 +104,6 @@ struct AllocInfoCmp {
 
 class AllocService
 {
-    static const ConfigSet::Entry s_configdata[];
-
     bool g_resolve_addresses        { false };
     bool g_track_allocations        { true  };
     bool g_record_active_mem        { false };
@@ -154,19 +153,14 @@ class AllocService
                             const Variant& v_size,
                             const Variant& v_uid,
                             const Variant& v_addr) {
-        cali_id_t attr[] = {
-            alloc_total_size_attr.id(),
-            alloc_uid_attr.id(),
-            alloc_addr_attr.id()
-        };
-        Variant   data[] = {
-            v_size,
-            v_uid,
-            v_addr
+        Entry data[] = {
+            { alloc_total_size_attr, v_size },
+            { alloc_uid_attr,        v_uid  },
+            { alloc_addr_attr,       v_addr },
+            { label_node }
         };
 
-        SnapshotRecord trigger_info(1, &label_node, 3, attr, data);
-        c->push_snapshot(chn, &trigger_info);
+        c->push_snapshot(chn, SnapshotView(4, data));
     }
 
     void track_mem_cb(Caliper* c, Channel* chn, const void* ptr, const char* label, size_t elem_size, size_t ndims, const size_t* dims,
@@ -261,20 +255,16 @@ class AllocService
         }
     }
 
-    void resolve_addresses(Caliper* c, const SnapshotRecord* trigger_info, SnapshotRecord* snapshot) {
+    void resolve_addresses(Caliper* c, const SnapshotView trigger_info, SnapshotBuilder& snapshot) {
         for (int i = 0; i < std::min<int>(g_memoryaddress_attrs.size(), MAX_ADDRESS_ATTRIBUTES); ++i) {
-            Entry e = trigger_info->get(g_memoryaddress_attrs[i].memoryaddress_attr);
+            Entry e = trigger_info.get(g_memoryaddress_attrs[i].memoryaddress_attr);
 
-            if (e.is_empty())
+            if (e.empty())
                 continue;
 
             uint64_t addr = e.value().to_uint();
 
-            cali_id_t   attr[2] = {
-                g_memoryaddress_attrs[i].alloc_uid_attr.id(),
-                g_memoryaddress_attrs[i].alloc_index_attr.id()
-            };
-            Variant     data[2];
+            Entry       data[2];
             cali::Node* label_node = nullptr;
 
             {
@@ -286,20 +276,22 @@ class AllocService
                 if (!tree_node)
                     continue;
 
-                data[0] = (*tree_node).v_uid;
-                data[1] = cali_make_variant_from_uint((*tree_node).index_1D(addr));
+                data[0] = Entry(g_memoryaddress_attrs[i].alloc_uid_attr,
+                                (*tree_node).v_uid);
+                data[1] = Entry(g_memoryaddress_attrs[i].alloc_index_attr,
+                                cali_make_variant_from_uint((*tree_node).index_1D(addr)));
 
                 label_node = (*tree_node).addr_label_nodes[i];
             }
 
-            snapshot->append(2, attr, data);
+            snapshot.append(2, data);
 
             if (label_node)
-                snapshot->append(label_node);
+                snapshot.append(Entry(label_node));
         }
     }
 
-    void record_highwatermark(Caliper* c, Channel* chn, SnapshotRecord* rec) {
+    void record_highwatermark(Caliper* c, Channel* chn, SnapshotBuilder& rec) {
         uint64_t hwm = 0;
 
         {
@@ -310,16 +302,16 @@ class AllocService
             g_region_hwm = g_active_mem;
         }
 
-        rec->append(region_hwm_attr.id(), Variant(hwm));
+        rec.append(region_hwm_attr, Variant(hwm));
     }
 
-    void snapshot_cb(Caliper* c, Channel* chn, int scope, const SnapshotRecord* trigger_info, SnapshotRecord *snapshot) {
+    void snapshot_cb(Caliper* c, Channel* chn, int scope, SnapshotView info, SnapshotBuilder& snapshot) {
         // Record currently active amount of allocated memory
         if (g_record_active_mem)
-            snapshot->append(active_mem_attr.id(), Variant(cali_make_variant_from_uint(g_active_mem)));
+            snapshot.append(active_mem_attr, Variant(cali_make_variant_from_uint(g_active_mem)));
 
-        if (g_resolve_addresses && trigger_info != nullptr)
-            resolve_addresses(c, trigger_info, snapshot);
+        if (g_resolve_addresses && !info.empty())
+            resolve_addresses(c, info, snapshot);
 
         if (g_record_highwatermark)
             record_highwatermark(c, chn, snapshot);
@@ -377,10 +369,6 @@ class AllocService
 
     AllocService(Caliper* c, Channel* chn)
         {
-            Attribute class_aggr_attr =
-                c->get_attribute("class.aggregatable");
-            Variant   v_true(true);
-
             struct attr_info_t {
                 const char*    name;
                 cali_attr_type type;
@@ -418,12 +406,14 @@ class AllocService
                   0, nullptr, nullptr,
                   &alloc_num_elems_attr
                 },
-                { "alloc.total_size", CALI_TYPE_INT,     CALI_ATTR_SCOPE_THREAD  | CALI_ATTR_ASVALUE,
-                  1, &class_aggr_attr, &v_true,
+                { "alloc.total_size", CALI_TYPE_INT,
+                  CALI_ATTR_SCOPE_THREAD  | CALI_ATTR_ASVALUE | CALI_ATTR_AGGREGATABLE,
+                  0, nullptr, nullptr,
                   &alloc_total_size_attr
                 },
-                { "alloc.region.highwatermark", CALI_TYPE_UINT, CALI_ATTR_SCOPE_PROCESS | CALI_ATTR_ASVALUE,
-                  1, &class_aggr_attr, &v_true,
+                { "alloc.region.highwatermark", CALI_TYPE_UINT,
+                  CALI_ATTR_SCOPE_PROCESS | CALI_ATTR_ASVALUE | CALI_ATTR_AGGREGATABLE,
+                  0, nullptr, nullptr,
                   &region_hwm_attr
                 },
                 { 0, CALI_TYPE_INV, CALI_ATTR_DEFAULT, 0, nullptr, nullptr, nullptr }
@@ -432,7 +422,7 @@ class AllocService
             for (attr_info_t *p = attr_info; p->name; ++p)
                 *(p->attr) = c->create_attribute(p->name, p->type, p->prop | CALI_ATTR_SKIP_EVENTS, p->meta_count, p->meta_attr, p->meta_vals);
 
-            ConfigSet config = chn->config().init("alloc", s_configdata);
+            ConfigSet config = services::init_config_from_spec(chn->config(), s_spec);
 
             g_resolve_addresses    = config.get("resolve_addresses").to_bool();
             g_track_allocations    = config.get("track_allocations").to_bool();
@@ -441,6 +431,8 @@ class AllocService
         }
 
 public:
+
+    static const char* s_spec;
 
     static void allocservice_initialize(Caliper* c, Channel* chn) {
         AllocService* instance = new AllocService(c, chn);
@@ -456,7 +448,7 @@ public:
 
         if (instance->g_resolve_addresses || instance->g_record_active_mem || instance->g_record_highwatermark)
             chn->events().snapshot.connect(
-                [instance](Caliper* c, Channel* chn, int scope, const SnapshotRecord* info, SnapshotRecord* snapshot){
+                [instance](Caliper* c, Channel* chn, int scope, SnapshotView info, SnapshotBuilder& snapshot){
                     instance->snapshot_cb(c, chn, scope, info, snapshot);
                 });
 
@@ -474,33 +466,39 @@ public:
     }
 };
 
-const ConfigSet::Entry AllocService::s_configdata[] = {
-    { "resolve_addresses", CALI_TYPE_BOOL, "false",
-      "Whether to resolve memory addresses in snapshots.",
-      "Whether to resolve memory addresses in snapshots.\n"
-    },
-    { "track_allocations", CALI_TYPE_BOOL, "true",
-      "Whether to record snapshots for annotated memory allocations.",
-      "Whether to record snapshots for annotated memory allocations.\n"
-    },
-    { "record_active_mem", CALI_TYPE_BOOL, "false",
-      "Record the active allocated memory at each snapshot.",
-      "Record the active allocated memory at each snapshot."
-    },
-    { "record_highwatermark", CALI_TYPE_BOOL, "false",
-      "Record the high water mark of allocated memory at each snapshot.",
-      "Record the high water mark of allocated memory at each snapshot."
-    },
-
-    ConfigSet::Terminator
-};
+const char* AllocService::s_spec = R"json(
+{   "name" : "alloc",
+    "description" : "Track user-defined memory allocations",
+    "config" : [
+        {   "name"        : "resolve_addresses",
+            "type"        : "bool",
+            "description" : "Resolve memory addresses in snapshots",
+            "value"       : "false"
+        },
+        {   "name"        : "track_allocations",
+            "type"        : "bool",
+            "description" : "Record snapshots for annotated memory regions",
+            "value"       : "true"
+        },
+        {   "name"        : "record_active_mem",
+            "type"        : "bool",
+            "description" : "Record the active allocated memory at each snapshot",
+            "value"       : "false"
+        },
+        {   "name"        : "record_highwatermark",
+            "type"        : "bool",
+            "description" : "Record the high water mark of allocated memory at each snapshot",
+            "value"       : "false"
+        }
+    ]
+}
+)json";
 
 } // namespace [anonymous]
-
 
 namespace cali
 {
 
-CaliperService alloc_service { "alloc", ::AllocService::allocservice_initialize };
+CaliperService alloc_service { ::AllocService::s_spec, ::AllocService::allocservice_initialize };
 
 }
