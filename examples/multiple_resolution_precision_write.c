@@ -114,7 +114,7 @@ int main(int argc, char **argv)
 	double max_time;
 	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (total_time == max_time || rank == 0) { printf("(%d %d %d %d): %f, %f, %f, %f, %f, %ld\n", rank, process_count, agg_mode, nagg, time, logging_cost, esyc_cost, agg_cost, write_cost, call_count); }
+	if (total_time == max_time || rank == 0) { printf("(%d %d %d %d %d): %f, %f, %f, %f, %f, %ld\n", rank, process_count, time_step_count, agg_mode, nagg, time, logging_cost, esyc_cost, agg_cost, write_cost, call_count); }
 
 //	free(time_buffer);
 //	free(size_buffer);
