@@ -1,10 +1,10 @@
 #!/bin/bash
 
-while getopts f:p: flag
+while getopts f:c: flag
 do
     case "${flag}" in
         f) filename=${OPTARG};;
-        p) count=${OPTARG};;
+        c) count=${OPTARG};;
     esac
 done
 
