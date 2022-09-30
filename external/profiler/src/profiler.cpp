@@ -18,7 +18,6 @@ Profiler::Profiler(){
 void Profiler::iset_context(std::string name, int t) {
 	namespath = name;
 	curTs = t;
-	pstart = std::chrono::system_clock::now();
 }
 
 void Profiler::instart(std::string outname, double tg, int p, int np, int nts, int wmode, int na) {
@@ -29,6 +28,7 @@ void Profiler::instart(std::string outname, double tg, int p, int np, int nts, i
 	nprocs = np;
 	rank = p;
 	nagg = na;
+	pstart = std::chrono::system_clock::now();
 }
 
 void Profiler::sync_events () {
