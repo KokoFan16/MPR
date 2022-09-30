@@ -107,10 +107,10 @@ void Profiler::write(char* buf, std::string fp, int n) {
 			csv << p2->first << std::to_string(p2->second);
 		}
 		csv << endrow;
-	}
 
-	// set CSV file Hearer
-	csv << "id" << "tag" << "is_loop" << "times" << endrow;
+		// set CSV file Hearer
+		csv << "id" << "tag" << "is_loop" << "times" << endrow;
+	}
 
 	std::string loop, tag;
 	int c = 0;
