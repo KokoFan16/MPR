@@ -31,8 +31,8 @@ char configstr[512];
 float* time_buffer;
 
 long call_count = 0;
-//double cali_cost = 0;
-//double write_cost = 0;
+double cali_cost = 0;
+double write_cost = 0;
 
 static void parse_args(int argc, char **argv);
 static int parse_var_list();
@@ -68,12 +68,12 @@ int main(int argc, char **argv)
 	/* Parse input arguments and initialize */
 	parse_args(argc, argv);
 
-//	double start = MPI_Wtime();
+	double start = MPI_Wtime();
 	cali::ConfigManager mgr;
 	mgr.add(configstr);
     mgr.start();
-//	double end = MPI_Wtime();
-//	write_cost += (end - start);
+	double end = MPI_Wtime();
+	write_cost += (end - start);
 
 	/* Check arguments */
 	check_args();
@@ -106,18 +106,16 @@ int main(int argc, char **argv)
 //	CALI_CXX_MARK_LOOP_BEGIN(mainloop, "main");
 	double start_time = MPI_Wtime();
 
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_BEGIN("main");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 	for (ts = 0; ts < time_step_count; ts++)
 	{
 		set_rank(rank, process_count);
 		set_timestep(ts, time_step_count);
 		set_namespath("");
-
-//		Events e("main", "null");
 
 		set_mpr_file(ts);
 
@@ -128,11 +126,11 @@ int main(int argc, char **argv)
 
 	}
 
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_END("main");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 
 	double end_time = MPI_Wtime();
 	double time = (end_time-start_time);
@@ -141,16 +139,16 @@ int main(int argc, char **argv)
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	double start = MPI_Wtime();
+	start = MPI_Wtime();
 	mgr.flush();
-	double end = MPI_Wtime();
-	double write_cost = (end - start);
+	end = MPI_Wtime();
+	write_cost += (end - start);
 
 	double total_time = time + write_cost;
 	double max_time;
 	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (total_time == max_time || rank == 0) { printf("Caliper-time(%d %d): %f, %f, %ld\n", process_count, rank, time, write_cost, call_count); }
+	if (total_time == max_time || rank == 0) { printf("Caliper-time(%d %d): %f, %f, %f, %ld\n", process_count, rank, time, cali_cost, write_cost, call_count); }
 
 //	if (write_cost == max_cost) { printf("caliper-cost(%d): %f(%f, %f)\n", process_count, max_cost, cali_cost, write_cost); }
 

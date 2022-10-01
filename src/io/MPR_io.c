@@ -19,30 +19,30 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 	}
 
 //	file->time->crt_struc_start = MPI_Wtime();
-//	double start = MPI_Wtime();
+	double start = MPI_Wtime();
 	CALI_MARK_BEGIN("crtStruc");
 	call_count += 1;
-//	double end = MPI_Wtime();
-//	cali_cost += (end - start);
+	double end = MPI_Wtime();
+	cali_cost += (end - start);
 	/* Create metadata layout (folder) */
 	if (MPR_create_folder_structure(file, svi, evi) != MPR_success)
 	{
 		fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 		return MPR_err_file;
 	}
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_END("crtStruc");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 //	file->time->crt_struc_end = MPI_Wtime();
 
 //	file->time->rst_start = MPI_Wtime();
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_BEGIN("PART");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 
 	if (MPR_is_partition(file, svi, evi) != MPR_success)
 	{
@@ -50,11 +50,11 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_END("PART");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 //	file->time->rst_end = MPI_Wtime();
 
 	/* Write Mode: write data out */
@@ -92,22 +92,22 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 //		file->time->agg_start = MPI_Wtime();
 //		Events e("AGG", "null");
 
-//		start = MPI_Wtime();
+		start = MPI_Wtime();
 		CALI_MARK_BEGIN("AGG");
 		call_count += 1;
-//		end = MPI_Wtime();
-//		cali_cost += (end - start);
+		end = MPI_Wtime();
+		cali_cost += (end - start);
 
 		if (MPR_aggregation_perform(file, svi, evi) != MPR_success)
 		{
 			fprintf(stderr, "File %s Line %d\n", __FILE__, __LINE__);
 			return MPR_err_file;
 		}
-//		start = MPI_Wtime();
+		start = MPI_Wtime();
 		CALI_MARK_END("AGG");
 		call_count += 1;
-//		end = MPI_Wtime();
-//		cali_cost += (end - start);
+		end = MPI_Wtime();
+		cali_cost += (end - start);
 //		file->time->agg_end = MPI_Wtime();
 	}
 
@@ -118,17 +118,17 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 //	{
 //		Events e("wrt", "null");
 
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_BEGIN("wrt");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_BEGIN("wrtMeta");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 
 	if (MPR_metadata_write_out(file, svi, evi) != MPR_success)
 	{
@@ -136,21 +136,21 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_END("wrtMeta");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 //	file->time->wrt_meta_end = MPI_Wtime();
 
 	/* write data out */
 //	file->time->wrt_file_start = MPI_Wtime();
 
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_BEGIN("wrtData");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 
 	if (MPR_write_data_out(file, svi, evi) != MPR_success)
 	{
@@ -158,19 +158,19 @@ MPR_return_code MPR_write(MPR_file file, int svi, int evi)
 		return MPR_err_file;
 	}
 
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_END("wrtData");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 
 //	}
 //	file->time->wrt_file_end = MPI_Wtime();
-//	start = MPI_Wtime();
+	start = MPI_Wtime();
 	CALI_MARK_END("wrt");
 	call_count += 1;
-//	end = MPI_Wtime();
-//	cali_cost += (end - start);
+	end = MPI_Wtime();
+	cali_cost += (end - start);
 
 
 //	file->time->wrt_data_end = MPI_Wtime();

@@ -23,22 +23,22 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 //		{
 //			Events e("getDT", "null");
 
-//		double start = MPI_Wtime();
+		double start = MPI_Wtime();
 		CALI_MARK_BEGIN("getDT");
 		call_count += 1;
-//		double end = MPI_Wtime();
-//		cali_cost += (end - start);
+		double end = MPI_Wtime();
+		cali_cost += (end - start);
 
 		if (strcmp(type_name, MPR_DType.FLOAT32) == 0 || strcmp(type_name, MPR_DType.FLOAT32_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT32_RGB) == 0)
 			data_type = 0;
 		else if (strcmp(type_name, MPR_DType.FLOAT64) == 0 || strcmp(type_name, MPR_DType.FLOAT64_GA) == 0 || strcmp(type_name, MPR_DType.FLOAT64_RGB) == 0)
 			data_type = 1;
 
-//		start = MPI_Wtime();
+		start = MPI_Wtime();
 		CALI_MARK_END("getDT");
 		call_count += 1;
-//		end = MPI_Wtime();
-//		cali_cost += (end - start);
+		end = MPI_Wtime();
+		cali_cost += (end - start);
 
 //		}
 //		file->time->zfp_pre_end = MPI_Wtime();
@@ -63,11 +63,11 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 //			{
 //				Events e("calDC", "comp", 0, 2, p);
 
-//			start = MPI_Wtime();
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("calDC");
 			call_count += 1;
-//			end = MPI_Wtime();
-//			cali_cost += (end - start);
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 
 			memset(output, 0, sizeof (*output)); /* Initialization */
 			reg_patch->subbands_comp_size = (int*)malloc(subband_num * sizeof(int));
@@ -84,11 +84,11 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			reg_patch->subbands_comp_size[sid++] = output->compress_size;
 //			}
 
-//			start = MPI_Wtime();
+			start = MPI_Wtime();
 			CALI_MARK_END("calDC");
 			call_count += 1;
-//			end = MPI_Wtime();
-//			cali_cost += (end - start);
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			double comp_dc_end = MPI_Wtime();
 //			file->time->zfp_comp_dc_time += comp_dc_end - comp_dc_start;
 
@@ -96,11 +96,11 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 //			{
 //				Events e("calBands", "comp", 0, 2, p);
 
-//			start = MPI_Wtime();
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("calBands");
 			call_count += 1;
-//			end = MPI_Wtime();
-//			cali_cost += (end - start);
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 
 			for (int i = file->mpr->wavelet_trans_num; i > 0; i--)
 			{
@@ -123,11 +123,11 @@ MPR_return_code MPR_ZFP_multi_res_compression_perform(MPR_file file, int svi, in
 			reg_patch->patch_buffer_size = comp_offset; /* the total compressed size per patch */
 			free(output);
 
-//			start = MPI_Wtime();
+			start = MPI_Wtime();
 			CALI_MARK_END("calBands");
 			call_count += 1;
-//			end = MPI_Wtime();
-//			cali_cost += (end - start);
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 
 //			}
 //			double comp_bands_end = MPI_Wtime();

@@ -48,19 +48,19 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 //			double trans_start = MPI_Wtime();
 //			{
 //				Events e("trans", "comp", 0, 2, i);
-//			double start = MPI_Wtime();
+			double start = MPI_Wtime();
 			CALI_MARK_BEGIN("trans");
 			call_count += 1;
-//			double end = MPI_Wtime();
-//			cali_cost += (end - start);
+			double end = MPI_Wtime();
+			cali_cost += (end - start);
 
 			wavelet_transform(local_patch->patch[i]->buffer, file->mpr->patch_box, file->variable[v]->type_name, trans_num);
 
-//			start = MPI_Wtime();
+			start = MPI_Wtime();
 			CALI_MARK_END("trans");
 			call_count += 1;
-//			end = MPI_Wtime();
-//			cali_cost += (end - start);
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			}
 //			double trans_end = MPI_Wtime();
 //			file->time->wave_trans_time += trans_end - trans_start;
@@ -68,22 +68,22 @@ MPR_return_code MPR_wavelet_transform_perform(MPR_file file, int svi, int evi)
 //			double org_start = MPI_Wtime();
 //			{
 //				Events e("organ", "comp", 0, 2, i);
-//			start = MPI_Wtime();
+			start = MPI_Wtime();
 			CALI_MARK_BEGIN("organ");
 			call_count += 1;
-//			end = MPI_Wtime();
-//			cali_cost += (end - start);
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 
 			unsigned char* reg_buffer = (unsigned char*)malloc(local_patch->patch[i]->patch_buffer_size);
 			MPR_wavelet_organization(local_patch->patch[i]->buffer, reg_buffer, file->mpr->patch_box, trans_num, bytes, 0, 0);
 			memcpy(local_patch->patch[i]->buffer, reg_buffer, local_patch->patch[i]->patch_buffer_size);
 			free(reg_buffer);
 
-//			start = MPI_Wtime();
+			start = MPI_Wtime();
 			CALI_MARK_END("organ");
 			call_count += 1;
-//			end = MPI_Wtime();
-//			cali_cost += (end - start);
+			end = MPI_Wtime();
+			cali_cost += (end - start);
 //			}
 //			double org_end = MPI_Wtime();
 //			file->time->wave_org_time += org_end - org_start;
