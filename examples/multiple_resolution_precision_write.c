@@ -150,7 +150,7 @@ int main(int argc, char **argv)
 	double max_time;
 	MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-	if (total_time == max_time) { printf("Caliper-time(%d): %f, %f, %ld\n", process_count, time, write_cost, call_count); }
+	if (total_time == max_time || rank == 0) { printf("Caliper-time(%d %d): %f, %f, %ld\n", process_count, rank, time, write_cost, call_count); }
 
 //	if (write_cost == max_cost) { printf("caliper-cost(%d): %f(%f, %f)\n", process_count, max_cost, cali_cost, write_cost); }
 
